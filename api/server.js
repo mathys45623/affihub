@@ -138,7 +138,15 @@ app.post('/api/offers', auth, adminOnly, async (req, res) => {
   res.json(data);
 });
 app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
-  await supabase.from('offers').delete().eq('id', req.params.id);
+  const id = req.params.id;
+  // Supprimer les conversions liées aux liens de cette offre
+  const { data: links } = await supabase.from('links').select('id').eq('offer_id', id);
+  if (links && links.length > 0) {
+    const linkIds = links.map(l => l.id);
+    await supabase.from('conversions').delete().in('link_id', linkIds);
+    await supabase.from('links').delete().eq('offer_id', id);
+  }
+  await supabase.from('offers').delete().eq('id', id);
   res.json({ success: true });
 });
 
