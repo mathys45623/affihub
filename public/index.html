@@ -371,15 +371,56 @@ async function renderPage(page){
     const [offers,links]=await Promise.all([api('GET','/api/offers'),api('GET','/api/links')]);
     const active=offers.filter(o=>o.active);
     if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible pour l\'instant.</p></div></div>';
-    const cards=active.map(o=>{
-      const el=links.find(l=>l.offer_id===o.id);
-      const origin=window.location.origin;
-      return `<div class="offer-card"><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div>
-      ${el?`<div class="link-box"><code>${origin}/go/${el.id}</code><button class="copy-btn" onclick="cpLink('${el.id}',this)">📋</button></div>`:''}
-      </div><div style="text-align:right;flex-shrink:0">${gtext('$'+o.commission)}<div style="font-size:11px;color:var(--muted);margin-bottom:10px">par conversion</div>
-      ${el?'<span class="badge bg2">✓ Lien actif</span>':`<button class="btn btn-grad btn-sm" onclick="genLink(${o.id})">Générer lien</button>`}</div></div>`;
-    }).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Offres disponibles</div><span class="badge bp2">${active.length} offre(s)</span></div>${cards}</div>`;
+    const cats=[
+      {key:'casino',label:'🎰 Casino',color:'#F5C842',bg:'rgba(245,200,66,.08)',border:'rgba(245,200,66,.25)'},
+      {key:'dating',label:'💕 Dating',color:'#F0427A',bg:'rgba(240,66,122,.08)',border:'rgba(240,66,122,.25)'},
+      {key:'autre',label:'📦 Autre',color:'#5B9CF6',bg:'rgba(91,156,246,.08)',border:'rgba(91,156,246,.25)'}
+    ];
+    let html='';
+    cats.forEach(cat=>{
+      const catOffers=active.filter(o=>(o.category||'autre')===cat.key);
+      if(catOffers.length===0)return;
+      html+=`<div style="margin-bottom:28px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,${cat.border},transparent)"></div>
+          <span style="font-family:'Syne',sans-serif;font-size:15px;font-weight:800;color:${cat.color}">${cat.label}</span>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,${cat.border})"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">`;
+      catOffers.forEach(o=>{
+        const el=links.find(l=>l.offer_id===o.id);
+        const origin=window.location.origin;
+        html+=`<div style="background:var(--bg2);border:1px solid ${cat.border};border-radius:14px;padding:20px;transition:all .2s;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,${cat.color},transparent)"></div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px">
+            <div>
+              <div style="font-size:15px;font-weight:700;margin-bottom:4px">${o.name}</div>
+              <div style="font-size:12px;color:var(--muted)">${o.description||''}</div>
+            </div>
+            <div style="background:${cat.bg};border:1px solid ${cat.border};border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0">
+              <div style="font-size:18px;font-weight:900;color:${cat.color}">$${o.commission}</div>
+              <div style="font-size:10px;color:var(--muted)">/ vente</div>
+            </div>
+          </div>
+          ${el?`
+            <div style="background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+              <code style="flex:1;font-family:monospace;font-size:11px;color:${cat.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${origin}/go/${el.id}</code>
+              <button class="copy-btn" onclick="cpLink('${el.id}',this)" style="flex-shrink:0">📋</button>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div style="display:flex;gap:14px">
+                <div style="text-align:center"><div style="font-size:16px;font-weight:800">${el.clicks}</div><div style="font-size:10px;color:var(--muted)">CLICS</div></div>
+              </div>
+              <span class="badge bg2">✓ Actif</span>
+            </div>
+          `:`
+            <button class="btn btn-grad" onclick="genLink(${o.id})" style="width:100%;justify-content:center">🔗 Générer mon lien</button>
+          `}
+        </div>`;
+      });
+      html+='</div></div>';
+    });
+    return `<div style="margin-bottom:20px"><div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:800;margin-bottom:6px">Offres disponibles</div><div style="font-size:13px;color:var(--muted)">${active.length} offre(s) • Générez vos liens et commencez à gagner</div></div>${html}`;
   }
 
   if(page==='aff-stats'){
@@ -545,7 +586,9 @@ async function renderPage(page){
 
   if(page==='admin-offers'){
     const offers=await api('GET','/api/offers');
-    const cards=offers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px">${gtext('$'+o.commission)}<div>${sbadge(o.active?'active':'disabled')}</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer(${o.id},'${o.name.replace(/'/g,"\\'")}','${(o.description||'').replace(/'/g,"\\'")}','${o.url.replace(/'/g,"\\'")}',${o.commission})">✏️ Modifier</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer(${o.id},'${o.name.replace(/'/g,"\\'")}')">🗑 Supprimer</button></div></div></div>`).join('');
+    const catLabel={'casino':'🎰 Casino','dating':'💕 Dating','autre':'📦 Autre'};
+    const catColor={'casino':'var(--yellow)','dating':'var(--pink)','autre':'var(--blue)'};
+    const cards=offers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="font-size:14px;font-weight:700">${o.name}</div><span style="font-size:11px;font-weight:600;color:${catColor[o.category||'autre']};background:rgba(0,0,0,.2);padding:2px 8px;border-radius:20px">${catLabel[o.category||'autre']}</span></div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px">${gtext('$'+o.commission)}<div>${sbadge(o.active?'active':'disabled')}</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer(${o.id},'${o.name.replace(/'/g,"\\'")}','${(o.description||'').replace(/'/g,"\\'")}','${o.url.replace(/'/g,"\\'")}',${o.commission},'${o.category||'autre'}')">✏️ Modifier</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer(${o.id},'${o.name.replace(/'/g,"\\'")}')">🗑 Supprimer</button></div></div></div>`).join('');
     return `<div class="card"><div class="card-header"><div class="card-title">Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter offre</button></div>${offers.length===0?'<div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre.</p></div>':cards}</div>`;
   }
 
@@ -639,13 +682,18 @@ async function deleteWd(id){
   try{await api('DELETE',`/api/withdrawals/${id}`);closeMo();toast('Retrait supprimé','s');goPage('admin-wd');}
   catch(e){toast(e.message,'e');}
 }
-function openEditOffer(id, name, desc, url, comm){
+function openEditOffer(id, name, desc, url, comm, cat){
   document.getElementById('m-title').textContent='Modifier l\'offre';
   document.getElementById('m-body').innerHTML=`
     <div class="fi"><label>Nom</label><input type="text" id="eo-name" value="${name}" placeholder="Nom de l'offre"></div>
     <div class="fi"><label>Description</label><input type="text" id="eo-desc" value="${desc}" placeholder="Description courte"></div>
     <div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="${url}" placeholder="https://..."></div>
     <div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="${comm}"></div>
+    <div class="fi"><label>Catégorie</label><select id="eo-cat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+      <option value="casino" ${cat==='casino'?'selected':''}>🎰 Casino</option>
+      <option value="dating" ${cat==='dating'?'selected':''}>💕 Dating</option>
+      <option value="autre" ${cat==='autre'||!cat?'selected':''}>📦 Autre</option>
+    </select></div>
     <div style="display:flex;gap:10px;margin-top:6px">
       <button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>
       <button class="btn btn-grad" onclick="doEditOffer(${id})" style="flex:1;justify-content:center">Sauvegarder →</button>
@@ -657,20 +705,20 @@ async function doEditOffer(id){
   const url=document.getElementById('eo-url').value.trim();
   if(!name||!url){toast('Nom et URL requis','e');return;}
   try{
-    await api('PATCH',`/api/offers/${id}`,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10});
+    await api('PATCH',`/api/offers/${id}`,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value});
     closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');
   }catch(e){toast(e.message,'e');}
 }
 function openAddOffer(){
   document.getElementById('m-title').textContent='Nouvelle offre';
-  document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l\'offre →</button>';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><div class="fi"><label>Catégorie</label><select id="ocat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="autre" selected>📦 Autre</option></select></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l\'offre →</button>';
   document.getElementById('mo').classList.add('open');
 }
 async function doAddOffer(){
   const name=document.getElementById('on').value.trim();
   const url=document.getElementById('ou').value.trim();
   if(!name||!url){toast('Nom et URL requis','e');return;}
-  try{await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10});closeMo();toast('Offre créée !','s');goPage('admin-offers');}
+  try{await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value});closeMo();toast('Offre créée !','s');goPage('admin-offers');}
   catch(e){toast(e.message,'e');}
 }
 async function changePass(){
