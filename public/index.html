@@ -620,6 +620,7 @@ async function deleteOffer(id){
   try{await api('DELETE',`/api/offers/${id}`);closeMo();toast('Offre supprimée','s');goPage('admin-offers');}
   catch(e){toast(e.message,'e');}
 }
+function confirmDeleteAff(id,name,email){
   document.getElementById('m-title').textContent='Supprimer le compte';
   document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Vous allez supprimer</div><div style="font-weight:900;font-size:18px;margin-bottom:2px">${name}</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">${email}</div><div style="font-size:12px;color:var(--red);background:rgba(255,83,112,.1);border:1px solid rgba(255,83,112,.2);border-radius:10px;padding:12px;margin-bottom:22px;text-align:left">⚠️ Action irréversible. Tous ses liens, conversions et retraits seront supprimés.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteAff('${id}')" style="flex:1">Confirmer</button></div></div>`;
   document.getElementById('mo').classList.add('open');
