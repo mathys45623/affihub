@@ -102,11 +102,14 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
   // Commission parrainage 5%
   if (user.referred_by) {
-    const commission = parseFloat((conv.amount * 0.05).toFixed(2));
-    const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
-    if (referrer) {
-      await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-      await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: conv.user_id, conversion_id: conv.id, amount: commission });
+    const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
+    if (referee && referee.referral_active !== false) {
+      const commission = parseFloat((conv.amount * 0.05).toFixed(2));
+      const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+      if (referrer) {
+        await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
+        await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: conv.user_id, conversion_id: conv.id, amount: commission });
+      }
     }
   }
   res.json({ success: true });
@@ -246,7 +249,23 @@ app.get('/api/stats', auth, adminOnly, async (req, res) => {
   res.json({ affiliates: users.count || 0, totalClicks, totalConversions: (conversions.data || []).length, totalGains, pendingConversions: (conversions.data || []).filter(c => c.status === 'pending').length, pendingWithdrawals: (withdrawals.data || []).filter(w => w.status === 'pending').length, paidWithdrawals: (withdrawals.data || []).filter(w => w.status === 'paid').length, totalWithdrawals: (withdrawals.data || []).reduce((s,w) => w.status === 'paid' ? s + w.amount : s, 0) });
 });
 
-// ── PARRAINAGE ──
+// ── ADMIN REFERRALS ──
+app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
+  const { data: affiliates } = await supabase.from('users').select('id,name,email,balance,created_at,referral_code').eq('role','affiliate');
+  const result = await Promise.all((affiliates||[]).map(async aff => {
+    const { data: filleules } = await supabase.from('users').select('id,name,created_at,referral_active').eq('referred_by', aff.id);
+    const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', aff.id).order('created_at',{ascending:false});
+    const totalEarned = (commissions||[]).reduce((s,c)=>s+c.amount,0);
+    return { ...aff, filleules: filleules||[], commissions: commissions||[], totalEarned };
+  }));
+  res.json(result.filter(a => a.filleules.length > 0 || a.commissions.length > 0));
+});
+
+app.patch('/api/admin/referral/:userId/toggle', auth, adminOnly, async (req, res) => {
+  const { active } = req.body;
+  await supabase.from('users').update({ referral_active: active }).eq('id', req.params.userId);
+  res.json({ success: true });
+});
 app.get('/api/referrals', auth, async (req, res) => {
   const { data: filleules } = await supabase.from('users').select('id,name,created_at').eq('referred_by', req.user.id);
   const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', req.user.id).order('created_at', { ascending: false });
