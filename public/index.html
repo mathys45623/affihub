@@ -844,18 +844,19 @@ function confirmDeleteAff(btn){
   </div>`;
   document.getElementById('mo').classList.add('open');
   let count=5;
+  const affId=id;
   const interval=setInterval(()=>{
     count--;
-    const btn=document.getElementById('del-aff-btn');
-    if(!btn){clearInterval(interval);return;}
+    const delBtn=document.getElementById('del-aff-btn');
+    if(!delBtn){clearInterval(interval);return;}
     if(count<=0){
       clearInterval(interval);
-      btn.disabled=false;
-      btn.style.opacity='1';
-      btn.textContent='Supprimer';
-      btn.onclick=()=>deleteAff('${id}');
+      delBtn.disabled=false;
+      delBtn.style.opacity='1';
+      delBtn.textContent='Supprimer';
+      delBtn.onclick=()=>deleteAff(affId);
     } else {
-      btn.textContent='Supprimer ('+count+')';
+      delBtn.textContent='Supprimer ('+count+')';
     }
   },1000);
 }
