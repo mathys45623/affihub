@@ -137,6 +137,10 @@ app.post('/api/offers', auth, adminOnly, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
+app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('offers').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
 
 // ── LINKS ──
 app.get('/api/links', auth, async (req, res) => {
