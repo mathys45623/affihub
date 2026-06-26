@@ -84,9 +84,9 @@ tbody tr:hover{background:var(--bg3)}
 .copy-btn{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:3px 7px;border-radius:5px}
 .copy-btn:hover{color:var(--yellow)}
 .crypto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
-.crypto-opt{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .15s;font-size:12px;font-weight:600;color:var(--muted)}
+.crypto-opt{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center;cursor:pointer;transition:all .15s;font-size:12px;font-weight:600;color:var(--muted)}
 .crypto-opt:hover,.crypto-opt.sel{border-color:var(--yellow);color:var(--yellow);background:rgba(245,200,66,.08)}
-.crypto-icon{font-size:22px;display:block;margin-bottom:4px}
+.crypto-icon{display:flex;align-items:center;justify-content:center;margin-bottom:8px;height:32px}
 .fi{margin-bottom:15px}.fi label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
 .fi input,.fi select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:all .2s}
 .fi input:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(245,200,66,.1)}
@@ -413,9 +413,9 @@ async function renderPage(page){
     <div class="hdiv"></div>
     <div class="fi"><label>Montant ($)</label><input type="number" id="wd-amt" min="10" placeholder="Minimum $10"></div>
     <div class="fi"><label>Crypto</label><div class="crypto-grid">
-      <div class="crypto-opt" onclick="pickCrypto('BTC',this)"><span class="crypto-icon">₿</span>Bitcoin</div>
-      <div class="crypto-opt" onclick="pickCrypto('SOL',this)"><span class="crypto-icon">◎</span>Solana</div>
-      <div class="crypto-opt" onclick="pickCrypto('LTC',this)"><span class="crypto-icon">Ł</span>Litecoin</div>
+      <div class="crypto-opt" onclick="pickCrypto('BTC',this)"><span class="crypto-icon"><img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@1a63530be6e374711a8554f31b17e4cb92c25fa4/svg/color/btc.svg" width="32" height="32" style="display:block;margin:0 auto"></span>Bitcoin</div>
+      <div class="crypto-opt" onclick="pickCrypto('SOL',this)"><span class="crypto-icon"><img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@1a63530be6e374711a8554f31b17e4cb92c25fa4/svg/color/sol.svg" width="32" height="32" style="display:block;margin:0 auto"></span>Solana</div>
+      <div class="crypto-opt" onclick="pickCrypto('LTC',this)"><span class="crypto-icon"><img src="https://cdn.jsdelivr.net/gh/atomiclabs/cryptocurrency-icons@1a63530be6e374711a8554f31b17e4cb92c25fa4/svg/color/ltc.svg" width="32" height="32" style="display:block;margin:0 auto"></span>Litecoin</div>
     </div></div>
     <div class="fi"><label>Adresse crypto</label><input type="text" id="wd-addr" placeholder="Votre adresse de réception"></div>
     <button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre la demande</button></div>
