@@ -539,7 +539,7 @@ async function renderPage(page){
 
   if(page==='admin-wd'){
     const wds=await api('GET','/api/withdrawals');
-    const rows=wds.map(w=>`<tr><td style="color:var(--muted)">${fmt(w.created_at)}</td><td>${w.users?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,20)}</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red)">↳ ${w.reason}</div>`:''}</td><td>${w.status==='pending'?`<div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprW(${w.id})">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW(${w.id})">✕ Rejeter</button></div>`:'<span style="color:var(--muted)">—</span>'}</td></tr>`).join('');
+    const rows=wds.map(w=>`<tr><td style="color:var(--muted)">${fmt(w.created_at)}</td><td>${w.users?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,20)}</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red)">↳ ${w.reason}</div>`:''}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${w.status==='pending'?`<button class="btn btn-grn btn-sm" onclick="apprW(${w.id})">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW(${w.id})">✕ Rejeter</button>`:'<span style="color:var(--muted)">—</span>'}<button class="btn btn-gst btn-sm" onclick="confirmDeleteWd(${w.id})">🗑</button></div></td></tr>`).join('');
     return `<div class="card"><div class="card-title" style="margin-bottom:16px">Demandes de retraits</div>${rows?'<div class="tw"><table><thead><tr><th>Date</th><th>Affilié</th><th>Montant</th><th>Crypto</th><th>Adresse</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>'}</div>`;
   }
 
@@ -628,6 +628,15 @@ function confirmDeleteAff(id,name,email){
 }
 async function deleteAff(id){
   try{await api('DELETE',`/api/users/${id}`);closeMo();toast('Compte supprimé','s');goPage('admin-aff');}
+  catch(e){toast(e.message,'e');}
+}
+function confirmDeleteWd(id){
+  document.getElementById('m-title').textContent='Supprimer ce retrait';
+  document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous supprimer cet historique de retrait ?<br>Il disparaîtra aussi du côté de l'affilié.</div><div style="font-size:12px;color:var(--yellow);background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Si le retrait est encore en attente, le solde sera automatiquement remboursé à l'affilié.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteWd(${id})" style="flex:1">Supprimer</button></div></div>`;
+  document.getElementById('mo').classList.add('open');
+}
+async function deleteWd(id){
+  try{await api('DELETE',`/api/withdrawals/${id}`);closeMo();toast('Retrait supprimé','s');goPage('admin-wd');}
   catch(e){toast(e.message,'e');}
 }
 function openEditOffer(id, name, desc, url, comm){
