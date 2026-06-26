@@ -211,6 +211,17 @@ app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
   res.json({ success: true });
 });
+app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
+  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
+  if (!wd) return res.status(404).json({ error: 'Introuvable' });
+  // Si le retrait est encore en attente, on rembourse le solde
+  if (wd.status === 'pending') {
+    const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
+    if (user) await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
+  }
+  await supabase.from('withdrawals').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
 
 // ── USERS ──
 app.get('/api/users', auth, adminOnly, async (req, res) => {
