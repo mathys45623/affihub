@@ -131,16 +131,16 @@ app.get('/api/offers', auth, async (req, res) => {
   res.json(data || []);
 });
 app.post('/api/offers', auth, adminOnly, async (req, res) => {
-  const { name, description, url, commission } = req.body;
+  const { name, description, url, commission, category } = req.body;
   if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
-  const { data, error } = await supabase.from('offers').insert({ name, description, url, commission: commission || 10 }).select().single();
+  const { data, error } = await supabase.from('offers').insert({ name, description, url, commission: commission || 10, category: category || 'autre' }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
 app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
-  const { name, description, url, commission } = req.body;
+  const { name, description, url, commission, category } = req.body;
   if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
-  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10 }).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre' }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
