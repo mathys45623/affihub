@@ -306,8 +306,7 @@ function startApp() {
   document.getElementById('u-email').textContent=ME.email;
   document.getElementById('u-avatar').textContent=ME.name[0].toUpperCase();
   // Load saved logo
-  const savedLogo=localStorage.getItem('affihub_logo');
-  if(savedLogo)updateLogo(savedLogo);
+  setTimeout(()=>updateLogo(LOGO_URL+'?t='+Date.now()), 100);
   if(ME.role==='admin'){
     document.getElementById('role-badge').textContent='👑 Admin';
     buildNav([
@@ -912,14 +911,13 @@ async function saveLogo(){
     const file=fileInput.files[0];
     const SURL='https://rhrhtqmgqwkdcrcglkys.supabase.co';
     const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmh0cW1ncXdrZGNyY2dsa3lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NDEzMzAsImV4cCI6MjA5ODAxNzMzMH0.QJuNi5x9u_o4PZyYykU6Ft96cGBFJWqVvgQsJ0fGJvM';
-    const fileName='logo.'+file.name.split('.').pop();
-    const r=await fetch(`${SURL}/storage/v1/object/settings/${fileName}`,{
+    const r=await fetch(`${SURL}/storage/v1/object/settings/logo.png`,{
       method:'POST',
       headers:{'Authorization':'Bearer '+SKEY,'Content-Type':file.type,'x-upsert':'true'},
       body:file
     });
     if(!r.ok){const e=await r.json();throw new Error(e.error||'Upload échoué');}
-    const logoUrl=`${SURL}/storage/v1/object/public/settings/${fileName}?t=${Date.now()}`;
+    const logoUrl=`${SURL}/storage/v1/object/public/settings/logo.png`;
     localStorage.setItem('affihub_logo',logoUrl);
     updateLogo(logoUrl);
     toast('Logo mis à jour ✓','s');
@@ -927,9 +925,10 @@ async function saveLogo(){
   }catch(e){toast(e.message,'e');}
 }
 function updateLogo(url){
-  // Update all logo elements in sidebar and auth
   document.querySelectorAll('.logo-icon-img').forEach(el=>{
-    el.src=url; el.style.display='block';
+    el.src=url+'?t='+Date.now();
+    el.style.display='block';
+    el.style.borderRadius='10px';
   });
   document.querySelectorAll('.logo-icon-emoji').forEach(el=>{
     el.style.display='none';
@@ -991,9 +990,14 @@ document.getElementById('mo').addEventListener('click',function(e){if(e.target==
 var toastTimer;
 function toast(msg,type){const el=document.getElementById('toast');const ic={s:'✅',e:'❌',i:'💡'};el.innerHTML=(ic[type]||'💡')+' '+msg;el.className='show t'+(type||'i');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='',3200);}
 if(TOKEN&&ME)startApp();
-// Load logo on auth screen too
-const _savedLogo=localStorage.getItem('affihub_logo');
-if(_savedLogo)updateLogo(_savedLogo);
+// Load logo for everyone — always check Supabase for current logo
+const LOGO_URL='https://rhrhtqmgqwkdcrcglkys.supabase.co/storage/v1/object/public/settings/logo.png';
+(async()=>{
+  try{
+    const r=await fetch(LOGO_URL,{method:'HEAD'});
+    if(r.ok){ setTimeout(()=>updateLogo(LOGO_URL+'?t='+Date.now()),50); }
+  }catch(e){}
+})();
 const urlParams=new URLSearchParams(window.location.search);
 const refCode=urlParams.get('ref');
 if(refCode){switchTab('register');setTimeout(()=>{const refInput=document.getElementById('r-ref');if(refInput){refInput.value=refCode;refInput.style.borderColor='var(--yellow)';}},100);}
