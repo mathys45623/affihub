@@ -3,6 +3,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
+const { Resend } = require('resend');
 const path = require('path');
 
 const app = express();
@@ -10,6 +11,20 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const JWT_SECRET = process.env.JWT_SECRET || 'affihub_secret_2024';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+async function sendEmail(to, subject, html) {
+  try {
+    await resend.emails.send({
+      from: 'AffiHub <onboarding@resend.dev>',
+      to,
+      subject,
+      html
+    });
+  } catch(e) {
+    console.error('Email error:', e.message);
+  }
+}
 
 app.use(cors());
 app.use(express.json());
@@ -182,10 +197,48 @@ app.get('/api/withdrawals', auth, async (req, res) => {
 });
 app.post('/api/withdrawals', auth, async (req, res) => {
   const { amount, crypto, address } = req.body;
-  const { data: user } = await supabase.from('users').select('balance').eq('id', req.user.id).single();
+  const { data: user } = await supabase.from('users').select('balance,email,name').eq('id', req.user.id).single();
   if (!user || user.balance < 10) return res.status(400).json({ error: 'Solde insuffisant (minimum $10)' });
   if (amount < 10 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
+
+  // Email à l'affilié
+  await sendEmail(user.email, '💸 Demande de retrait reçue — AffiHub', `
+    <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0F0A14;color:#F5EEF8;border-radius:16px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#F5C842,#F0427A);padding:3px"></div>
+      <div style="padding:40px 36px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#F5C842,#F0427A);display:flex;align-items:center;justify-content:center;font-size:20px">🔗</div>
+          <span style="font-size:22px;font-weight:800;color:#F5EEF8">AffiHub</span>
+        </div>
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:8px;color:#F5EEF8">Demande de retrait envoyée ✅</h2>
+        <p style="color:#7B6B8E;font-size:14px;margin-bottom:28px">Bonjour <strong style="color:#F5EEF8">${user.name}</strong>, votre demande a bien été reçue et est en cours de traitement.</p>
+        <div style="background:#160F1E;border:1px solid #2E2040;border-radius:12px;padding:20px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Montant</span>
+            <span style="font-weight:800;font-size:16px;color:#F5C842">$${amount}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Crypto</span>
+            <span style="font-weight:700;color:#F5EEF8">${crypto}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Adresse</span>
+            <span style="font-weight:600;color:#F5EEF8;font-size:12px;font-family:monospace">${address.substring(0,20)}...</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0">
+            <span style="color:#7B6B8E;font-size:13px">Statut</span>
+            <span style="background:rgba(245,200,66,.15);color:#F5C842;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700">⏳ En attente</span>
+          </div>
+        </div>
+        <p style="color:#7B6B8E;font-size:13px;line-height:1.6">Vous recevrez un autre email dès que votre retrait sera traité. En cas de question, contactez le support sur Discord : <strong style="color:#F5EEF8">ananous.</strong></p>
+      </div>
+      <div style="background:#160F1E;padding:16px 36px;border-top:1px solid #2E2040;text-align:center">
+        <p style="color:#7B6B8E;font-size:12px;margin:0">© AffiHub — Plateforme d'affiliation privée</p>
+      </div>
+    </div>
+  `);
+
   res.json(data);
 });
 app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
