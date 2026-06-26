@@ -276,7 +276,20 @@ app.get('/api/referrals', auth, async (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
 
-// ── RANKING ──
+// ── IMAGE UPLOAD ──
+app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
+  const { data: base64, fileName, mimeType } = req.body;
+  if (!base64 || !fileName) return res.status(400).json({ error: 'Données manquantes' });
+  const buffer = Buffer.from(base64, 'base64');
+  const uniqueName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const { data, error } = await supabase.storage.from('offers').upload(uniqueName, buffer, {
+    contentType: mimeType || 'image/jpeg',
+    upsert: false
+  });
+  if (error) return res.status(500).json({ error: error.message });
+  const { data: urlData } = supabase.storage.from('offers').getPublicUrl(uniqueName);
+  res.json({ url: urlData.publicUrl });
+});
 app.get('/api/ranking', auth, async (req, res) => {
   const { data: users } = await supabase.from('users').select('id,name,created_at').eq('role','affiliate').eq('show_ranking',true);
   const result = await Promise.all((users||[]).map(async u => {
