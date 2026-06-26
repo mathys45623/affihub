@@ -245,8 +245,46 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
   const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
-  const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
+  const { data: user } = await supabase.from('users').select('balance,email,name').eq('id', wd.user_id).single();
   await supabase.from('users').update({ balance: Math.max(0, user.balance - wd.amount) }).eq('id', wd.user_id);
+
+  // Email à l'affilié
+  await sendEmail(user.email, '✅ Votre paiement a été envoyé — AffiHub', `
+    <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0F0A14;color:#F5EEF8;border-radius:16px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#F5C842,#F0427A);padding:3px"></div>
+      <div style="padding:40px 36px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#F5C842,#F0427A);display:flex;align-items:center;justify-content:center;font-size:20px">🔗</div>
+          <span style="font-size:22px;font-weight:800;color:#F5EEF8">AffiHub</span>
+        </div>
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:8px;color:#F5EEF8">Paiement envoyé 🎉</h2>
+        <p style="color:#7B6B8E;font-size:14px;margin-bottom:28px">Bonjour <strong style="color:#F5EEF8">${user.name}</strong>, votre retrait a été traité et le paiement a été envoyé sur votre adresse crypto.</p>
+        <div style="background:#160F1E;border:1px solid #2E2040;border-radius:12px;padding:20px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Montant envoyé</span>
+            <span style="font-weight:800;font-size:16px;color:#2DD98F">$${wd.amount}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Crypto</span>
+            <span style="font-weight:700;color:#F5EEF8">${wd.crypto}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Adresse</span>
+            <span style="font-weight:600;color:#F5EEF8;font-size:12px;font-family:monospace">${wd.address.substring(0,20)}...</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0">
+            <span style="color:#7B6B8E;font-size:13px">Statut</span>
+            <span style="background:rgba(45,217,143,.15);color:#2DD98F;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700">✅ Payé</span>
+          </div>
+        </div>
+        <p style="color:#7B6B8E;font-size:13px;line-height:1.6">Le transfert peut prendre quelques minutes à apparaître selon la blockchain. En cas de question, contactez le support sur Discord : <strong style="color:#F5EEF8">ananous.</strong></p>
+      </div>
+      <div style="background:#160F1E;padding:16px 36px;border-top:1px solid #2E2040;text-align:center">
+        <p style="color:#7B6B8E;font-size:12px;margin:0">© AffiHub — Plateforme d'affiliation privée</p>
+      </div>
+    </div>
+  `);
+
   res.json({ success: true });
 });
 app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
