@@ -171,8 +171,12 @@ app.post('/api/links', auth, async (req, res) => {
   const { offer_id } = req.body;
   const { data: existing } = await supabase.from('links').select('*').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
   if (existing) return res.status(400).json({ error: 'Lien déjà généré' });
+  // Get offer name for friendly URL
+  const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
+  const slug = offer ? offer.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 20) : 'offre';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let id = ''; for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  let code = ''; for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  const id = `${slug}-${code}`;
   const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
