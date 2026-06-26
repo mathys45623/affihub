@@ -12,11 +12,11 @@
   ],
   "routes": [
     {
-      "src": "/api/(.*)",
+      "src": "/go/(.*)",
       "dest": "api/server.js"
     },
     {
-      "src": "/go/(.*)",
+      "src": "/api/(.*)",
       "dest": "api/server.js"
     },
     {
