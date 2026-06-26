@@ -7,27 +7,27 @@
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{
-  --bg:#2D0A1A;--bg2:#3D1225;--bg3:#4A1830;--bg4:#5A203C;
-  --border:#6B2D48;--border2:#7D3555;
-  --text:#FFF0F5;--muted:#C4849A;--muted2:#E0A0B5;
+  --bg:#0A0A0A;--bg2:#141414;--bg3:#1C1C1C;--bg4:#242424;
+  --border:#2A2A2A;--border2:#333333;
+  --text:#FFFFFF;--muted:#888888;--muted2:#AAAAAA;
   --yellow:#F5C842;--yellow2:#FFD966;
-  --yellow-dim:rgba(245,200,66,.15);--yellow-soft:rgba(245,200,66,.1);
+  --yellow-dim:rgba(245,200,66,.12);--yellow-soft:rgba(245,200,66,.08);
   --pink:#F0427A;--pink2:#FF6B9D;
-  --pink-dim:rgba(240,66,122,.15);--pink-soft:rgba(240,66,122,.1);
+  --pink-dim:rgba(240,66,122,.12);--pink-soft:rgba(240,66,122,.08);
   --grad:linear-gradient(135deg,#F5C842 0%,#F0427A 100%);
-  --grad-soft:linear-gradient(135deg,rgba(245,200,66,.2) 0%,rgba(240,66,122,.15) 100%);
-  --green:#2DD98F;--green-dim:rgba(45,217,143,.15);--green-soft:rgba(45,217,143,.1);
-  --red:#FF5370;--red-dim:rgba(255,83,112,.15);
-  --blue:#5B9CF6;--blue-dim:rgba(91,156,246,.15);
-  --shadow:0 2px 12px rgba(0,0,0,.3);
-  --shadow-md:0 4px 24px rgba(0,0,0,.4);
-  --shadow-lg:0 8px 40px rgba(0,0,0,.5);
+  --grad-soft:linear-gradient(135deg,rgba(245,200,66,.12) 0%,rgba(240,66,122,.08) 100%);
+  --green:#00D68F;--green-dim:rgba(0,214,143,.12);--green-soft:rgba(0,214,143,.08);
+  --red:#FF4757;--red-dim:rgba(255,71,87,.12);
+  --blue:#4D9EFF;--blue-dim:rgba(77,158,255,.12);
+  --shadow:0 2px 12px rgba(0,0,0,.4);
+  --shadow-md:0 4px 24px rgba(0,0,0,.5);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.6);
   --radius:14px;--radius-sm:9px;--radius-lg:20px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:var(--bg3)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:4px}
-#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);background-image:radial-gradient(ellipse 70% 60% at 10% 5%,rgba(245,200,66,.15) 0%,transparent 60%),radial-gradient(ellipse 60% 70% at 90% 95%,rgba(240,66,122,.2) 0%,transparent 60%),radial-gradient(ellipse 50% 50% at 50% 50%,rgba(240,66,122,.05) 0%,transparent 100%)}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);background-image:radial-gradient(ellipse 70% 60% at 10% 5%,rgba(245,200,66,.08) 0%,transparent 60%),radial-gradient(ellipse 60% 70% at 90% 95%,rgba(240,66,122,.1) 0%,transparent 60%)}
 .auth-box{background:var(--bg2);border:1px solid var(--border);border-radius:24px;padding:48px 44px;width:420px;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
 .auth-box::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--grad)}
 .logo-wrap{display:inline-flex;align-items:center;gap:11px;font-size:24px;font-weight:800;letter-spacing:-.5px;color:var(--text)}
@@ -60,7 +60,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:6px;border-radius:8px;margin-left:auto;transition:all .15s}
 .logout-btn:hover{color:var(--red);background:var(--red-dim)}
 .main{margin-left:248px;flex:1;display:flex;flex-direction:column;min-width:0}
-.topbar{background:rgba(61,18,37,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 8px rgba(0,0,0,.2)}
+.topbar{background:rgba(20,20,20,.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 28px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 1px 8px rgba(0,0,0,.3)}
 .page-title{font-size:17px;font-weight:800;letter-spacing:-.3px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
 .content{padding:28px;flex:1}
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
