@@ -839,6 +839,19 @@ function toast(msg,type){
   toastTimer=setTimeout(()=>el.className='',3200);
 }
 if(TOKEN&&ME)startApp();
+
+// Auto-remplir le code de parrainage depuis l'URL
+const urlParams = new URLSearchParams(window.location.search);
+const refCode = urlParams.get('ref');
+if(refCode) {
+  // Passer à l'onglet inscription
+  switchTab('register');
+  // Attendre que le DOM soit prêt
+  setTimeout(() => {
+    const refInput = document.getElementById('r-ref');
+    if(refInput) { refInput.value = refCode; refInput.style.borderColor = 'var(--yellow)'; }
+  }, 100);
+}
 </script>
 </body>
 </html>
