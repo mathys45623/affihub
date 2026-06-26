@@ -421,30 +421,31 @@ async function renderPage(page){
       catOffers.forEach(o=>{
         const el=links.find(l=>l.offer_id===o.id);
         const origin=window.location.origin;
-        html+=`<div style="background:var(--bg2);border:1px solid ${cat.border};border-radius:14px;padding:20px;transition:all .2s;position:relative;overflow:hidden;box-shadow:var(--shadow)">
-          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,${cat.color},transparent)"></div>
-          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px">
-            <div>
-              <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text)">${o.name}</div>
-              <div style="font-size:12px;color:var(--muted)">${o.description||''}</div>
-            </div>
-            <div style="background:${cat.bg};border:1px solid ${cat.border};border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0">
-              <div style="font-size:18px;font-weight:900;color:${cat.color}">$${o.commission}</div>
-              <div style="font-size:10px;color:var(--muted)">/ vente</div>
-            </div>
-          </div>
-          ${el?`
-            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
-              <code style="flex:1;font-family:monospace;font-size:11px;color:${cat.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${origin}/go/${el.id}</code>
-              <button class="copy-btn" onclick="cpLink('${el.id}',this)" style="flex-shrink:0">📋</button>
-            </div>
-            <div style="display:flex;align-items:center;justify-content:space-between">
-              <div style="display:flex;gap:14px">
-                <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:var(--text)">${el.clicks}</div><div style="font-size:10px;color:var(--muted)">CLICS</div></div>
+        html+=`<div style="background:#111;border:1px solid ${cat.border};border-radius:14px;overflow:hidden;transition:all .2s;position:relative">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,${cat.color},transparent);z-index:1"></div>
+          ${o.image_url?`<div style="width:100%;height:155px;overflow:hidden"><img src="${o.image_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display='none'"></div>`:''}
+          <div style="padding:18px">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px">
+              <div>
+                <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text)">${o.name}</div>
+                <div style="font-size:12px;color:var(--muted)">${o.description||''}</div>
               </div>
-              <span class="badge bg2">✓ Actif</span>
+              <div style="background:${cat.bg};border:1px solid ${cat.border};border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0">
+                <div style="font-size:18px;font-weight:900;color:${cat.color}">$${o.commission}</div>
+                <div style="font-size:10px;color:var(--muted)">/ vente</div>
+              </div>
             </div>
-          `:`<button class="btn btn-grad" onclick="genLink(${o.id})" style="width:100%;justify-content:center">🔗 Générer mon lien</button>`}
+            ${el?`
+              <div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px">
+                <code style="flex:1;font-family:monospace;font-size:11px;color:${cat.color};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${origin}/go/${el.id}</code>
+                <button class="copy-btn" onclick="cpLink('${el.id}',this)" style="flex-shrink:0">📋</button>
+              </div>
+              <div style="display:flex;align-items:center;justify-content:space-between">
+                <div style="text-align:center"><div style="font-size:16px;font-weight:800;color:var(--text)">${el.clicks}</div><div style="font-size:10px;color:var(--muted)">CLICS</div></div>
+                <span class="badge bg2">✓ Actif</span>
+              </div>
+            `:`<button class="btn btn-grad" onclick="genLink(${o.id})" style="width:100%;justify-content:center">🔗 Générer mon lien</button>`}
+          </div>
         </div>`;
       });
       html+='</div></div>';
@@ -708,7 +709,7 @@ async function renderPage(page){
     cats.forEach(cat=>{
       const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);
       if(catOffers.length===0)return;
-      const cards=catOffers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px">${gtext('$'+o.commission)}<div>${sbadge(o.active?'active':'disabled')}</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer(${o.id},'${o.name.replace(/'/g,"\\'")}','${(o.description||'').replace(/'/g,"\\'")}','${o.url.replace(/'/g,"\\'")}',${o.commission},'${o.category||'autre'}')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer(${o.id},'${o.name.replace(/'/g,"\\'")}')">🗑</button></div></div></div>`).join('');
+      const cards=catOffers.map(o=>`<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">${o.image_url?`<img src="${o.image_url}" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display='none'">`:'<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>'}<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 ${o.url}</div></div></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px">${gtext('$'+o.commission)}<div>${sbadge(o.active?'active':'disabled')}</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer(${o.id},'${o.name.replace(/'/g,"\\'")}','${(o.description||'').replace(/'/g,"\\'")}','${o.url.replace(/'/g,"\\'")}',${o.commission},'${o.category||'autre'}','${(o.image_url||'').replace(/'/g,"\\'")}')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer(${o.id},'${o.name.replace(/'/g,"\\'")}')">🗑</button></div></div></div>`).join('');
       html+=`<div style="margin-bottom:24px">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
           <div style="height:2px;flex:1;background:linear-gradient(90deg,${cat.border},transparent)"></div>
@@ -783,22 +784,27 @@ function openRefProfile(affId){goPage('admin-ref-'+affId);}
 async function toggleRef(userId,active,affId){try{await api('PATCH',`/api/admin/referral/${userId}/toggle`,{active});toast(active?'Parrainage réactivé ✅':'Parrainage arrêté 🚫',active?'s':'e');goPage('admin-ref-'+affId);}catch(e){toast(e.message,'e');}}
 function confirmDeleteWd(id){document.getElementById('m-title').textContent='Supprimer ce retrait';document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous supprimer cet historique de retrait ?<br>Il disparaîtra aussi du côté de l'affilié.</div><div style="font-size:12px;color:var(--yellow);background:var(--yellow-soft);border:1px solid rgba(232,168,0,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Si le retrait est encore en attente, le solde sera automatiquement remboursé à l'affilié.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteWd(${id})" style="flex:1">Supprimer</button></div></div>`;document.getElementById('mo').classList.add('open');}
 async function deleteWd(id){try{await api('DELETE',`/api/withdrawals/${id}`);closeMo();toast('Retrait supprimé','s');goPage('admin-wd');}catch(e){toast(e.message,'e');}}
-function openEditOffer(id,name,desc,url,comm,cat){
+function openEditOffer(id,name,desc,url,comm,cat,img){
   document.getElementById('m-title').textContent='Modifier l\'offre';
-  document.getElementById('m-body').innerHTML=`<div class="fi"><label>Nom</label><input type="text" id="eo-name" value="${name}"></div><div class="fi"><label>Description</label><input type="text" id="eo-desc" value="${desc}"></div><div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="${url}"></div><div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="${comm}"></div><div class="fi"><label>Catégorie</label><select id="eo-cat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino" ${cat==='casino'?'selected':''}>🎰 Casino</option><option value="dating" ${cat==='dating'?'selected':''}>💕 Dating</option><option value="ia" ${cat==='ia'?'selected':''}>🤖 IA</option><option value="autre" ${cat==='autre'||!cat?'selected':''}>📦 Autre</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditOffer(${id})" style="flex:1;justify-content:center">Sauvegarder →</button></div>`;
+  document.getElementById('m-body').innerHTML=`<div class="fi"><label>Nom</label><input type="text" id="eo-name" value="${name}"></div><div class="fi"><label>Description</label><input type="text" id="eo-desc" value="${desc}"></div><div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="${url}"></div><div class="fi"><label>Image (URL)</label><input type="text" id="eo-img" value="${img||''}" placeholder="https://exemple.com/image.jpg"></div><div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="${comm}"></div><div class="fi"><label>Catégorie</label><select id="eo-cat" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino" ${cat==='casino'?'selected':''}>🎰 Casino</option><option value="dating" ${cat==='dating'?'selected':''}>💕 Dating</option><option value="ia" ${cat==='ia'?'selected':''}>🤖 IA</option><option value="autre" ${cat==='autre'||!cat?'selected':''}>📦 Autre</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditOffer(${id})" style="flex:1;justify-content:center">Sauvegarder →</button></div>`;
   document.getElementById('mo').classList.add('open');
 }
-async function doEditOffer(id){const name=document.getElementById('eo-name').value.trim();const url=document.getElementById('eo-url').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('PATCH',`/api/offers/${id}`,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value});closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
+async function doEditOffer(id){const name=document.getElementById('eo-name').value.trim();const url=document.getElementById('eo-url').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('PATCH',`/api/offers/${id}`,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value,image_url:document.getElementById('eo-img').value.trim()||null});closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
 function openAddOffer(){document.getElementById('m-title').textContent='Nouvelle offre';document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><div class="fi"><label>Catégorie</label><select id="ocat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="ia">🤖 IA</option><option value="autre" selected>📦 Autre</option></select></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l\'offre →</button>';document.getElementById('mo').classList.add('open');}
-async function doAddOffer(){const name=document.getElementById('on').value.trim();const url=document.getElementById('ou').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value});closeMo();toast('Offre créée !','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
+async function doAddOffer(){const name=document.getElementById('on').value.trim();const url=document.getElementById('ou').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value,image_url:document.getElementById('oimg').value.trim()||null});closeMo();toast('Offre créée !','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Les mots de passe ne correspondent pas','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
 function filterConv(btn,f,convs){document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');const list=f==='all'?convs:convs.filter(c=>c.status===f);const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';}
 function sortTop(by){
   goPage('aff-top');
 }
 async function toggleRanking(show){
-  try{await api('PATCH','/api/me/ranking',{show});toast(show?'Visible dans le classement ✅':'Masqué du classement 🚫',show?'s':'i');goPage('aff-settings');}
-  catch(e){toast(e.message,'e');}
+  try{
+    await api('PATCH','/api/me/ranking',{show});
+    ME.show_ranking=show;
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
+    toast(show?'Visible dans le classement ✅':'Masqué du classement 🚫',show?'s':'i');
+    goPage('aff-settings');
+  }catch(e){toast(e.message,'e');}
 }
 function closeMo(){document.getElementById('mo').classList.remove('open');}
 document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
