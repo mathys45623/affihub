@@ -407,14 +407,14 @@ async function renderPage(page){
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$${bal}</div></div>${canWd?'<span class="badge bg2" style="font-size:12px;padding:5px 12px">✓ Retrait disponible</span>':'<span class="badge by2" style="font-size:12px;padding:5px 12px">⚠ Minimum $10</span>'}</div>
     <div class="warning-box"><div class="wi">⚠️</div><p><strong>Attention — Vérifiez bien votre adresse crypto avant de soumettre.</strong><br>AffiHub ne pourra effectuer aucun remboursement en cas d'adresse incorrecte ou invalide. Les transferts crypto sont irréversibles. Vous êtes seul responsable de l'exactitude de votre adresse.</p></div>
     <div class="hdiv"></div>
-    <div class="fi"><label>Montant ($)</label><input type="number" id="wd-amt" min="10" max="${bal}" placeholder="Minimum $10" ${canWd?'':'disabled'}></div>
+    <div class="fi"><label>Montant ($)</label><input type="number" id="wd-amt" min="10" placeholder="Minimum $10"></div>
     <div class="fi"><label>Crypto</label><div class="crypto-grid">
       <div class="crypto-opt" onclick="pickCrypto('BTC',this)"><span class="crypto-icon">₿</span>Bitcoin</div>
       <div class="crypto-opt" onclick="pickCrypto('SOL',this)"><span class="crypto-icon">◎</span>Solana</div>
       <div class="crypto-opt" onclick="pickCrypto('LTC',this)"><span class="crypto-icon">Ł</span>Litecoin</div>
     </div></div>
-    <div class="fi"><label>Adresse crypto</label><input type="text" id="wd-addr" placeholder="Votre adresse de réception" ${canWd?'':'disabled'}></div>
-    <button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center" ${canWd?'':'disabled'}>💸 Soumettre la demande</button></div>
+    <div class="fi"><label>Adresse crypto</label><input type="text" id="wd-addr" placeholder="Votre adresse de réception"></div>
+    <button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre la demande</button></div>
     <div class="card"><div class="card-title" style="margin-bottom:16px">Historique des retraits</div>${wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Montant</th><th>Crypto</th><th>Adresse</th><th>Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>'}</div>`;
   }
 
@@ -571,9 +571,12 @@ function pickCrypto(c,el){
 async function doWd(){
   const amt=parseFloat(document.getElementById('wd-amt').value);
   const addr=document.getElementById('wd-addr').value.trim();
-  if(!amt||amt<10){toast('Minimum $10','e');return;}
+  if(!amt||amt<=0){toast('Entrez un montant valide','e');return;}
   if(!selCrypto){toast('Choisissez une crypto','e');return;}
-  if(!addr){toast('Entrez votre adresse','e');return;}
+  if(!addr){toast('Entrez votre adresse crypto','e');return;}
+  const bal=ME.balance||0;
+  if(amt<10){toast('Montant minimum : $10','e');return;}
+  if(amt>bal){toast('Solde insuffisant — votre solde est de $'+bal,'e');return;}
   try{await api('POST','/api/withdrawals',{amount:amt,crypto:selCrypto,address:addr});toast('Demande envoyée !','s');selCrypto=null;goPage('aff-pay');}
   catch(e){toast(e.message,'e');}
 }
