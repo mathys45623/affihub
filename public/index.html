@@ -697,10 +697,29 @@ async function renderPage(page){
 
   if(page==='admin-offers'){
     const offers=await api('GET','/api/offers');
-    const catLabel={'casino':'🎰 Casino','dating':'💕 Dating','ia':'🤖 IA','autre':'📦 Autre'};
-    const catColor={'casino':'var(--yellow)','dating':'var(--pink)','ia':'#4D9EFF','autre':'#888'};
-    const cards=offers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="font-size:14px;font-weight:700">${o.name}</div><span style="font-size:11px;font-weight:700;color:${catColor[o.category||'autre']};background:rgba(0,0,0,.06);padding:2px 8px;border-radius:20px">${catLabel[o.category||'autre']}</span></div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px">${gtext('$'+o.commission)}<div>${sbadge(o.active?'active':'disabled')}</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer(${o.id},'${o.name.replace(/'/g,"\\'")}','${(o.description||'').replace(/'/g,"\\'")}','${o.url.replace(/'/g,"\\'")}',${o.commission},'${o.category||'autre'}')">✏️ Modifier</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer(${o.id},'${o.name.replace(/'/g,"\\'")}')">🗑 Supprimer</button></div></div></div>`).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter offre</button></div>${offers.length===0?'<div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre.</p></div>':cards}</div>`;
+    const cats=[
+      {key:'casino',label:'🎰 Casino',color:'#F5C842',border:'rgba(245,200,66,.3)'},
+      {key:'dating',label:'💕 Dating',color:'#F0427A',border:'rgba(240,66,122,.3)'},
+      {key:'ia',label:'🤖 IA',color:'#4D9EFF',border:'rgba(77,158,255,.3)'},
+      {key:'autre',label:'📦 Autre',color:'#888',border:'rgba(136,136,136,.25)'}
+    ];
+    let html=`<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎯 Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter offre</button></div>`;
+    if(offers.length===0){html+='<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre. Ajoutez votre première offre.</p></div></div>';}
+    cats.forEach(cat=>{
+      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);
+      if(catOffers.length===0)return;
+      const cards=catOffers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px">${gtext('$'+o.commission)}<div>${sbadge(o.active?'active':'disabled')}</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer(${o.id},'${o.name.replace(/'/g,"\\'")}','${(o.description||'').replace(/'/g,"\\'")}','${o.url.replace(/'/g,"\\'")}',${o.commission},'${o.category||'autre'}')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer(${o.id},'${o.name.replace(/'/g,"\\'")}')">🗑</button></div></div></div>`).join('');
+      html+=`<div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,${cat.border},transparent)"></div>
+          <span style="font-size:14px;font-weight:800;color:${cat.color}">${cat.label}</span>
+          <span style="font-size:11px;color:var(--muted)">${catOffers.length} offre(s)</span>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,${cat.border})"></div>
+        </div>
+        ${cards}
+      </div>`;
+    });
+    return html;
   }
 
   if(page==='admin-links'){
@@ -775,15 +794,14 @@ async function doAddOffer(){const name=document.getElementById('on').value.trim(
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Les mots de passe ne correspondent pas','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
 function filterConv(btn,f,convs){document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');const list=f==='all'?convs:convs.filter(c=>c.status===f);const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';}
 function sortTop(by){
-  document.getElementById('sort-gains').className='btn btn-'+(by==='gains'?'grad':'gst')+' btn-sm';
-  document.getElementById('sort-conv').className='btn btn-'+(by==='conv'?'grad':'gst')+' btn-sm';
-  // re-render table rows
   goPage('aff-top');
 }
 async function toggleRanking(show){
-  try{await api('PATCH','/api/me/ranking',{show});toast(show?'Vous êtes maintenant visible dans le classement ✅':'Vous êtes maintenant masqué du classement 🚫',show?'s':'i');goPage('aff-settings');}
+  try{await api('PATCH','/api/me/ranking',{show});toast(show?'Visible dans le classement ✅':'Masqué du classement 🚫',show?'s':'i');goPage('aff-settings');}
   catch(e){toast(e.message,'e');}
 }
+function closeMo(){document.getElementById('mo').classList.remove('open');}
+document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
 document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
 var toastTimer;
 function toast(msg,type){const el=document.getElementById('toast');const ic={s:'✅',e:'❌',i:'💡'};el.innerHTML=(ic[type]||'💡')+' '+msg;el.className='show t'+(type||'i');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='',3200);}
