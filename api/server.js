@@ -200,6 +200,10 @@ app.post('/api/withdrawals', auth, async (req, res) => {
   const { data: user } = await supabase.from('users').select('balance,email,name').eq('id', req.user.id).single();
   if (!user || user.balance < 10) return res.status(400).json({ error: 'Solde insuffisant (minimum $10)' });
   if (amount < 10 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
+
+  // Déduit le solde immédiatement pour éviter les doublons
+  await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
+
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
 
   // Email à l'affilié
@@ -246,7 +250,6 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance,email,name').eq('id', wd.user_id).single();
-  await supabase.from('users').update({ balance: Math.max(0, user.balance - wd.amount) }).eq('id', wd.user_id);
 
   // Email à l'affilié
   await sendEmail(user.email, '✅ Votre paiement a été envoyé — AffiHub', `
@@ -289,7 +292,44 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
 });
 app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   const { reason } = req.body;
+  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
+  if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'rejected', reason }).eq('id', req.params.id);
+  // Rembourse le solde
+  const { data: user } = await supabase.from('users').select('balance,email,name').eq('id', wd.user_id).single();
+  await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
+  // Email à l'affilié
+  await sendEmail(user.email, '❌ Votre retrait a été rejeté — AffiHub', `
+    <div style="font-family:Inter,sans-serif;max-width:560px;margin:0 auto;background:#0F0A14;color:#F5EEF8;border-radius:16px;overflow:hidden">
+      <div style="background:linear-gradient(135deg,#F5C842,#F0427A);padding:3px"></div>
+      <div style="padding:40px 36px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:28px">
+          <div style="width:40px;height:40px;border-radius:12px;background:linear-gradient(135deg,#F5C842,#F0427A);display:flex;align-items:center;justify-content:center;font-size:20px">🔗</div>
+          <span style="font-size:22px;font-weight:800;color:#F5EEF8">AffiHub</span>
+        </div>
+        <h2 style="font-size:20px;font-weight:800;margin-bottom:8px;color:#FF5370">Retrait rejeté ❌</h2>
+        <p style="color:#7B6B8E;font-size:14px;margin-bottom:28px">Bonjour <strong style="color:#F5EEF8">${user.name}</strong>, votre demande de retrait a été rejetée. Votre solde de <strong style="color:#F5C842">$${wd.amount}</strong> a été remis sur votre compte.</p>
+        <div style="background:#160F1E;border:1px solid rgba(255,83,112,.3);border-radius:12px;padding:20px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Montant</span>
+            <span style="font-weight:800;font-size:16px;color:#F5C842">$${wd.amount}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #2E2040">
+            <span style="color:#7B6B8E;font-size:13px">Raison</span>
+            <span style="font-weight:600;color:#FF5370">${reason}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;padding:10px 0">
+            <span style="color:#7B6B8E;font-size:13px">Statut</span>
+            <span style="background:rgba(255,83,112,.15);color:#FF5370;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:700">❌ Rejeté</span>
+          </div>
+        </div>
+        <p style="color:#7B6B8E;font-size:13px;line-height:1.6">Vous pouvez soumettre une nouvelle demande en corrigeant l'erreur. Pour toute question, contactez le support sur Discord : <strong style="color:#F5EEF8">ananous.</strong></p>
+      </div>
+      <div style="background:#160F1E;padding:16px 36px;border-top:1px solid #2E2040;text-align:center">
+        <p style="color:#7B6B8E;font-size:12px;margin:0">© AffiHub — Plateforme d'affiliation privée</p>
+      </div>
+    </div>
+  `);
   res.json({ success: true });
 });
 
