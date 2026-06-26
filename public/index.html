@@ -642,7 +642,7 @@ async function renderPage(page){
   if(page==='admin-aff'){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié inscrit</p></div></div>';
-    const rows=users.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">${u.name[0]}</div><b>${u.name}</b></div></td><td style="color:var(--muted)">${u.email}</td><td>${gtext('$'+(u.balance||0))}</td><td style="color:var(--muted)">${fmt(u.created_at)}</td><td><button class="btn btn-red btn-sm" onclick="confirmDeleteAff('${u.id}','${u.name}','${u.email}')">🗑 Supprimer</button></td></tr>`).join('');
+    const rows=users.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">${u.name[0]}</div><b>${u.name}</b></div></td><td style="color:var(--muted)">${u.email}</td><td>${gtext('$'+(u.balance||0))}</td><td style="color:var(--muted)">${fmt(u.created_at)}</td><td><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="${u.id}" data-name="${u.name.replace(/"/g,'&quot;')}" data-email="${u.email}">🗑 Supprimer</button></td></tr>`).join('');
     return `<div class="card"><div class="card-header"><div class="card-title">Liste des affiliés</div><span class="badge bp2">${users.length} affilié(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit le</th><th>⚙️ Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
@@ -828,7 +828,37 @@ async function deleteLnk(id){
 }
 function confirmDeleteOffer(id,name){document.getElementById('m-title').textContent='Supprimer l\'offre';document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Vous allez supprimer l'offre</div><div style="font-weight:900;font-size:18px;margin-bottom:18px">${name}</div><div style="font-size:12px;color:var(--red);background:var(--red-dim);border:1px solid rgba(220,38,38,.2);border-radius:10px;padding:12px;margin-bottom:22px;text-align:left">⚠️ Tous les liens affiliés associés à cette offre seront également supprimés. Action irréversible.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteOffer(${id})" style="flex:1">Confirmer</button></div></div>`;document.getElementById('mo').classList.add('open');}
 async function deleteOffer(id){try{await api('DELETE',`/api/offers/${id}`);closeMo();toast('Offre supprimée','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
-function confirmDeleteAff(id,name,email){document.getElementById('m-title').textContent='Supprimer le compte';document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Vous allez supprimer</div><div style="font-weight:900;font-size:18px;margin-bottom:2px">${name}</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">${email}</div><div style="font-size:12px;color:var(--red);background:var(--red-dim);border:1px solid rgba(220,38,38,.2);border-radius:10px;padding:12px;margin-bottom:22px;text-align:left">⚠️ Action irréversible. Tous ses liens, conversions et retraits seront supprimés.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteAff('${id}')" style="flex:1">Confirmer</button></div></div>`;document.getElementById('mo').classList.add('open');}
+function confirmDeleteAff(btn){
+  const id=btn.dataset.id, name=btn.dataset.name, email=btn.dataset.email;
+  document.getElementById('m-title').textContent='Supprimer le compte';
+  document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px">
+    <div style="font-size:44px;margin-bottom:12px">⚠️</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Voulez-vous vraiment supprimer</div>
+    <div style="font-weight:900;font-size:22px;margin-bottom:4px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">${name}</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:18px">${email}</div>
+    <div style="font-size:12px;color:var(--red);background:var(--red-dim);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px;text-align:left">⚠️ Action irréversible. Tous ses liens, conversions et retraits seront supprimés.</div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>
+      <button class="btn btn-red" id="del-aff-btn" disabled style="flex:1;opacity:.5">Supprimer (5)</button>
+    </div>
+  </div>`;
+  document.getElementById('mo').classList.add('open');
+  let count=5;
+  const interval=setInterval(()=>{
+    count--;
+    const btn=document.getElementById('del-aff-btn');
+    if(!btn){clearInterval(interval);return;}
+    if(count<=0){
+      clearInterval(interval);
+      btn.disabled=false;
+      btn.style.opacity='1';
+      btn.textContent='Supprimer';
+      btn.onclick=()=>deleteAff('${id}');
+    } else {
+      btn.textContent='Supprimer ('+count+')';
+    }
+  },1000);
+}
 async function deleteAff(id){try{await api('DELETE',`/api/users/${id}`);closeMo();toast('Compte supprimé','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}}
 function openRefProfile(affId){goPage('admin-ref-'+affId);}
 async function toggleRef(userId,active,affId){try{await api('PATCH',`/api/admin/referral/${userId}/toggle`,{active});toast(active?'Parrainage réactivé ✅':'Parrainage arrêté 🚫',active?'s':'e');goPage('admin-ref-'+affId);}catch(e){toast(e.message,'e');}}
