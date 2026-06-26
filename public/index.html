@@ -310,6 +310,7 @@ function startApp() {
     buildNav([
       {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
       {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'}]},
+      {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
       {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'}]}
     ]);
     goPage('admin-dash');
@@ -319,6 +320,7 @@ function startApp() {
       {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},
       {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
       {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
+      {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
       {section:'SUPPORT',items:[{icon:'💬',label:'Support',page:'aff-support'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
     ]);
     goPage('aff-dash');
@@ -352,7 +354,7 @@ function buildNav(sections){
   });
 }
 
-const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-support':'Support','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-ref':'Parrainages','admin-offers':'Offres','admin-links':'Liens & Anti-fraude'};
+const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Support','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-ref':'Parrainages','admin-offers':'Offres','admin-links':'Liens & Anti-fraude'};
 
 async function goPage(page){
   curPage=page;
@@ -384,7 +386,7 @@ async function renderPage(page){
     const totalGains=convGains+refGains;
     const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
     const rows=convs.slice(0,5).map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td style="color:var(--yellow);font-weight:700">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
-    return `<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$${ME.balance||0}</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Retrait minimum : $10</div></div><button class="btn btn-grad" onclick="goPage('aff-pay')" style="font-size:13px;padding:11px 22px;background:rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.3)">💸 Retirer</button></div>
+    return `<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$${ME.balance||0}</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Retrait minimum : $25</div></div><button class="btn btn-grad" onclick="goPage('aff-pay')" style="font-size:13px;padding:11px 22px;background:rgba(255,255,255,.2);color:#fff;backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.3)">💸 Retirer</button></div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics total</div><div class="stat-val gy">${totalClicks}</div><div class="stat-sub">sur ${links.length} lien(s)</div></div>
       <div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">${convs.length}</div><div class="stat-sub">${approved.length} approuvées · ${pending.length} en attente</div></div>
@@ -400,9 +402,10 @@ async function renderPage(page){
     const active=offers.filter(o=>o.active);
     if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible pour l\'instant.</p></div></div>';
     const cats=[
-      {key:'casino',label:'🎰 Casino',color:'#E8A800',bg:'rgba(232,168,0,.08)',border:'rgba(232,168,0,.25)'},
-      {key:'dating',label:'💕 Dating',color:'#E8185A',bg:'rgba(232,24,90,.08)',border:'rgba(232,24,90,.25)'},
-      {key:'autre',label:'📦 Autre',color:'#2563EB',bg:'rgba(37,99,235,.08)',border:'rgba(37,99,235,.25)'}
+      {key:'casino',label:'🎰 Casino',color:'#F5C842',bg:'rgba(245,200,66,.08)',border:'rgba(245,200,66,.3)'},
+      {key:'dating',label:'💕 Dating',color:'#F0427A',bg:'rgba(240,66,122,.08)',border:'rgba(240,66,122,.3)'},
+      {key:'ia',label:'🤖 IA',color:'#4D9EFF',bg:'rgba(77,158,255,.08)',border:'rgba(77,158,255,.3)'},
+      {key:'autre',label:'📦 Autre',color:'#888',bg:'rgba(136,136,136,.08)',border:'rgba(136,136,136,.25)'}
     ];
     let html='';
     cats.forEach(cat=>{
@@ -459,7 +462,7 @@ async function renderPage(page){
       const rate=l.clicks>0?((lc.length/l.clicks)*100).toFixed(1):'0.0';
       return `<tr><td><code style="font-family:monospace;font-size:12px;color:var(--yellow)">${origin}/go/${l.id}</code></td><td>${l.offers?.name||'?'}</td><td style="font-weight:600">${l.clicks}</td><td>${lc.length}</td><td style="color:var(--green);font-weight:700">$${gains}</td><td><span class="badge bb2">${rate}%</span></td></tr>`;
     }).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Performance par lien</div></div><div class="tw"><table><thead><tr><th>Lien</th><th>Offre</th><th>Clics</th><th>Conversions</th><th>Gains</th><th>Taux</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<div class="card"><div class="card-header"><div class="card-title">Performance par lien</div></div><div class="tw"><table><thead><tr><th>🔗 Lien</th><th>🎯 Offre</th><th>🖱️ Clics</th><th>🔁 Conversions</th><th>💰 Gains</th><th>📊 Taux</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
   if(page==='aff-conv'){
@@ -467,27 +470,44 @@ async function renderPage(page){
     const tabs=[['all','Toutes',convs.length],['approved','✅ Approuvées',convs.filter(c=>c.status==='approved').length],['pending','⏳ En attente',convs.filter(c=>c.status==='pending').length],['rejected','❌ Rejetées',convs.filter(c=>c.status==='rejected').length]];
     const tabHtml=tabs.map(([f,l,n])=>`<button class="tab${f==='all'?' active':''}" onclick="filterConv(this,'${f}',${JSON.stringify(convs).replace(/'/g,"\\'")})">${l} (${n})</button>`).join('');
     const mkRows=list=>list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
-    return `<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs">${tabHtml}</div><div id="ctable"><div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Lien</th><th>Montant</th><th>Statut</th></tr></thead><tbody>${mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>'}</tbody></table></div></div></div>`;
+    return `<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs">${tabHtml}</div><div id="ctable"><div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>${mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>'}</tbody></table></div></div></div>`;
   }
 
   if(page==='aff-pay'){
     const wds=await api('GET','/api/withdrawals');
     const bal=ME.balance||0;
     const wrows=wds.map(w=>`<tr><td style="color:var(--muted)">${fmt(w.created_at)}</td><td style="color:var(--yellow);font-weight:800">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,22)}...</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red);margin-top:3px">↳ ${w.reason}</div>`:''}</td></tr>`).join('');
-    return `<div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-size:32px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$${bal}</div></div>${bal>=10?'<span class="badge bg2" style="font-size:12px;padding:5px 12px">✓ Retrait disponible</span>':'<span class="badge by2" style="font-size:12px;padding:5px 12px">⚠ Minimum $10</span>'}</div>
-    <div class="warning-box"><div class="wi">⚠️</div><p><strong>Attention — Vérifiez bien votre adresse crypto avant de soumettre.</strong><br>AffiHub ne pourra effectuer aucun remboursement en cas d'adresse incorrecte ou invalide. Les transferts crypto sont irréversibles. Vous êtes seul responsable de l'exactitude de votre adresse.</p></div>
-    <div class="hdiv"></div>
-    <div class="fi"><label>Montant ($)</label><input type="number" id="wd-amt" min="10" placeholder="Minimum $10"></div>
-    <div class="fi"><label>Crypto</label><div class="crypto-grid">
-      <div class="crypto-opt" onclick="pickCrypto('BTC',this)"><span class="crypto-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg></span>Bitcoin</div>
-      <div class="crypto-opt" onclick="pickCrypto('SOL',this)"><span class="crypto-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#1a1a2e"/><path d="M9 21.5h11.5l2.5-2.5H11.5L9 21.5z" fill="url(#sg)"/><path d="M9 16h11.5l2.5-2.5H11.5L9 16z" fill="url(#sg2)"/><path d="M11.5 10.5H23L20.5 13H9l2.5-2.5z" fill="url(#sg3)"/><defs><linearGradient id="sg" x1="9" y1="20.25" x2="23" y2="20.25" gradientUnits="userSpaceOnUse"><stop stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient><linearGradient id="sg2" x1="9" y1="14.75" x2="23" y2="14.75" gradientUnits="userSpaceOnUse"><stop stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient><linearGradient id="sg3" x1="9" y1="11.75" x2="23" y2="11.75" gradientUnits="userSpaceOnUse"><stop stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs></svg></span>Solana</div>
-      <div class="crypto-opt" onclick="pickCrypto('LTC',this)"><span class="crypto-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#BFBBBB"/><path d="M16 6C10.48 6 6 10.48 6 16s4.48 10 10 10 10-4.48 10-10S21.52 6 16 6zm-1.5 14.5H11v-1.2l1.2-.4 1.1-4.1-.9.3-.3-1.1 1.2-.4.9-3.3h3l-.9 3.3 1.1-.3.3 1.1-1.4.4-1.1 4.1 1.3-.1v1.7h-1.5v-.2z" fill="white"/></svg></span>Litecoin</div>
-    </div></div>
-    <div class="fi"><label>Adresse crypto</label><input type="text" id="wd-addr" placeholder="Votre adresse de réception"></div>
-    <button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre la demande</button></div>
-    <div class="card"><div class="card-title" style="margin-bottom:16px">Historique des retraits</div>${wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Montant</th><th>Crypto</th><th>Adresse</th><th>Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>'}</div>`;
+    return `<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;margin-bottom:20px">
+    <div class="card" style="margin-bottom:0">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-size:32px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$${bal}</div></div>${bal>=25?'<span class="badge bg2" style="font-size:12px;padding:5px 12px">✓ Retrait disponible</span>':'<span class="badge by2" style="font-size:12px;padding:5px 12px">⚠ Minimum $25</span>'}</div>
+      <div class="warning-box"><div class="wi">⚠️</div><p><strong>Attention — Vérifiez votre adresse crypto avant de soumettre.</strong><br>Aucun remboursement en cas d'adresse incorrecte. Les transferts crypto sont irréversibles.</p></div>
+      <div class="hdiv"></div>
+      <div class="fi"><label>Montant ($)</label><div style="display:flex;gap:8px;align-items:center"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1"><button class="btn btn-grad btn-sm" onclick="document.getElementById('wd-amt').value=${bal}" style="flex-shrink:0;white-space:nowrap">MAX $${bal}</button></div></div>
+      <div class="fi"><label>Crypto</label><div class="crypto-grid">
+        <div class="crypto-opt" onclick="pickCrypto('BTC',this)"><span class="crypto-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg></span>Bitcoin</div>
+        <div class="crypto-opt" onclick="pickCrypto('SOL',this)"><span class="crypto-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#1a1a2e"/><path d="M9 21.5h11.5l2.5-2.5H11.5L9 21.5z" fill="url(#sg)"/><path d="M9 16h11.5l2.5-2.5H11.5L9 16z" fill="url(#sg2)"/><path d="M11.5 10.5H23L20.5 13H9l2.5-2.5z" fill="url(#sg3)"/><defs><linearGradient id="sg" x1="9" y1="20.25" x2="23" y2="20.25" gradientUnits="userSpaceOnUse"><stop stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient><linearGradient id="sg2" x1="9" y1="14.75" x2="23" y2="14.75" gradientUnits="userSpaceOnUse"><stop stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient><linearGradient id="sg3" x1="9" y1="11.75" x2="23" y2="11.75" gradientUnits="userSpaceOnUse"><stop stop-color="#9945FF"/><stop offset="1" stop-color="#14F195"/></linearGradient></defs></svg></span>Solana</div>
+        <div class="crypto-opt" onclick="pickCrypto('LTC',this)"><span class="crypto-icon"><svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="16" fill="#BFBBBB"/><path d="M16 6C10.48 6 6 10.48 6 16s4.48 10 10 10 10-4.48 10-10S21.52 6 16 6zm-1.5 14.5H11v-1.2l1.2-.4 1.1-4.1-.9.3-.3-1.1 1.2-.4.9-3.3h3l-.9 3.3 1.1-.3.3 1.1-1.4.4-1.1 4.1 1.3-.1v1.7h-1.5v-.2z" fill="white"/></svg></span>Litecoin</div>
+      </div></div>
+      <div class="fi"><label>Adresse crypto</label><input type="text" id="wd-addr" placeholder="Votre adresse de réception"></div>
+      <button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre la demande</button>
+    </div>
+    <div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)">
+      <div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Barème des frais</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse">
+        <thead><tr><th style="text-align:left;padding:8px 10px;color:var(--muted);font-size:10px;border-bottom:1px solid #222">Montant</th><th style="text-align:right;padding:8px 10px;color:var(--muted);font-size:10px;border-bottom:1px solid #222">Frais</th></tr></thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #1a1a1a"><td style="padding:10px;color:var(--text)">30 – 49 $</td><td style="padding:10px;text-align:right;color:var(--red);font-weight:800">5%</td></tr>
+          <tr style="border-bottom:1px solid #1a1a1a"><td style="padding:10px;color:var(--text)">50 – 99 $</td><td style="padding:10px;text-align:right;color:var(--yellow);font-weight:800">4%</td></tr>
+          <tr style="border-bottom:1px solid #1a1a1a"><td style="padding:10px;color:var(--text)">100 – 199 $</td><td style="padding:10px;text-align:right;color:var(--yellow);font-weight:800">3%</td></tr>
+          <tr><td style="padding:10px;color:var(--text)">200 $ et +</td><td style="padding:10px;text-align:right;color:var(--green);font-weight:800">2%</td></tr>
+        </tbody>
+      </table>
+      <div style="margin-top:12px;font-size:11px;color:var(--muted);line-height:1.6;border-top:1px solid #222;padding-top:10px">📈 Plus tu retires gros, moins tu paies. Le taux du palier atteint s'applique sur la totalité.</div>
+    </div>
+    </div>
+    <div class="card"><div class="card-title" style="margin-bottom:16px">📋 Historique des retraits</div>${wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait effectué</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>💰 Montant</th><th>🪙 Crypto</th><th>📬 Adresse</th><th>📌 Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>'}</div>`;
   }
+
 
   if(page==='aff-ref'){
     const ref=await api('GET','/api/referrals');
@@ -511,11 +531,32 @@ async function renderPage(page){
       <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux commission</div><div class="stat-val gy">5%</div></div>
     </div>
     <div class="card"><div class="card-title" style="margin-bottom:16px">👥 Mes filleuls</div>
-    ${ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul pour l\'instant.</p></div>':'<div class="tw"><table><thead><tr><th>Filleul</th><th>Inscrit le</th><th>Montant généré</th></tr></thead><tbody>'+filleuleRows+'</tbody></table></div>'}
+    ${ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul pour l\'instant.</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Montant généré</th></tr></thead><tbody>'+filleuleRows+'</tbody></table></div>'}
     </div>
     <div class="card"><div class="card-title" style="margin-bottom:16px">💸 Récap des commissions</div>
-    ${ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Filleul</th><th>Vente</th><th>Commission (5%)</th></tr></thead><tbody>'+commRows+'</tbody></table></div>'}
+    ${ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission (5%)</th></tr></thead><tbody>'+commRows+'</tbody></table></div>'}
     </div>`;
+  }
+
+  if(page==='aff-top'){
+    const ranking=await api('GET','/api/ranking');
+    var sortBy='gains';
+    const mkRows=(list,sort)=>{
+      const sorted=[...list].sort((a,b)=>sort==='gains'?b.totalGains-a.totalGains:b.totalConversions-a.totalConversions);
+      return sorted.map((u,i)=>{
+        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`<span style="color:var(--muted);font-weight:700">#${i+1}</span>`;
+        return `<tr><td style="text-align:center">${medal}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">${u.name[0]}</div><b>${u.name}</b></div></td><td style="color:var(--muted)">${fmt(u.created_at)}</td><td style="color:var(--yellow);font-weight:800;text-align:center">${u.totalConversions}</td><td style="color:var(--green);font-weight:800;text-align:center">$${u.totalGains}</td></tr>`;
+      }).join('');
+    };
+    return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div style="font-size:13px;color:var(--muted)">Classement des affiliés actifs sur le tableau</div>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-grad btn-sm" id="sort-gains" onclick="sortTop('gains')">💰 Par gains</button>
+        <button class="btn btn-gst btn-sm" id="sort-conv" onclick="sortTop('conv')">🔁 Par conversions</button>
+      </div>
+    </div>
+    ${ranking.length===0?'<div class="card"><div class="empty"><div class="empty-icon">🏆</div><p>Aucun affilié dans le classement pour l\'instant</p></div></div>':
+    `<div class="card"><div class="tw"><table id="top-table"><thead><tr><th style="text-align:center">🏅 Rang</th><th>👤 Affilié</th><th>📅 Inscrit le</th><th style="text-align:center">🔁 Conversions</th><th style="text-align:center">💰 Gains totaux</th></tr></thead><tbody id="top-tbody">${mkRows(ranking,'gains')}</tbody></table></div></div>`}`;
   }
 
   if(page==='aff-support'){
@@ -539,12 +580,26 @@ async function renderPage(page){
   }
 
   if(page==='aff-settings'){
+    const showRanking = ME.show_ranking !== false;
     return `<div class="settings-section">
       <div class="settings-section-title">👤 Informations du compte</div>
       <div class="info-row"><div class="info-label">Nom d'utilisateur</div><div class="info-value">${ME.name}</div></div>
       <div class="info-row"><div class="info-label">Email</div><div class="info-value">${ME.email}</div></div>
       <div class="info-row"><div class="info-label">Date d'arrivée</div><div class="info-value">${fmt(ME.created_at)}</div></div>
       <div class="info-row"><div class="info-label">Code de parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">${ME.referral_code||'—'}</code><button class="copy-btn" onclick="navigator.clipboard?.writeText('${ME.referral_code||''}');toast('Code copié !','s')">📋</button></div></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">🏆 Classement public</div>
+      <div class="info-row">
+        <div>
+          <div class="info-label" style="margin-bottom:4px">Apparaître dans le TOP Affiliés</div>
+          <div style="font-size:12px;color:var(--muted)">Votre pseudo et vos stats seront visibles dans le classement</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span style="font-size:12px;color:${showRanking?'var(--green)':'var(--muted)'}">${showRanking?'✅ Visible':'🚫 Masqué'}</span>
+          <button class="btn ${showRanking?'btn-red':'btn-grn'} btn-sm" onclick="toggleRanking(${!showRanking})">${showRanking?'Masquer':'Afficher'}</button>
+        </div>
+      </div>
     </div>
     <div class="settings-section">
       <div class="settings-section-title">🔑 Changer le mot de passe</div>
@@ -580,20 +635,20 @@ async function renderPage(page){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié inscrit</p></div></div>';
     const rows=users.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">${u.name[0]}</div><b>${u.name}</b></div></td><td style="color:var(--muted)">${u.email}</td><td>${gtext('$'+(u.balance||0))}</td><td style="color:var(--muted)">${fmt(u.created_at)}</td><td><button class="btn btn-red btn-sm" onclick="confirmDeleteAff('${u.id}','${u.name}','${u.email}')">🗑 Supprimer</button></td></tr>`).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Liste des affiliés</div><span class="badge bp2">${users.length} affilié(s)</span></div><div class="tw"><table><thead><tr><th>Affilié</th><th>Email</th><th>Solde</th><th>Inscrit le</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<div class="card"><div class="card-header"><div class="card-title">Liste des affiliés</div><span class="badge bp2">${users.length} affilié(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit le</th><th>⚙️ Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
   if(page==='admin-conv'){
     const convs=await api('GET','/api/conversions');
     const pending=convs.filter(c=>c.status==='pending');
     const rows=convs.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.users?.name||'?'}</td><td>${c.offers?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${c.amount}</td><td>${sbadge(c.status)}</td><td>${c.status==='pending'?`<div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprC(${c.id})">✔ Approuver</button><button class="btn btn-red btn-sm" onclick="rejtC(${c.id})">✕ Rejeter</button></div>`:'<span style="color:var(--muted)">—</span>'}</td></tr>`).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Toutes les conversions</div>${pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>'}</div>${rows?'<div class="tw"><table><thead><tr><th>Date</th><th>Affilié</th><th>Offre</th><th>Montant</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>'}</div>`;
+    return `<div class="card"><div class="card-header"><div class="card-title">Toutes les conversions</div>${pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>'}</div>${rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>🎯 Offre</th><th>💰 Montant</th><th>📌 Statut</th><th>⚙️ Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>'}</div>`;
   }
 
   if(page==='admin-wd'){
     const wds=await api('GET','/api/withdrawals');
     const rows=wds.map(w=>`<tr><td style="color:var(--muted)">${fmt(w.created_at)}</td><td>${w.users?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,20)}</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red)">↳ ${w.reason}</div>`:''}</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">${w.status==='pending'?`<button class="btn btn-grn btn-sm" onclick="apprW(${w.id})">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW(${w.id})">✕ Rejeter</button>`:'<span style="color:var(--muted)">—</span>'}<button class="btn btn-gst btn-sm" onclick="confirmDeleteWd(${w.id})">🗑</button></div></td></tr>`).join('');
-    return `<div class="card"><div class="card-title" style="margin-bottom:16px">Demandes de retraits</div>${rows?'<div class="tw"><table><thead><tr><th>Date</th><th>Affilié</th><th>Montant</th><th>Crypto</th><th>Adresse</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>'}</div>`;
+    return `<div class="card"><div class="card-title" style="margin-bottom:16px">Demandes de retraits</div>${rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>💰 Montant</th><th>🪙 Crypto</th><th>📬 Adresse</th><th>📌 Statut</th><th>⚙️ Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>'}</div>`;
   }
 
   if(page==='admin-ref'){
@@ -636,23 +691,47 @@ async function renderPage(page){
           <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#fff">${aff.commissions.length}</div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px">Transactions</div></div>
         </div>
       </div>
-      <div class="card"><div class="card-title" style="margin-bottom:16px">👥 Filleuls</div>${aff.filleules.length===0?'<div class="empty"><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>Filleul</th><th>Inscrit le</th><th>Gains générés</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+filleuleRows+'</tbody></table></div>'}</div>
-      <div class="card"><div class="card-title" style="margin-bottom:16px">💸 Historique des commissions</div>${aff.commissions.length===0?'<div class="empty"><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Filleul</th><th>Vente</th><th>Commission (5%)</th></tr></thead><tbody>'+commRows+'</tbody></table></div>'}</div>`;
+      <div class="card"><div class="card-title" style="margin-bottom:16px">👥 Filleuls</div>${aff.filleules.length===0?'<div class="empty"><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Gains générés</th><th>📌 Statut</th><th>⚙️ Action</th></tr></thead><tbody>'+filleuleRows+'</tbody></table></div>'}</div>
+      <div class="card"><div class="card-title" style="margin-bottom:16px">💸 Historique des commissions</div>${aff.commissions.length===0?'<div class="empty"><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission (5%)</th></tr></thead><tbody>'+commRows+'</tbody></table></div>'}</div>`;
   }
 
   if(page==='admin-offers'){
     const offers=await api('GET','/api/offers');
-    const catLabel={'casino':'🎰 Casino','dating':'💕 Dating','autre':'📦 Autre'};
-    const catColor={'casino':'var(--yellow)','dating':'var(--pink)','autre':'var(--blue)'};
+    const catLabel={'casino':'🎰 Casino','dating':'💕 Dating','ia':'🤖 IA','autre':'📦 Autre'};
+    const catColor={'casino':'var(--yellow)','dating':'var(--pink)','ia':'#4D9EFF','autre':'#888'};
     const cards=offers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><div style="font-size:14px;font-weight:700">${o.name}</div><span style="font-size:11px;font-weight:700;color:${catColor[o.category||'autre']};background:rgba(0,0,0,.06);padding:2px 8px;border-radius:20px">${catLabel[o.category||'autre']}</span></div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:8px">${gtext('$'+o.commission)}<div>${sbadge(o.active?'active':'disabled')}</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer(${o.id},'${o.name.replace(/'/g,"\\'")}','${(o.description||'').replace(/'/g,"\\'")}','${o.url.replace(/'/g,"\\'")}',${o.commission},'${o.category||'autre'}')">✏️ Modifier</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer(${o.id},'${o.name.replace(/'/g,"\\'")}')">🗑 Supprimer</button></div></div></div>`).join('');
     return `<div class="card"><div class="card-header"><div class="card-title">Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter offre</button></div>${offers.length===0?'<div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre.</p></div>':cards}</div>`;
   }
 
   if(page==='admin-links'){
-    const links=await api('GET','/api/links');
+    const [links,offers]=await Promise.all([api('GET','/api/links'),api('GET','/api/offers')]);
     const origin=window.location.origin;
-    const rows=links.map(l=>`<tr><td><code style="font-family:monospace;font-size:12px;color:var(--yellow)">${origin}/go/${l.id}</code></td><td><div style="display:flex;align-items:center;gap:7px"><div class="avatar" style="width:24px;height:24px;font-size:11px">${(l.users?.name||'?')[0]}</div><span style="font-weight:600">${l.users?.name||'?'}</span></div></td><td>${l.offers?.name||'?'}</td><td style="font-weight:600">${l.clicks}</td><td>${sbadge(l.active?'active':'disabled')}</td><td>${l.active?`<button class="btn btn-red btn-sm" onclick="toggleLnk('${l.id}',false)">🚫 Désactiver</button>`:`<button class="btn btn-grn btn-sm" onclick="toggleLnk('${l.id}',true)">✅ Réactiver</button>`}</td></tr>`).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Liens & Anti-fraude</div></div>${rows?'<div class="tw"><table><thead><tr><th>Lien</th><th>Affilié</th><th>Offre</th><th>Clics</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔗</div><p>Aucun lien généré</p></div>'}</div>`;
+    const cats=[
+      {key:'casino',label:'🎰 Casino',color:'#F5C842',border:'rgba(245,200,66,.3)'},
+      {key:'dating',label:'💕 Dating',color:'#F0427A',border:'rgba(240,66,122,.3)'},
+      {key:'ia',label:'🤖 IA',color:'#4D9EFF',border:'rgba(77,158,255,.3)'},
+      {key:'autre',label:'📦 Autre',color:'#888',border:'rgba(136,136,136,.25)'}
+    ];
+    const mkLinkRows=list=>list.map(l=>{
+      const cvCount=0;
+      return `<tr><td><code style="font-family:monospace;font-size:12px;color:var(--yellow)">${origin}/go/${l.id}</code></td><td><div style="display:flex;align-items:center;gap:7px"><div class="avatar" style="width:24px;height:24px;font-size:11px">${(l.users?.name||'?')[0]}</div><span style="font-weight:600">${l.users?.name||'?'}</span></div></td><td style="font-weight:600">${l.clicks}</td><td>${sbadge(l.active?'active':'disabled')}</td><td>${l.active?`<button class="btn btn-red btn-sm" onclick="toggleLnk('${l.id}',false)">🚫</button>`:`<button class="btn btn-grn btn-sm" onclick="toggleLnk('${l.id}',true)">✅</button>`}</td></tr>`;
+    }).join('');
+    let html=`<div class="card-header" style="margin-bottom:20px"><div class="card-title">🔗 Liens & Anti-fraude</div><span style="font-size:12px;color:var(--muted)">Désactivation ciblée uniquement</span></div>`;
+    cats.forEach(cat=>{
+      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);
+      const catLinks=links.filter(l=>catOffers.find(o=>o.id===l.offer_id));
+      if(catLinks.length===0)return;
+      html+=`<div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,${cat.border},transparent)"></div>
+          <span style="font-size:14px;font-weight:800;color:${cat.color}">${cat.label}</span>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,${cat.border})"></div>
+        </div>
+        <div class="card" style="margin-bottom:0"><div class="tw"><table><thead><tr><th>🔗 Lien</th><th>👤 Affilié</th><th>🖱️ Clics</th><th>📌 Statut</th><th>⚙️ Action</th></tr></thead><tbody>${mkLinkRows(catLinks)}</tbody></table></div></div>
+      </div>`;
+    });
+    if(links.length===0)html+='<div class="card"><div class="empty"><div class="empty-icon">🔗</div><p>Aucun lien généré</p></div></div>';
+    return html;
   }
   return '';
 }
@@ -667,7 +746,7 @@ async function doWd(){
   if(!selCrypto){toast('Choisissez une crypto','e');return;}
   if(!addr){toast('Entrez votre adresse crypto','e');return;}
   const bal=ME.balance||0;
-  if(amt<10){toast('Montant minimum : $10','e');return;}
+  if(amt<25){toast('Montant minimum : $25','e');return;}
   if(amt>bal){toast('Solde insuffisant — votre solde est de $'+bal,'e');return;}
   try{await api('POST','/api/withdrawals',{amount:amt,crypto:selCrypto,address:addr});toast('Demande envoyée !','s');selCrypto=null;goPage('aff-pay');}catch(e){toast(e.message,'e');}
 }
@@ -687,15 +766,24 @@ function confirmDeleteWd(id){document.getElementById('m-title').textContent='Sup
 async function deleteWd(id){try{await api('DELETE',`/api/withdrawals/${id}`);closeMo();toast('Retrait supprimé','s');goPage('admin-wd');}catch(e){toast(e.message,'e');}}
 function openEditOffer(id,name,desc,url,comm,cat){
   document.getElementById('m-title').textContent='Modifier l\'offre';
-  document.getElementById('m-body').innerHTML=`<div class="fi"><label>Nom</label><input type="text" id="eo-name" value="${name}"></div><div class="fi"><label>Description</label><input type="text" id="eo-desc" value="${desc}"></div><div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="${url}"></div><div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="${comm}"></div><div class="fi"><label>Catégorie</label><select id="eo-cat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino" ${cat==='casino'?'selected':''}>🎰 Casino</option><option value="dating" ${cat==='dating'?'selected':''}>💕 Dating</option><option value="autre" ${cat==='autre'||!cat?'selected':''}>📦 Autre</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditOffer(${id})" style="flex:1;justify-content:center">Sauvegarder →</button></div>`;
+  document.getElementById('m-body').innerHTML=`<div class="fi"><label>Nom</label><input type="text" id="eo-name" value="${name}"></div><div class="fi"><label>Description</label><input type="text" id="eo-desc" value="${desc}"></div><div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="${url}"></div><div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="${comm}"></div><div class="fi"><label>Catégorie</label><select id="eo-cat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino" ${cat==='casino'?'selected':''}>🎰 Casino</option><option value="dating" ${cat==='dating'?'selected':''}>💕 Dating</option><option value="ia" ${cat==='ia'?'selected':''}>🤖 IA</option><option value="autre" ${cat==='autre'||!cat?'selected':''}>📦 Autre</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditOffer(${id})" style="flex:1;justify-content:center">Sauvegarder →</button></div>`;
   document.getElementById('mo').classList.add('open');
 }
 async function doEditOffer(id){const name=document.getElementById('eo-name').value.trim();const url=document.getElementById('eo-url').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('PATCH',`/api/offers/${id}`,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value});closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
-function openAddOffer(){document.getElementById('m-title').textContent='Nouvelle offre';document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><div class="fi"><label>Catégorie</label><select id="ocat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="autre" selected>📦 Autre</option></select></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l\'offre →</button>';document.getElementById('mo').classList.add('open');}
+function openAddOffer(){document.getElementById('m-title').textContent='Nouvelle offre';document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><div class="fi"><label>Catégorie</label><select id="ocat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="ia">🤖 IA</option><option value="autre" selected>📦 Autre</option></select></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l\'offre →</button>';document.getElementById('mo').classList.add('open');}
 async function doAddOffer(){const name=document.getElementById('on').value.trim();const url=document.getElementById('ou').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value});closeMo();toast('Offre créée !','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Les mots de passe ne correspondent pas','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
-function filterConv(btn,f,convs){document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');const list=f==='all'?convs:convs.filter(c=>c.status===f);const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Lien</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';}
-function closeMo(){document.getElementById('mo').classList.remove('open');}
+function filterConv(btn,f,convs){document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');const list=f==='all'?convs:convs.filter(c=>c.status===f);const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';}
+function sortTop(by){
+  document.getElementById('sort-gains').className='btn btn-'+(by==='gains'?'grad':'gst')+' btn-sm';
+  document.getElementById('sort-conv').className='btn btn-'+(by==='conv'?'grad':'gst')+' btn-sm';
+  // re-render table rows
+  goPage('aff-top');
+}
+async function toggleRanking(show){
+  try{await api('PATCH','/api/me/ranking',{show});toast(show?'Vous êtes maintenant visible dans le classement ✅':'Vous êtes maintenant masqué du classement 🚫',show?'s':'i');goPage('aff-settings');}
+  catch(e){toast(e.message,'e');}
+}
 document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
 var toastTimer;
 function toast(msg,type){const el=document.getElementById('toast');const ic={s:'✅',e:'❌',i:'💡'};el.innerHTML=(ic[type]||'💡')+' '+msg;el.className='show t'+(type||'i');clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='',3200);}
