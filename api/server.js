@@ -186,7 +186,11 @@ app.patch('/api/links/:id', auth, adminOnly, async (req, res) => {
   const { data } = await supabase.from('links').update({ active }).eq('id', req.params.id).select().single();
   res.json(data);
 });
-app.delete('/api/links/:id', auth, adminOnly, async (req, res) => {
+app.delete('/api/links/:id', auth, async (req, res) => {
+  // Allow affiliate to delete their own link, or admin to delete any
+  const { data: link } = await supabase.from('links').select('user_id').eq('id', req.params.id).single();
+  if (!link) return res.status(404).json({ error: 'Lien introuvable' });
+  if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   await supabase.from('links').delete().eq('id', req.params.id);
   res.json({ success: true });
 });
@@ -302,8 +306,10 @@ app.get('/api/ranking', auth, async (req, res) => {
   const { data: users } = await supabase.from('users').select('id,name,created_at').eq('role','affiliate').eq('show_ranking',true);
   const result = await Promise.all((users||[]).map(async u => {
     const { data: convs } = await supabase.from('conversions').select('amount,status').eq('user_id',u.id);
+    const { data: links } = await supabase.from('links').select('clicks').eq('user_id',u.id);
     const approved = (convs||[]).filter(c=>c.status==='approved');
-    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0) };
+    const totalClicks = (links||[]).reduce((s,l)=>s+l.clicks,0);
+    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0), totalClicks };
   }));
   res.json(result);
 });
