@@ -182,6 +182,10 @@ app.patch('/api/links/:id', auth, adminOnly, async (req, res) => {
   const { data } = await supabase.from('links').update({ active }).eq('id', req.params.id).select().single();
   res.json(data);
 });
+app.delete('/api/links/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('links').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
 
 // ── WITHDRAWALS ──
 app.get('/api/withdrawals', auth, async (req, res) => {
