@@ -37,7 +37,7 @@ app.post('/api/register', async (req, res) => {
     const { data: referrer } = await supabase.from('users').select('id').eq('referral_code', referral_code).single();
     if (referrer) referred_by = referrer.id;
   }
-  const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by }).select().single();
+  const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, show_ranking: true }).select().single();
   if (error) return res.status(400).json({ error: 'Email déjà utilisé' });
   const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET);
   res.json({ token, user: { id: data.id, name: data.name, email: data.email, role: data.role, balance: data.balance, referral_code: data.referral_code } });
@@ -275,3 +275,20 @@ app.get('/api/referrals', auth, async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
+
+// ── RANKING ──
+app.get('/api/ranking', auth, async (req, res) => {
+  const { data: users } = await supabase.from('users').select('id,name,created_at').eq('role','affiliate').eq('show_ranking',true);
+  const result = await Promise.all((users||[]).map(async u => {
+    const { data: convs } = await supabase.from('conversions').select('amount,status').eq('user_id',u.id);
+    const approved = (convs||[]).filter(c=>c.status==='approved');
+    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0) };
+  }));
+  res.json(result);
+});
+
+app.patch('/api/me/ranking', auth, async (req, res) => {
+  const { show } = req.body;
+  await supabase.from('users').update({ show_ranking: show }).eq('id', req.user.id);
+  res.json({ success: true });
+});
