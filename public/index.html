@@ -22,22 +22,22 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .fg input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:all .2s}
 .fg input:focus{border-color:var(--pink);box-shadow:0 0 0 3px rgba(240,66,122,.1)}
 .btn-primary{width:100%;padding:12px;background:var(--grad);border:none;border-radius:10px;color:#000;font-weight:700;font-size:14px;cursor:pointer;font-family:inherit;transition:all .2s;margin-top:8px;box-shadow:0 4px 20px rgba(240,130,100,.3)}
-.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(240,130,100,.4)}
-.auth-hint{margin-top:14px;text-align:center;font-size:12px;color:var(--muted)}
-.auth-hint a{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;cursor:pointer;font-weight:600}
+.btn-primary:hover{transform:translateY(-1px)}
 #app{display:none}.shell{display:flex;min-height:100vh}
-.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100}
-.sb-head{padding:20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
-.sb-role{padding:12px 20px 6px}
+.sidebar{width:240px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.sb-head{padding:18px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.sb-role{padding:10px 20px 4px;flex-shrink:0}
 .role-badge{display:inline-flex;align-items:center;gap:5px;background:var(--grad);color:#000;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;text-transform:uppercase;letter-spacing:.5px}
-.sb-nav{flex:1;padding:8px 12px;overflow-y:auto}
-.nav-item{display:flex;align-items:center;gap:9px;padding:10px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all .15s;margin-bottom:3px;border-left:3px solid transparent}
+.sb-nav{flex:1;padding:8px 10px}
+.nav-section{margin-bottom:6px}
+.nav-section-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding:6px 12px 4px;opacity:.7}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);transition:all .15s;margin-bottom:2px;border-left:3px solid transparent}
 .nav-item:hover{background:var(--bg3);color:var(--text)}
 .nav-item.active{background:rgba(240,130,100,.1);color:var(--text);border-left:3px solid var(--yellow)}
-.sb-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.sb-foot{padding:14px 16px;border-top:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-shrink:0}
 .avatar{width:34px;height:34px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#000;flex-shrink:0}
 .uname{font-size:13px;font-weight:600}.uemail{font-size:11px;color:var(--muted)}
-.logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:5px;border-radius:6px;margin-left:auto;transition:all .15s}
+.logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;padding:5px;border-radius:6px;margin-left:auto}
 .logout-btn:hover{color:var(--red)}
 .main{margin-left:240px;flex:1;display:flex;flex-direction:column}
 .topbar{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 28px;height:58px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
@@ -60,7 +60,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-h
 .tw{overflow-x:auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 thead th{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;padding:8px 14px;text-align:left;border-bottom:1px solid var(--border)}
-tbody td{padding:13px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);vertical-align:middle}
 tbody tr:last-child td{border-bottom:none}
 tbody tr:hover{background:var(--bg3)}
 .badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px}
@@ -81,7 +81,7 @@ tbody tr:hover{background:var(--bg3)}
 .offer-card:hover{border-color:rgba(245,200,66,.3)}
 .link-box{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:8px 12px;margin-top:10px}
 .link-box code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--yellow)}
-.copy-btn{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:3px 7px;border-radius:5px;transition:all .15s}
+.copy-btn{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:3px 7px;border-radius:5px}
 .copy-btn:hover{color:var(--yellow)}
 .crypto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
 .crypto-opt{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;cursor:pointer;transition:all .15s;font-size:12px;font-weight:600;color:var(--muted)}
@@ -100,6 +100,10 @@ tbody tr:hover{background:var(--bg3)}
 .act-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
 .act-item:last-child{border-bottom:none}
 .act-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.warning-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px}
+.warning-box .wi{font-size:18px;flex-shrink:0;margin-top:1px}
+.warning-box p{font-size:12px;color:#F5C842;line-height:1.6}
+.hdiv{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:18px 0}
 #toast{position:fixed;bottom:24px;right:24px;z-index:1000;background:var(--bg4);border:1px solid var(--border);border-radius:12px;padding:13px 18px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:9px;transform:translateY(70px);opacity:0;transition:all .3s cubic-bezier(.34,1.56,.64,1);pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.5)}
 #toast.show{transform:translateY(0);opacity:1}
 #toast.ts{border-color:rgba(45,217,143,.4);color:var(--green)}
@@ -113,10 +117,30 @@ tbody tr:hover{background:var(--bg3)}
 .modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
 .modal-title{font-family:'Syne',sans-serif;font-size:16px;font-weight:800}
 .modal-close{background:var(--bg3);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:14px;width:28px;height:28px;border-radius:7px;display:flex;align-items:center;justify-content:center}
-.hdiv{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:18px 0}
 .loading{display:flex;align-items:center;justify-content:center;padding:40px;color:var(--muted);font-size:13px;gap:8px}
 @keyframes spin{to{transform:rotate(360deg)}}
 .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--yellow);border-radius:50%;animation:spin .8s linear infinite}
+/* SUPPORT */
+.support-hero{background:linear-gradient(135deg,rgba(245,200,66,.08),rgba(240,66,122,.08));border:1px solid rgba(245,200,66,.15);border-radius:16px;padding:36px;text-align:center;margin-bottom:22px}
+.founder-avatar{width:80px;height:80px;border-radius:50%;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 16px;box-shadow:0 8px 32px rgba(240,130,100,.3)}
+.founder-name{font-family:'Syne',sans-serif;font-size:24px;font-weight:800;margin-bottom:4px}
+.founder-title{font-size:13px;color:var(--green);font-weight:600;letter-spacing:.5px}
+.discord-card{background:rgba(88,101,242,.12);border:1px solid rgba(88,101,242,.3);border-radius:14px;padding:22px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.discord-info{display:flex;align-items:center;gap:14px}
+.discord-icon{width:48px;height:48px;border-radius:12px;background:rgba(88,101,242,.2);display:flex;align-items:center;justify-content:center;font-size:24px}
+.discord-pseudo{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:600;color:var(--text);margin-bottom:3px}
+.discord-label{font-size:12px;color:var(--muted)}
+/* SETTINGS */
+.settings-section{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:24px;margin-bottom:20px}
+.settings-section-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;margin-bottom:18px;display:flex;align-items:center;gap:8px}
+.info-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--border)}
+.info-row:last-child{border-bottom:none}
+.info-label{font-size:12px;color:var(--muted);font-weight:500}
+.info-value{font-size:13px;font-weight:600}
+/* PARRAINAGE */
+.ref-hero{background:linear-gradient(135deg,rgba(245,200,66,.1),rgba(240,66,122,.1));border:1px solid rgba(245,200,66,.2);border-radius:16px;padding:24px;margin-bottom:22px}
+.ref-link-box{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-top:12px}
+.ref-link-box code{flex:1;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--yellow)}
 </style>
 </head>
 <body>
@@ -135,12 +159,12 @@ tbody tr:hover{background:var(--bg3)}
       <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="email@exemple.com"></div>
       <div class="fg"><label>Mot de passe</label><input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="btn-primary" onclick="doLogin()">Se connecter →</button>
-      <p class="auth-hint">Admin : admin@affihub.com / admin123 &nbsp;·&nbsp; <a onclick="fillAdmin()">Accès rapide</a></p>
     </div>
     <div id="register-form" style="display:none">
       <div class="fg"><label>Nom complet</label><input type="text" id="r-name" placeholder="Votre nom"></div>
       <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="email@exemple.com"></div>
       <div class="fg"><label>Mot de passe</label><input type="password" id="r-pass" placeholder="Choisir un mot de passe"></div>
+      <div class="fg"><label>Code de parrainage (optionnel)</label><input type="text" id="r-ref" placeholder="Code d'un affilié"></div>
       <button class="btn-primary" onclick="doRegister()">Créer mon compte →</button>
     </div>
   </div>
@@ -167,7 +191,6 @@ tbody tr:hover{background:var(--bg3)}
     <div class="main">
       <div class="topbar">
         <div class="page-title" id="page-title">Dashboard</div>
-        <div id="topbar-right"></div>
       </div>
       <div class="content" id="content"></div>
     </div>
@@ -204,129 +227,149 @@ async function api(method, path, body) {
 }
 
 function switchTab(t) {
-  document.getElementById('tab-login').classList.toggle('active', t === 'login');
-  document.getElementById('tab-register').classList.toggle('active', t === 'register');
-  document.getElementById('login-form').style.display = t === 'login' ? 'block' : 'none';
-  document.getElementById('register-form').style.display = t === 'register' ? 'block' : 'none';
-}
-
-function fillAdmin() {
-  document.getElementById('l-email').value = 'admin@affihub.com';
-  document.getElementById('l-pass').value = 'admin123';
+  document.getElementById('tab-login').classList.toggle('active', t==='login');
+  document.getElementById('tab-register').classList.toggle('active', t==='register');
+  document.getElementById('login-form').style.display = t==='login'?'block':'none';
+  document.getElementById('register-form').style.display = t==='register'?'block':'none';
 }
 
 async function doLogin() {
   try {
-    const r = await api('POST', '/api/login', { email: document.getElementById('l-email').value.trim(), password: document.getElementById('l-pass').value.trim() });
-    TOKEN = r.token; ME = r.user;
-    localStorage.setItem('affihub_token', TOKEN);
-    localStorage.setItem('affihub_user', JSON.stringify(ME));
+    const r = await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
+    TOKEN=r.token; ME=r.user;
+    localStorage.setItem('affihub_token',TOKEN);
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
     startApp();
-  } catch(e) { toast(e.message, 'e'); }
+  } catch(e){toast(e.message,'e');}
 }
 
 async function doRegister() {
   try {
-    const r = await api('POST', '/api/register', { name: document.getElementById('r-name').value.trim(), email: document.getElementById('r-email').value.trim(), password: document.getElementById('r-pass').value.trim() });
-    TOKEN = r.token; ME = r.user;
-    localStorage.setItem('affihub_token', TOKEN);
-    localStorage.setItem('affihub_user', JSON.stringify(ME));
+    const r = await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
+    TOKEN=r.token; ME=r.user;
+    localStorage.setItem('affihub_token',TOKEN);
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
     startApp();
-    toast('Bienvenue sur AffiHub !', 's');
-  } catch(e) { toast(e.message, 'e'); }
+    toast('Bienvenue sur AffiHub !','s');
+  } catch(e){toast(e.message,'e');}
 }
 
 function startApp() {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'block';
-  document.getElementById('u-name').textContent = ME.name;
-  document.getElementById('u-email').textContent = ME.email;
-  document.getElementById('u-avatar').textContent = ME.name[0].toUpperCase();
-  if (ME.role === 'admin') {
-    document.getElementById('role-badge').textContent = '👑 Admin';
-    buildNav([{icon:'📊',label:'Dashboard',page:'admin-dash'},{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'}]);
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('u-name').textContent=ME.name;
+  document.getElementById('u-email').textContent=ME.email;
+  document.getElementById('u-avatar').textContent=ME.name[0].toUpperCase();
+  if(ME.role==='admin'){
+    document.getElementById('role-badge').textContent='👑 Admin';
+    buildNav([
+      {section:'ADMIN',items:[
+        {icon:'📊',label:'Dashboard',page:'admin-dash'},
+        {icon:'👥',label:'Affiliés',page:'admin-aff'},
+        {icon:'🔁',label:'Conversions',page:'admin-conv'},
+        {icon:'💸',label:'Retraits',page:'admin-wd'},
+        {icon:'🎯',label:'Offres',page:'admin-offers'},
+        {icon:'🔗',label:'Liens',page:'admin-links'}
+      ]}
+    ]);
     goPage('admin-dash');
   } else {
-    document.getElementById('role-badge').textContent = '⚡ Affilié';
-    buildNav([{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'},{icon:'💸',label:'Paiements',page:'aff-pay'}]);
+    document.getElementById('role-badge').textContent='⚡ Affilié';
+    buildNav([
+      {section:'ACCUEIL',items:[
+        {icon:'🏠',label:'Dashboard',page:'aff-dash'},
+        {icon:'🔗',label:'Mes liens',page:'aff-links'}
+      ]},
+      {section:'STATISTIQUES',items:[
+        {icon:'📈',label:'Statistiques',page:'aff-stats'},
+        {icon:'🔁',label:'Conversions',page:'aff-conv'}
+      ]},
+      {section:'GAINS',items:[
+        {icon:'💸',label:'Paiements',page:'aff-pay'},
+        {icon:'👥',label:'Parrainage',page:'aff-ref'}
+      ]},
+      {section:'SUPPORT',items:[
+        {icon:'💬',label:'Support',page:'aff-support'},
+        {icon:'⚙️',label:'Paramètres',page:'aff-settings'}
+      ]}
+    ]);
     goPage('aff-dash');
   }
-  // Auto-refresh toutes les 30 secondes
   clearInterval(refreshTimer);
-  refreshTimer = setInterval(() => { if (curPage) goPage(curPage); }, 30000);
+  refreshTimer = setInterval(()=>{if(curPage)goPage(curPage);},30000);
 }
 
-function logout() {
-  TOKEN = null; ME = null;
+function logout(){
+  TOKEN=null;ME=null;
   localStorage.removeItem('affihub_token');
   localStorage.removeItem('affihub_user');
   clearInterval(refreshTimer);
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
 }
 
-function buildNav(items) {
-  var nav = document.getElementById('sb-nav'); nav.innerHTML = '';
-  items.forEach(item => {
-    var el = document.createElement('div');
-    el.className = 'nav-item'; el.id = 'nav-' + item.page;
-    el.innerHTML = '<span style="font-size:16px;width:22px;text-align:center">' + item.icon + '</span>' + item.label;
-    el.onclick = () => goPage(item.page);
-    nav.appendChild(el);
+function buildNav(sections){
+  var nav=document.getElementById('sb-nav');nav.innerHTML='';
+  sections.forEach(sec=>{
+    var div=document.createElement('div');div.className='nav-section';
+    div.innerHTML='<div class="nav-section-label">'+sec.section+'</div>';
+    sec.items.forEach(item=>{
+      var el=document.createElement('div');
+      el.className='nav-item';el.id='nav-'+item.page;
+      el.innerHTML='<span style="font-size:15px;width:20px;text-align:center">'+item.icon+'</span>'+item.label;
+      el.onclick=()=>goPage(item.page);
+      div.appendChild(el);
+    });
+    nav.appendChild(div);
   });
 }
 
-const TITLES = {'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-offers':'Offres','admin-links':'Liens & Anti-fraude'};
+const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-support':'Support','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-offers':'Offres','admin-links':'Liens & Anti-fraude'};
 
-async function goPage(page) {
-  curPage = page;
-  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-  const nav = document.getElementById('nav-' + page); if (nav) nav.classList.add('active');
-  document.getElementById('page-title').textContent = TITLES[page] || page;
-  document.getElementById('content').innerHTML = '<div class="loading"><div class="spinner"></div> Chargement...</div>';
-  try {
-    const html = await renderPage(page);
-    document.getElementById('content').innerHTML = html;
-  } catch(e) {
-    document.getElementById('content').innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><p>' + e.message + '</p></div>';
-  }
+async function goPage(page){
+  curPage=page;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const nav=document.getElementById('nav-'+page);if(nav)nav.classList.add('active');
+  document.getElementById('page-title').textContent=TITLES[page]||page;
+  document.getElementById('content').innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';
+  try{const html=await renderPage(page);document.getElementById('content').innerHTML=html;}
+  catch(e){document.getElementById('content').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}
 }
 
-function sbadge(s) {
-  const m = {approved:'<span class="badge bg2"><span class="dot dg"></span>Approuvée</span>',pending:'<span class="badge by2"><span class="dot dy"></span>En attente</span>',rejected:'<span class="badge br2"><span class="dot dr"></span>Rejetée</span>',paid:'<span class="badge bg2"><span class="dot dg"></span>Payé</span>',active:'<span class="badge bg2">Actif</span>',disabled:'<span class="badge br2">Désactivé</span>'};
-  return m[s] || s;
+function sbadge(s){
+  const m={approved:'<span class="badge bg2"><span class="dot dg"></span>Approuvée</span>',pending:'<span class="badge by2"><span class="dot dy"></span>En attente</span>',rejected:'<span class="badge br2"><span class="dot dr"></span>Rejetée</span>',paid:'<span class="badge bg2"><span class="dot dg"></span>Payé</span>',active:'<span class="badge bg2">Actif</span>',disabled:'<span class="badge br2">Désactivé</span>'};
+  return m[s]||s;
 }
+function gtext(v){return '<span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900">'+v+'</span>';}
+function fmt(d){return d?d.split('T')[0]:'—';}
 
-function gtext(val) { return '<span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900">' + val + '</span>'; }
+async function renderPage(page){
+  try{ME=await api('GET','/api/me');localStorage.setItem('affihub_user',JSON.stringify(ME));}catch(e){}
 
-async function renderPage(page) {
-  // Refresh user data
-  try { ME = await api('GET', '/api/me'); localStorage.setItem('affihub_user', JSON.stringify(ME)); } catch(e) {}
-
-  if (page === 'aff-dash') {
-    const [convs, links] = await Promise.all([api('GET','/api/conversions'), api('GET','/api/links')]);
-    const approved = convs.filter(c => c.status === 'approved');
-    const pending = convs.filter(c => c.status === 'pending');
-    const totalGains = approved.reduce((s,c) => s + c.amount, 0);
-    const totalClicks = links.reduce((s,l) => s + l.clicks, 0);
-    const recentRows = convs.slice(0,5).map(c => `<tr><td style="color:var(--muted)">${c.created_at?.split('T')[0]||'—'}</td><td>${c.offers?.name||'?'}</td><td style="color:var(--yellow);font-weight:700">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
-    return `<div class="bal-hero"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$${ME.balance||0}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Retrait minimum : $30</div></div><button class="btn btn-grad" onclick="goPage('aff-pay')" style="font-size:13px;padding:11px 22px">💸 Retirer</button></div>
+  if(page==='aff-dash'){
+    const [convs,links]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/links')]);
+    const approved=convs.filter(c=>c.status==='approved');
+    const pending=convs.filter(c=>c.status==='pending');
+    const totalGains=approved.reduce((s,c)=>s+c.amount,0);
+    const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
+    const rows=convs.slice(0,5).map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td style="color:var(--yellow);font-weight:700">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
+    return `<div class="bal-hero"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$${ME.balance||0}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Retrait minimum : $10</div></div><button class="btn btn-grad" onclick="goPage('aff-pay')" style="font-size:13px;padding:11px 22px">💸 Retirer</button></div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics total</div><div class="stat-val gy">${totalClicks}</div><div class="stat-sub">sur ${links.length} lien(s)</div></div>
       <div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">${convs.length}</div><div class="stat-sub">${approved.length} approuvées · ${pending.length} en attente</div></div>
       <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gg">$${totalGains}</div><div class="stat-sub">depuis le début</div></div>
     </div>
     <div class="card"><div class="card-header"><div class="card-title">Dernières conversions</div><button class="btn btn-gst btn-sm" onclick="goPage('aff-conv')">Voir tout →</button></div>
-    ${convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+recentRows+'</tbody></table></div>'}</div>`;
+    ${convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+rows+'</tbody></table></div>'}</div>`;
   }
 
-  if (page === 'aff-links') {
-    const [offers, links] = await Promise.all([api('GET','/api/offers'), api('GET','/api/links')]);
-    const active = offers.filter(o => o.active);
-    if (active.length === 0) return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible pour l\'instant.</p></div></div>';
-    const cards = active.map(o => {
-      const el = links.find(l => l.offer_id === o.id);
-      const origin = window.location.origin;
+  if(page==='aff-links'){
+    const [offers,links]=await Promise.all([api('GET','/api/offers'),api('GET','/api/links')]);
+    const active=offers.filter(o=>o.active);
+    if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible pour l\'instant.</p></div></div>';
+    const cards=active.map(o=>{
+      const el=links.find(l=>l.offer_id===o.id);
+      const origin=window.location.origin;
       return `<div class="offer-card"><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div>
       ${el?`<div class="link-box"><code>${origin}/go/${el.id}</code><button class="copy-btn" onclick="cpLink('${el.id}',this)">📋</button></div>`:''}
       </div><div style="text-align:right;flex-shrink:0">${gtext('$'+o.commission)}<div style="font-size:11px;color:var(--muted);margin-bottom:10px">par conversion</div>
@@ -335,52 +378,133 @@ async function renderPage(page) {
     return `<div class="card"><div class="card-header"><div class="card-title">Offres disponibles</div><span class="badge bp2">${active.length} offre(s)</span></div>${cards}</div>`;
   }
 
-  if (page === 'aff-stats') {
-    const [links, convs] = await Promise.all([api('GET','/api/links'), api('GET','/api/conversions')]);
-    if (links.length === 0) return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>Aucun lien généré.</p></div></div>';
-    const origin = window.location.origin;
-    const rows = links.map(l => {
-      const lc = convs.filter(c => c.link_id === l.id && c.status === 'approved');
-      const gains = lc.reduce((s,c)=>s+c.amount,0);
-      const rate = l.clicks>0?((lc.length/l.clicks)*100).toFixed(1):'0.0';
+  if(page==='aff-stats'){
+    const [links,convs]=await Promise.all([api('GET','/api/links'),api('GET','/api/conversions')]);
+    if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>Aucun lien généré.</p></div></div>';
+    const origin=window.location.origin;
+    const rows=links.map(l=>{
+      const lc=convs.filter(c=>c.link_id===l.id&&c.status==='approved');
+      const gains=lc.reduce((s,c)=>s+c.amount,0);
+      const rate=l.clicks>0?((lc.length/l.clicks)*100).toFixed(1):'0.0';
       return `<tr><td><code style="font-family:monospace;font-size:12px;color:var(--yellow)">${origin}/go/${l.id}</code></td><td>${l.offers?.name||'?'}</td><td style="font-weight:600">${l.clicks}</td><td>${lc.length}</td><td style="color:var(--green);font-weight:700">$${gains}</td><td><span class="badge bb2">${rate}%</span></td></tr>`;
     }).join('');
-    return `<div class="card"><div class="card-title" style="margin-bottom:16px">Performance par lien</div><div class="tw"><table><thead><tr><th>Lien</th><th>Offre</th><th>Clics</th><th>Conversions</th><th>Gains</th><th>Taux</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    return `<div class="card"><div class="card-header"><div class="card-title">Performance par lien</div></div><div class="tw"><table><thead><tr><th>Lien</th><th>Offre</th><th>Clics</th><th>Conversions</th><th>Gains</th><th>Taux</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
-  if (page === 'aff-conv') {
-    const convs = await api('GET', '/api/conversions');
-    const tabs = [['all','Toutes',convs.length],['approved','✅ Approuvées',convs.filter(c=>c.status==='approved').length],['pending','⏳ En attente',convs.filter(c=>c.status==='pending').length],['rejected','❌ Rejetées',convs.filter(c=>c.status==='rejected').length]];
-    const tabHtml = tabs.map(([f,l,n]) => `<button class="tab${f==='all'?' active':''}" onclick="filterAffConv(this,'${f}')">${l} (${n})</button>`).join('');
-    const rows = convs.map(c=>`<tr><td style="color:var(--muted)">${c.created_at?.split('T')[0]||'—'}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
-    return `<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs" id="conv-tabs">${tabHtml}</div><div id="conv-rows"><div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Lien</th><th>Montant</th><th>Statut</th></tr></thead><tbody id="conv-tbody">${rows||'<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:30px">Aucune conversion</td></tr>'}</tbody></table></div></div></div>`;
+  if(page==='aff-conv'){
+    const convs=await api('GET','/api/conversions');
+    const tabs=[['all','Toutes',convs.length],['approved','✅ Approuvées',convs.filter(c=>c.status==='approved').length],['pending','⏳ En attente',convs.filter(c=>c.status==='pending').length],['rejected','❌ Rejetées',convs.filter(c=>c.status==='rejected').length]];
+    const tabHtml=tabs.map(([f,l,n])=>`<button class="tab${f==='all'?' active':''}" onclick="filterConv(this,'${f}',${JSON.stringify(convs).replace(/'/g,"\\'")})">${l} (${n})</button>`).join('');
+    const mkRows=list=>list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
+    return `<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs">${tabHtml}</div><div id="ctable"><div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Lien</th><th>Montant</th><th>Statut</th></tr></thead><tbody>${mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>'}</tbody></table></div></div></div>`;
   }
 
-  if (page === 'aff-pay') {
-    const wds = await api('GET', '/api/withdrawals');
-    const bal = ME.balance || 0;
-    const canWd = bal >= 30;
-    const wrows = wds.map(w=>`<tr><td style="color:var(--muted)">${w.created_at?.split('T')[0]||'—'}</td><td style="color:var(--yellow);font-weight:800">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,22)}...</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red);margin-top:3px">↳ ${w.reason}</div>`:''}</td></tr>`).join('');
-    return `<div class="card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$${bal}</div></div>${canWd?'<span class="badge bg2" style="font-size:12px;padding:5px 12px">✓ Retrait disponible</span>':'<span class="badge by2" style="font-size:12px;padding:5px 12px">⚠ Minimum $30</span>'}</div>
+  if(page==='aff-pay'){
+    const wds=await api('GET','/api/withdrawals');
+    const bal=ME.balance||0;const canWd=bal>=10;
+    const wrows=wds.map(w=>`<tr><td style="color:var(--muted)">${fmt(w.created_at)}</td><td style="color:var(--yellow);font-weight:800">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,22)}...</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red);margin-top:3px">↳ ${w.reason}</div>`:''}</td></tr>`).join('');
+    return `<div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-family:'Syne',sans-serif;font-size:32px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$${bal}</div></div>${canWd?'<span class="badge bg2" style="font-size:12px;padding:5px 12px">✓ Retrait disponible</span>':'<span class="badge by2" style="font-size:12px;padding:5px 12px">⚠ Minimum $10</span>'}</div>
+    <div class="warning-box"><div class="wi">⚠️</div><p><strong>Attention — Vérifiez bien votre adresse crypto avant de soumettre.</strong><br>AffiHub ne pourra effectuer aucun remboursement en cas d'adresse incorrecte ou invalide. Les transferts crypto sont irréversibles. Vous êtes seul responsable de l'exactitude de votre adresse.</p></div>
     <div class="hdiv"></div>
-    <div class="fi"><label>Montant ($)</label><input type="number" id="wd-amt" min="30" max="${bal}" placeholder="Minimum $30" ${canWd?'':'disabled'}></div>
+    <div class="fi"><label>Montant ($)</label><input type="number" id="wd-amt" min="10" max="${bal}" placeholder="Minimum $10" ${canWd?'':'disabled'}></div>
     <div class="fi"><label>Crypto</label><div class="crypto-grid">
       <div class="crypto-opt" onclick="pickCrypto('BTC',this)"><span class="crypto-icon">₿</span>Bitcoin</div>
       <div class="crypto-opt" onclick="pickCrypto('SOL',this)"><span class="crypto-icon">◎</span>Solana</div>
       <div class="crypto-opt" onclick="pickCrypto('LTC',this)"><span class="crypto-icon">Ł</span>Litecoin</div>
     </div></div>
-    <div class="fi"><label>Adresse crypto</label><input type="text" id="wd-addr" placeholder="Votre adresse" ${canWd?'':'disabled'}></div>
+    <div class="fi"><label>Adresse crypto</label><input type="text" id="wd-addr" placeholder="Votre adresse de réception" ${canWd?'':'disabled'}></div>
     <button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center" ${canWd?'':'disabled'}>💸 Soumettre la demande</button></div>
     <div class="card"><div class="card-title" style="margin-bottom:16px">Historique des retraits</div>${wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Montant</th><th>Crypto</th><th>Adresse</th><th>Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>'}</div>`;
   }
 
-  if (page === 'admin-dash') {
-    const stats = await api('GET', '/api/stats');
-    const [convs, wds] = await Promise.all([api('GET','/api/conversions'), api('GET','/api/withdrawals')]);
-    const pending = convs.filter(c => c.status === 'pending');
-    const pendWd = wds.filter(w => w.status === 'pending');
-    const prows = pending.slice(0,4).map(c=>`<div class="act-item"><div class="act-icon" style="background:rgba(245,200,66,.1)">🔁</div><div style="flex:1;font-size:13px"><b>${c.users?.name||'?'}</b> — ${c.offers?.name||'?'}<div style="font-size:11px;color:var(--yellow)">$${c.amount}</div></div><div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprC(${c.id})">✔</button><button class="btn btn-red btn-sm" onclick="rejtC(${c.id})">✕</button></div></div>`).join('');
-    const wrows = pendWd.slice(0,4).map(w=>`<div class="act-item"><div class="act-icon" style="background:rgba(240,66,122,.1)">💳</div><div style="flex:1;font-size:13px"><b>${w.users?.name||'?'}</b><div style="font-size:11px;color:var(--muted)">${w.crypto} — ${w.address.substring(0,16)}...</div></div><div style="font-weight:900;color:var(--yellow)">$${w.amount}</div></div>`).join('');
+  if(page==='aff-ref'){
+    const ref=await api('GET','/api/referrals');
+    const origin=window.location.origin;
+    const refLink=origin+'/?ref='+(ME.referral_code||'');
+    const filleuleRows=ref.filleules.map(f=>{
+      const earned=ref.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);
+      return `<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">${f.name[0]}</div><b>${f.name}</b></div></td><td style="color:var(--muted)">${fmt(f.created_at)}</td><td style="color:var(--green);font-weight:700">$${earned.toFixed(2)}</td></tr>`;
+    }).join('');
+    const commRows=ref.commissions.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td><b>${c.users?.name||'?'}</b></td><td style="color:var(--yellow)">$${c.conversions?.amount||0}</td><td style="color:var(--green);font-weight:700">$${c.amount.toFixed(2)}</td></tr>`).join('');
+    return `<div class="ref-hero">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Gagnez <span style="color:var(--yellow);font-weight:700">5%</span> de commission sur chaque vente de vos filleuls</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Total gagné</div>
+          ${gtext('$'+ref.totalEarned.toFixed(2))}
+        </div>
+      </div>
+      <div class="ref-link-box"><code>${refLink}</code><button class="copy-btn" onclick="navigator.clipboard?.writeText('${refLink}');toast('Lien copié !','s')">📋</button></div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">${ref.filleules.length}</div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions totales</div><div class="stat-val gg">$${ref.totalEarned.toFixed(2)}</div></div>
+      <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux commission</div><div class="stat-val gy">5%</div></div>
+    </div>
+    <div class="card"><div class="card-title" style="margin-bottom:16px">👥 Mes filleuls</div>
+    ${ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul pour l\'instant.<br>Partagez votre lien pour commencer !</p></div>':'<div class="tw"><table><thead><tr><th>Filleul</th><th>Inscrit le</th><th>Montant généré</th></tr></thead><tbody>'+filleuleRows+'</tbody></table></div>'}
+    </div>
+    <div class="card"><div class="card-title" style="margin-bottom:16px">💸 Récap des commissions</div>
+    ${ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Filleul</th><th>Vente</th><th>Commission (5%)</th></tr></thead><tbody>'+commRows+'</tbody></table></div>'}
+    </div>`;
+  }
+
+  if(page==='aff-support'){
+    return `<div class="support-hero">
+      <div class="founder-avatar">🍍</div>
+      <div class="founder-name">ananas</div>
+      <div class="founder-title">✦ FONDATEUR ✦</div>
+      <p style="font-size:13px;color:var(--muted);margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6">Pour toute question, problème ou suggestion, contacte-moi directement sur Discord. Je réponds généralement dans les 24h.</p>
+    </div>
+    <div class="discord-card">
+      <div class="discord-info">
+        <div class="discord-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="rgba(88,101,242,.9)"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.04.037.052a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>
+        </div>
+        <div>
+          <div class="discord-pseudo">ananas</div>
+          <div class="discord-label">Disponible sur Discord</div>
+        </div>
+      </div>
+      <button class="btn btn-grad" onclick="navigator.clipboard?.writeText('ananas');toast('Pseudo copié !','s')">📋 Copier le pseudo</button>
+    </div>
+    <div class="card" style="background:rgba(245,200,66,.04);border-color:rgba(245,200,66,.15)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:18px">💡</span>
+        <div style="font-weight:700;font-size:14px">Comment me contacter</div>
+      </div>
+      <p style="font-size:13px;color:var(--muted);line-height:1.7">1. Ouvre Discord sur ton téléphone ou ordinateur<br>2. Clique sur <strong style="color:var(--text)">Ajouter un ami</strong><br>3. Recherche le pseudo <strong style="color:var(--yellow)">ananas</strong> et envoie une demande<br>4. Envoie-moi ton message directement ✅</p>
+    </div>`;
+  }
+
+  if(page==='aff-settings'){
+    return `<div class="settings-section">
+      <div class="settings-section-title">👤 Informations du compte</div>
+      <div class="info-row"><div class="info-label">Nom d'utilisateur</div><div class="info-value">${ME.name}</div></div>
+      <div class="info-row"><div class="info-label">Email</div><div class="info-value">${ME.email}</div></div>
+      <div class="info-row"><div class="info-label">Date d'arrivée</div><div class="info-value">${fmt(ME.created_at)}</div></div>
+      <div class="info-row"><div class="info-label">Code de parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">${ME.referral_code||'—'}</code><button class="copy-btn" onclick="navigator.clipboard?.writeText('${ME.referral_code||''}');toast('Code copié !','s')">📋</button></div></div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-section-title">🔑 Changer le mot de passe</div>
+      <div class="fi"><label>Mot de passe actuel</label><input type="password" id="cp-cur" placeholder="••••••••"></div>
+      <div class="fi"><label>Nouveau mot de passe</label><input type="password" id="cp-new" placeholder="••••••••"></div>
+      <div class="fi"><label>Confirmer le nouveau mot de passe</label><input type="password" id="cp-conf" placeholder="••••••••"></div>
+      <button class="btn btn-grad" onclick="changePass()" style="margin-top:4px">🔑 Modifier le mot de passe</button>
+    </div>`;
+  }
+
+  if(page==='admin-dash'){
+    const stats=await api('GET','/api/stats');
+    const [convs,wds]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/withdrawals')]);
+    const pending=convs.filter(c=>c.status==='pending');
+    const pendWd=wds.filter(w=>w.status==='pending');
+    const prows=pending.slice(0,4).map(c=>`<div class="act-item"><div class="act-icon" style="background:rgba(245,200,66,.1)">🔁</div><div style="flex:1;font-size:13px"><b>${c.users?.name||'?'}</b> — ${c.offers?.name||'?'}<div style="font-size:11px;color:var(--yellow)">$${c.amount}</div></div><div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprC(${c.id})">✔</button><button class="btn btn-red btn-sm" onclick="rejtC(${c.id})">✕</button></div></div>`).join('');
+    const wrows=pendWd.slice(0,4).map(w=>`<div class="act-item"><div class="act-icon" style="background:rgba(240,66,122,.1)">💳</div><div style="flex:1;font-size:13px"><b>${w.users?.name||'?'}</b><div style="font-size:11px;color:var(--muted)">${w.crypto} — ${w.address.substring(0,16)}...</div></div><div style="font-weight:900;color:var(--yellow)">$${w.amount}</div></div>`).join('');
     return `<div class="stats-grid">
       <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Affiliés</div><div class="stat-val gy">${stats.affiliates}</div></div>
       <div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">${stats.totalClicks}</div></div>
@@ -389,144 +513,139 @@ async function renderPage(page) {
       <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-label">Retraits pending</div><div class="stat-val ${stats.pendingWithdrawals>0?'gy':''}">${stats.pendingWithdrawals}</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
-      <div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">⏳ À valider</div><button class="btn btn-gst btn-sm" onclick="goPage('admin-conv')">Voir tout →</button></div>${pending.length===0?'<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:24px">✅</div><p>Tout est à jour !</p></div>':prows}</div>
-      <div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">💸 Retraits</div><button class="btn btn-gst btn-sm" onclick="goPage('admin-wd')">Voir tout →</button></div>${pendWd.length===0?'<div class="empty" style="padding:20px"><div class="empty-icon" style="font-size:24px">✅</div><p>Aucun retrait en attente</p></div>':wrows}</div>
+      <div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">⏳ À valider</div><button class="btn btn-gst btn-sm" onclick="goPage('admin-conv')">Voir tout →</button></div>${pending.length===0?'<div class="empty" style="padding:20px"><p>✅ Tout est à jour !</p></div>':prows}</div>
+      <div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">💸 Retraits</div><button class="btn btn-gst btn-sm" onclick="goPage('admin-wd')">Voir tout →</button></div>${pendWd.length===0?'<div class="empty" style="padding:20px"><p>✅ Aucun retrait en attente</p></div>':wrows}</div>
     </div>`;
   }
 
-  if (page === 'admin-aff') {
-    const users = await api('GET', '/api/users');
-    if (users.length === 0) return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié inscrit</p></div></div>';
-    const rows = users.map(u => {
-      return `<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">${u.name[0]}</div><b>${u.name}</b></div></td><td style="color:var(--muted)">${u.email}</td><td>${gtext('$'+(u.balance||0))}</td><td>${u.created_at?.split('T')[0]||'—'}</td><td><button class="btn btn-red btn-sm" onclick="confirmDeleteAff('${u.id}','${u.name}','${u.email}')">🗑 Supprimer</button></td></tr>`;
-    }).join('');
+  if(page==='admin-aff'){
+    const users=await api('GET','/api/users');
+    if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié inscrit</p></div></div>';
+    const rows=users.map(u=>`<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">${u.name[0]}</div><b>${u.name}</b></div></td><td style="color:var(--muted)">${u.email}</td><td>${gtext('$'+(u.balance||0))}</td><td style="color:var(--muted)">${fmt(u.created_at)}</td><td><button class="btn btn-red btn-sm" onclick="confirmDeleteAff('${u.id}','${u.name}','${u.email}')">🗑 Supprimer</button></td></tr>`).join('');
     return `<div class="card"><div class="card-header"><div class="card-title">Liste des affiliés</div><span class="badge bp2">${users.length} affilié(s)</span></div><div class="tw"><table><thead><tr><th>Affilié</th><th>Email</th><th>Solde</th><th>Inscrit le</th><th>Action</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }
 
-  if (page === 'admin-conv') {
-    const convs = await api('GET', '/api/conversions');
-    const pending = convs.filter(c=>c.status==='pending');
-    const rows = convs.map(c=>`<tr><td style="color:var(--muted)">${c.created_at?.split('T')[0]||'—'}</td><td>${c.users?.name||'?'}</td><td>${c.offers?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${c.amount}</td><td>${sbadge(c.status)}</td><td>${c.status==='pending'?`<div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprC(${c.id})">✔ Approuver</button><button class="btn btn-red btn-sm" onclick="rejtC(${c.id})">✕ Rejeter</button></div>`:'<span style="color:var(--muted)">—</span>'}</td></tr>`).join('');
+  if(page==='admin-conv'){
+    const convs=await api('GET','/api/conversions');
+    const pending=convs.filter(c=>c.status==='pending');
+    const rows=convs.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.users?.name||'?'}</td><td>${c.offers?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${c.amount}</td><td>${sbadge(c.status)}</td><td>${c.status==='pending'?`<div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprC(${c.id})">✔ Approuver</button><button class="btn btn-red btn-sm" onclick="rejtC(${c.id})">✕ Rejeter</button></div>`:'<span style="color:var(--muted)">—</span>'}</td></tr>`).join('');
     return `<div class="card"><div class="card-header"><div class="card-title">Toutes les conversions</div>${pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>'}</div>${rows?'<div class="tw"><table><thead><tr><th>Date</th><th>Affilié</th><th>Offre</th><th>Montant</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>'}</div>`;
   }
 
-  if (page === 'admin-wd') {
-    const wds = await api('GET', '/api/withdrawals');
-    const rows = wds.map(w=>`<tr><td style="color:var(--muted)">${w.created_at?.split('T')[0]||'—'}</td><td>${w.users?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,20)}</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red)">↳ ${w.reason}</div>`:''}</td><td>${w.status==='pending'?`<div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprW(${w.id})">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW(${w.id})">✕ Rejeter</button></div>`:'<span style="color:var(--muted)">—</span>'}</td></tr>`).join('');
+  if(page==='admin-wd'){
+    const wds=await api('GET','/api/withdrawals');
+    const rows=wds.map(w=>`<tr><td style="color:var(--muted)">${fmt(w.created_at)}</td><td>${w.users?.name||'?'}</td><td style="font-weight:900;color:var(--yellow)">$${w.amount}</td><td><span class="badge bp2">${w.crypto}</span></td><td><code style="font-size:11px;color:var(--muted)">${w.address.substring(0,20)}</code></td><td>${sbadge(w.status)}${w.status==='rejected'&&w.reason?`<div style="font-size:11px;color:var(--red)">↳ ${w.reason}</div>`:''}</td><td>${w.status==='pending'?`<div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprW(${w.id})">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW(${w.id})">✕ Rejeter</button></div>`:'<span style="color:var(--muted)">—</span>'}</td></tr>`).join('');
     return `<div class="card"><div class="card-title" style="margin-bottom:16px">Demandes de retraits</div>${rows?'<div class="tw"><table><thead><tr><th>Date</th><th>Affilié</th><th>Montant</th><th>Crypto</th><th>Adresse</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>'}</div>`;
   }
 
-  if (page === 'admin-offers') {
-    const offers = await api('GET', '/api/offers');
-    const cards = offers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right">${gtext('$'+o.commission)}<div style="margin-top:8px">${sbadge(o.active?'active':'disabled')}</div></div></div>`).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter offre</button></div>${offers.length===0?'<div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre. Ajoutez votre première offre.</p></div>':cards}</div>`;
+  if(page==='admin-offers'){
+    const offers=await api('GET','/api/offers');
+    const cards=offers.map(o=>`<div class="offer-card"><div style="flex:1"><div style="font-size:14px;font-weight:700;margin-bottom:4px">${o.name}</div><div style="font-size:12px;color:var(--muted)">${o.description||''}</div><div style="font-size:11px;color:var(--muted);margin-top:5px">🔗 ${o.url}</div></div><div style="text-align:right">${gtext('$'+o.commission)}<div style="margin-top:8px">${sbadge(o.active?'active':'disabled')}</div></div></div>`).join('');
+    return `<div class="card"><div class="card-header"><div class="card-title">Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter offre</button></div>${offers.length===0?'<div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre.</p></div>':cards}</div>`;
   }
 
-  if (page === 'admin-links') {
-    const links = await api('GET', '/api/links');
-    const origin = window.location.origin;
-    const rows = links.map(l=>`<tr><td><code style="font-family:monospace;font-size:12px;color:var(--yellow)">${origin}/go/${l.id}</code></td><td>${l.user_id?.substring(0,8)||'?'}...</td><td>${l.offers?.name||'?'}</td><td style="font-weight:600">${l.clicks}</td><td>${sbadge(l.active?'active':'disabled')}</td><td>${l.active?`<button class="btn btn-red btn-sm" onclick="toggleLnk('${l.id}',false)">🚫 Désactiver</button>`:`<button class="btn btn-grn btn-sm" onclick="toggleLnk('${l.id}',true)">✅ Réactiver</button>`}</td></tr>`).join('');
+  if(page==='admin-links'){
+    const links=await api('GET','/api/links');
+    const origin=window.location.origin;
+    const rows=links.map(l=>`<tr><td><code style="font-family:monospace;font-size:12px;color:var(--yellow)">${origin}/go/${l.id}</code></td><td><div style="display:flex;align-items:center;gap:7px"><div class="avatar" style="width:24px;height:24px;font-size:11px">${(l.users?.name||'?')[0]}</div><span style="font-weight:600">${l.users?.name||'?'}</span></div></td><td>${l.offers?.name||'?'}</td><td style="font-weight:600">${l.clicks}</td><td>${sbadge(l.active?'active':'disabled')}</td><td>${l.active?`<button class="btn btn-red btn-sm" onclick="toggleLnk('${l.id}',false)">🚫 Désactiver</button>`:`<button class="btn btn-grn btn-sm" onclick="toggleLnk('${l.id}',true)">✅ Réactiver</button>`}</td></tr>`).join('');
     return `<div class="card"><div class="card-header"><div class="card-title">Liens & Anti-fraude</div></div>${rows?'<div class="tw"><table><thead><tr><th>Lien</th><th>Affilié</th><th>Offre</th><th>Clics</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔗</div><p>Aucun lien généré</p></div>'}</div>`;
   }
   return '';
 }
 
-// Actions
-async function genLink(offerId) {
-  try { await api('POST','/api/links',{offer_id:offerId}); toast('Lien généré !','s'); goPage('aff-links'); }
-  catch(e) { toast(e.message,'e'); }
+// ── ACTIONS ──
+async function genLink(offerId){
+  try{await api('POST','/api/links',{offer_id:offerId});toast('Lien généré !','s');goPage('aff-links');}
+  catch(e){toast(e.message,'e');}
 }
-
-function cpLink(id, btn) {
+function cpLink(id,btn){
   navigator.clipboard?.writeText(window.location.origin+'/go/'+id);
-  btn.textContent='✅'; toast('Lien copié !','s');
+  btn.textContent='✅';toast('Lien copié !','s');
   setTimeout(()=>btn.textContent='📋',2000);
 }
-
-function pickCrypto(c,el) {
+function pickCrypto(c,el){
   selCrypto=c;
   document.querySelectorAll('.crypto-opt').forEach(e=>e.classList.remove('sel'));
   el.classList.add('sel');
 }
-
-async function doWd() {
+async function doWd(){
   const amt=parseFloat(document.getElementById('wd-amt').value);
   const addr=document.getElementById('wd-addr').value.trim();
-  if(!amt||amt<30){toast('Minimum $30','e');return;}
+  if(!amt||amt<10){toast('Minimum $10','e');return;}
   if(!selCrypto){toast('Choisissez une crypto','e');return;}
   if(!addr){toast('Entrez votre adresse','e');return;}
-  try { await api('POST','/api/withdrawals',{amount:amt,crypto:selCrypto,address:addr}); toast('Demande envoyée !','s'); selCrypto=null; goPage('aff-pay'); }
+  try{await api('POST','/api/withdrawals',{amount:amt,crypto:selCrypto,address:addr});toast('Demande envoyée !','s');selCrypto=null;goPage('aff-pay');}
   catch(e){toast(e.message,'e');}
 }
-
-async function apprC(id) {
-  try { await api('PATCH',`/api/conversions/${id}/approve`); toast('Conversion approuvée ✓','s'); goPage(curPage); }
+async function apprC(id){
+  try{await api('PATCH',`/api/conversions/${id}/approve`);toast('Conversion approuvée ✓','s');goPage(curPage);}
   catch(e){toast(e.message,'e');}
 }
-
-async function rejtC(id) {
-  try { await api('PATCH',`/api/conversions/${id}/reject`); toast('Conversion rejetée','e'); goPage(curPage); }
+async function rejtC(id){
+  try{await api('PATCH',`/api/conversions/${id}/reject`);toast('Conversion rejetée','e');goPage(curPage);}
   catch(e){toast(e.message,'e');}
 }
-
-async function apprW(id) {
-  try { await api('PATCH',`/api/withdrawals/${id}/approve`); toast('Retrait marqué payé ✓','s'); goPage(curPage); }
+async function apprW(id){
+  try{await api('PATCH',`/api/withdrawals/${id}/approve`);toast('Retrait marqué payé ✓','s');goPage(curPage);}
   catch(e){toast(e.message,'e');}
 }
-
-function openRejtW(id) {
+function openRejtW(id){
   document.getElementById('m-title').textContent='Rejeter le retrait';
   document.getElementById('m-body').innerHTML='<div class="fi"><label>Raison du rejet</label><input type="text" id="rjt-reason" placeholder="ex: adresse invalide..."></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doRejtW('+id+')" style="flex:1">Confirmer</button></div>';
   document.getElementById('mo').classList.add('open');
 }
-
-async function doRejtW(id) {
+async function doRejtW(id){
   const reason=document.getElementById('rjt-reason').value.trim();
   if(!reason){toast('Indiquez une raison','e');return;}
-  try { await api('PATCH',`/api/withdrawals/${id}/reject`,{reason}); closeMo(); toast('Retrait rejeté','e'); goPage(curPage); }
+  try{await api('PATCH',`/api/withdrawals/${id}/reject`,{reason});closeMo();toast('Retrait rejeté','e');goPage(curPage);}
   catch(e){toast(e.message,'e');}
 }
-
-async function toggleLnk(id,active) {
-  try { await api('PATCH',`/api/links/${id}`,{active}); toast(active?'Lien réactivé':'Lien désactivé',active?'s':'e'); goPage(curPage); }
+async function toggleLnk(id,active){
+  try{await api('PATCH',`/api/links/${id}`,{active});toast(active?'Lien réactivé':'Lien désactivé',active?'s':'e');goPage(curPage);}
   catch(e){toast(e.message,'e');}
 }
-
-function confirmDeleteAff(id,name,email) {
+function confirmDeleteAff(id,name,email){
   document.getElementById('m-title').textContent='Supprimer le compte';
   document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--muted);margin-bottom:4px">Vous allez supprimer</div><div style="font-weight:900;font-size:18px;margin-bottom:2px">${name}</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">${email}</div><div style="font-size:12px;color:var(--red);background:rgba(255,83,112,.1);border:1px solid rgba(255,83,112,.2);border-radius:10px;padding:12px;margin-bottom:22px;text-align:left">⚠️ Action irréversible. Tous ses liens, conversions et retraits seront supprimés.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteAff('${id}')" style="flex:1">Confirmer</button></div></div>`;
   document.getElementById('mo').classList.add('open');
 }
-
-async function deleteAff(id) {
-  try { await api('DELETE',`/api/users/${id}`); closeMo(); toast('Compte supprimé','s'); goPage('admin-aff'); }
+async function deleteAff(id){
+  try{await api('DELETE',`/api/users/${id}`);closeMo();toast('Compte supprimé','s');goPage('admin-aff');}
   catch(e){toast(e.message,'e');}
 }
-
-function openAddOffer() {
+function openAddOffer(){
   document.getElementById('m-title').textContent='Nouvelle offre';
   document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l\'offre →</button>';
   document.getElementById('mo').classList.add('open');
 }
-
-async function doAddOffer() {
+async function doAddOffer(){
   const name=document.getElementById('on').value.trim();
   const url=document.getElementById('ou').value.trim();
   if(!name||!url){toast('Nom et URL requis','e');return;}
-  try { await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10}); closeMo(); toast('Offre créée !','s'); goPage('admin-offers'); }
+  try{await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10});closeMo();toast('Offre créée !','s');goPage('admin-offers');}
   catch(e){toast(e.message,'e');}
 }
-
-function filterAffConv(btn,f) {
-  document.querySelectorAll('#conv-tabs .tab').forEach(t=>t.classList.remove('active'));
-  btn.classList.add('active');
+async function changePass(){
+  const cur=document.getElementById('cp-cur').value;
+  const nw=document.getElementById('cp-new').value;
+  const conf=document.getElementById('cp-conf').value;
+  if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}
+  if(nw!==conf){toast('Les mots de passe ne correspondent pas','e');return;}
+  if(nw.length<6){toast('Minimum 6 caractères','e');return;}
+  try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}
+  catch(e){toast(e.message,'e');}
 }
-
+function filterConv(btn,f,convs){
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const list=f==='all'?convs:convs.filter(c=>c.status===f);
+  const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
+  document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Lien</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';
+}
 function closeMo(){document.getElementById('mo').classList.remove('open');}
 document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
-
 var toastTimer;
-function toast(msg,type) {
+function toast(msg,type){
   const el=document.getElementById('toast');
   const ic={s:'✅',e:'❌',i:'💡'};
   el.innerHTML=(ic[type]||'💡')+' '+msg;
@@ -534,9 +653,7 @@ function toast(msg,type) {
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.className='',3200);
 }
-
-// Auto-login si token présent
-if (TOKEN && ME) startApp();
+if(TOKEN&&ME)startApp();
 </script>
 </body>
 </html>
