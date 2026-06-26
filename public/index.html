@@ -786,12 +786,101 @@ function confirmDeleteWd(id){document.getElementById('m-title').textContent='Sup
 async function deleteWd(id){try{await api('DELETE',`/api/withdrawals/${id}`);closeMo();toast('Retrait supprimé','s');goPage('admin-wd');}catch(e){toast(e.message,'e');}}
 function openEditOffer(id,name,desc,url,comm,cat,img){
   document.getElementById('m-title').textContent='Modifier l\'offre';
-  document.getElementById('m-body').innerHTML=`<div class="fi"><label>Nom</label><input type="text" id="eo-name" value="${name}"></div><div class="fi"><label>Description</label><input type="text" id="eo-desc" value="${desc}"></div><div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="${url}"></div><div class="fi"><label>Image (URL)</label><input type="text" id="eo-img" value="${img||''}" placeholder="https://exemple.com/image.jpg"></div><div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="${comm}"></div><div class="fi"><label>Catégorie</label><select id="eo-cat" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino" ${cat==='casino'?'selected':''}>🎰 Casino</option><option value="dating" ${cat==='dating'?'selected':''}>💕 Dating</option><option value="ia" ${cat==='ia'?'selected':''}>🤖 IA</option><option value="autre" ${cat==='autre'||!cat?'selected':''}>📦 Autre</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditOffer(${id})" style="flex:1;justify-content:center">Sauvegarder →</button></div>`;
+  document.getElementById('m-body').innerHTML=`
+    <div class="fi"><label>Nom</label><input type="text" id="eo-name" value="${name}"></div>
+    <div class="fi"><label>Description</label><input type="text" id="eo-desc" value="${desc}"></div>
+    <div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="${url}"></div>
+    <div class="fi">
+      <label>Image de l'offre</label>
+      <div style="border:2px dashed #333;border-radius:12px;padding:20px;text-align:center;cursor:pointer;transition:all .2s${img?';border-color:var(--yellow)':''}" id="img-zone-edit" onclick="document.getElementById('img-file-edit').click()">
+        <input type="file" id="img-file-edit" accept="image/*" style="display:none" onchange="previewImg(this,'edit')">
+        <div id="img-prev-edit" style="${img?'':'display:none;'}margin-bottom:10px"><img id="img-prev-img-edit" src="${img||''}" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div>
+        <div id="img-ph-edit" style="${img?'display:none':''}"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour changer l'image</div><div style="font-size:11px;color:#666;margin-top:4px">JPG, PNG, WEBP — max 5MB</div></div>
+      </div>
+    </div>
+    <div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="${comm}"></div>
+    <div class="fi"><label>Catégorie</label><select id="eo-cat" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+      <option value="casino" ${cat==='casino'?'selected':''}>🎰 Casino</option>
+      <option value="dating" ${cat==='dating'?'selected':''}>💕 Dating</option>
+      <option value="ia" ${cat==='ia'?'selected':''}>🤖 IA</option>
+      <option value="autre" ${cat==='autre'||!cat?'selected':''}>📦 Autre</option>
+    </select></div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>
+      <button class="btn btn-grad" onclick="doEditOffer(${id},'${img||''}')" style="flex:1;justify-content:center">Sauvegarder →</button>
+    </div>`;
   document.getElementById('mo').classList.add('open');
 }
-async function doEditOffer(id){const name=document.getElementById('eo-name').value.trim();const url=document.getElementById('eo-url').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('PATCH',`/api/offers/${id}`,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value,image_url:document.getElementById('eo-img').value.trim()||null});closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
-function openAddOffer(){document.getElementById('m-title').textContent='Nouvelle offre';document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><div class="fi"><label>Catégorie</label><select id="ocat" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="ia">🤖 IA</option><option value="autre" selected>📦 Autre</option></select></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l\'offre →</button>';document.getElementById('mo').classList.add('open');}
-async function doAddOffer(){const name=document.getElementById('on').value.trim();const url=document.getElementById('ou').value.trim();if(!name||!url){toast('Nom et URL requis','e');return;}try{await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value,image_url:document.getElementById('oimg').value.trim()||null});closeMo();toast('Offre créée !','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
+async function doEditOffer(id,existingImg){
+  const name=document.getElementById('eo-name').value.trim();
+  const url=document.getElementById('eo-url').value.trim();
+  if(!name||!url){toast('Nom et URL requis','e');return;}
+  try{
+    let imgUrl=existingImg||null;
+    const fileInput=document.getElementById('img-file-edit');
+    if(fileInput.files[0]){toast('Upload de l\'image...','i');imgUrl=await uploadImg(fileInput);}
+    await api('PATCH',`/api/offers/${id}`,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value,image_url:imgUrl});
+    closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');
+  }catch(e){toast(e.message,'e');}
+}
+function openAddOffer(){
+  document.getElementById('m-title').textContent='Nouvelle offre';
+  document.getElementById('m-body').innerHTML=`
+    <div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VPN Premium"></div>
+    <div class="fi"><label>Description</label><input type="text" id="od" placeholder="Ex: Service VPN haut débit 🌍"></div>
+    <div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://..."></div>
+    <div class="fi">
+      <label>Image de l'offre</label>
+      <div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all .2s" id="img-zone-add" onclick="document.getElementById('img-file-add').click()">
+        <input type="file" id="img-file-add" accept="image/*" style="display:none" onchange="previewImg(this,'add')">
+        <div id="img-prev-add" style="display:none;margin-bottom:10px"><img id="img-prev-img-add" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div>
+        <div id="img-ph-add"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer une image</div><div style="font-size:11px;color:#666;margin-top:4px">JPG, PNG, WEBP — max 5MB</div></div>
+      </div>
+    </div>
+    <div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div>
+    <div class="fi"><label>Catégorie</label><select id="ocat" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+      <option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="ia">🤖 IA</option><option value="autre" selected>📦 Autre</option>
+    </select></div>
+    <button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer l'offre →</button>`;
+  document.getElementById('mo').classList.add('open');
+}
+function previewImg(input, key){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    document.getElementById('img-prev-'+key).style.display='block';
+    document.getElementById('img-prev-img-'+key).src=e.target.result;
+    document.getElementById('img-ph-'+key).style.display='none';
+    document.getElementById('img-zone-'+key).style.borderColor='var(--yellow)';
+  };
+  reader.readAsDataURL(file);
+}
+async function uploadImg(fileInput){
+  const file=fileInput.files[0]; if(!file)return null;
+  return new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onload=async e=>{
+      const base64=e.target.result.split(',')[1];
+      try{
+        const r=await api('POST','/api/upload-image',{data:base64,fileName:file.name,mimeType:file.type});
+        resolve(r.url);
+      }catch(err){reject(err);}
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function doAddOffer(){
+  const name=document.getElementById('on').value.trim();
+  const url=document.getElementById('ou').value.trim();
+  if(!name||!url){toast('Nom et URL requis','e');return;}
+  try{
+    let imgUrl=null;
+    const fileInput=document.getElementById('img-file-add');
+    if(fileInput.files[0]){toast('Upload de l\'image...','i');imgUrl=await uploadImg(fileInput);}
+    await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value,image_url:imgUrl});
+    closeMo();toast('Offre créée !','s');goPage('admin-offers');
+  }catch(e){toast(e.message,'e');}
+}
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Les mots de passe ne correspondent pas','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
 function filterConv(btn,f,convs){document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');const list=f==='all'?convs:convs.filter(c=>c.status===f);const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';}
 function sortTop(by){
