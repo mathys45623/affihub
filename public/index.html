@@ -514,7 +514,8 @@ async function renderPage(page){
       <div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">${stats.totalClicks}</div></div>
       <div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">${stats.totalConversions}</div><div class="stat-sub">${stats.pendingConversions} en attente</div></div>
       <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains distribués</div><div class="stat-val gg">$${stats.totalGains}</div></div>
-      <div class="stat-card"><div class="stat-icon">💸</div><div class="stat-label">Retraits pending</div><div class="stat-val ${stats.pendingWithdrawals>0?'gy':''}">${stats.pendingWithdrawals}</div></div>
+      <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Retraits en attente</div><div class="stat-val ${stats.pendingWithdrawals>0?'gy':''}">${stats.pendingWithdrawals}</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Retraits payés</div><div class="stat-val gg">${stats.paidWithdrawals}</div><div class="stat-sub">$${stats.totalWithdrawals} envoyés</div></div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
       <div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">⏳ À valider</div><button class="btn btn-gst btn-sm" onclick="goPage('admin-conv')">Voir tout →</button></div>${pending.length===0?'<div class="empty" style="padding:20px"><p>✅ Tout est à jour !</p></div>':prows}</div>
