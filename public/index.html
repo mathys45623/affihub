@@ -354,17 +354,20 @@ async function renderPage(page){
   try{ME=await api('GET','/api/me');localStorage.setItem('affihub_user',JSON.stringify(ME));}catch(e){}
 
   if(page==='aff-dash'){
-    const [convs,links]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/links')]);
+    const [convs,links,ref]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/links'),api('GET','/api/referrals')]);
     const approved=convs.filter(c=>c.status==='approved');
     const pending=convs.filter(c=>c.status==='pending');
-    const totalGains=approved.reduce((s,c)=>s+c.amount,0);
+    const convGains=approved.reduce((s,c)=>s+c.amount,0);
+    const refGains=ref.totalEarned||0;
+    const totalGains=convGains+refGains;
     const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
     const rows=convs.slice(0,5).map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td style="color:var(--yellow);font-weight:700">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');
     return `<div class="bal-hero"><div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$${ME.balance||0}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Retrait minimum : $10</div></div><button class="btn btn-grad" onclick="goPage('aff-pay')" style="font-size:13px;padding:11px 22px">💸 Retirer</button></div>
     <div class="stats-grid">
       <div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics total</div><div class="stat-val gy">${totalClicks}</div><div class="stat-sub">sur ${links.length} lien(s)</div></div>
       <div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">${convs.length}</div><div class="stat-sub">${approved.length} approuvées · ${pending.length} en attente</div></div>
-      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gg">$${totalGains}</div><div class="stat-sub">depuis le début</div></div>
+      <div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Gains en attente</div><div class="stat-val" style="color:var(--yellow)">$${pending.reduce((s,c)=>s+c.amount,0)}</div><div class="stat-sub">en cours de validation</div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gg">$${totalGains}</div><div class="stat-sub">dont $${refGains.toFixed(2)} parrainage</div></div>
     </div>
     <div class="card"><div class="card-header"><div class="card-title">Dernières conversions</div><button class="btn btn-gst btn-sm" onclick="goPage('aff-conv')">Voir tout →</button></div>
     ${convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+rows+'</tbody></table></div>'}</div>`;
