@@ -548,7 +548,7 @@ async function renderPage(page){
     const ranking=await api('GET','/api/ranking');
     window._topRanking=ranking;
     const mkRows=(sort)=>{
-      const sorted=[...ranking].sort((a,b)=>sort==='gains'?b.totalGains-a.totalGains:sort==='conv'?b.totalConversions-a.totalConversions:b.totalClicks-a.totalClicks);
+      const sorted=[...ranking].sort((a,b)=>sort==='gains'?b.totalGains-a.totalGains:sort==='conv'?b.totalConversions-a.totalConversions:sort==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
       if(sorted.length===0)return '<tr><td colspan="6" style="text-align:center;padding:30px;color:#777">Aucun affilié dans le classement</td></tr>';
       return sorted.map((u,i)=>{
         const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
@@ -561,6 +561,7 @@ async function renderPage(page){
         <button class="btn btn-grad btn-sm" id="sort-gains" onclick="doSortTop('gains')">💰 Par gains</button>
         <button class="btn btn-gst btn-sm" id="sort-conv" onclick="doSortTop('conv')">🔁 Par conversions</button>
         <button class="btn btn-gst btn-sm" id="sort-clicks" onclick="doSortTop('clicks')">🖱️ Par clics</button>
+        <button class="btn btn-gst btn-sm" id="sort-date" onclick="doSortTop('date')">📅 Par ancienneté</button>
       </div>
     </div>
     <div class="card"><div class="tw"><table><thead><tr><th style="text-align:center">🏅 Rang</th><th>👤 Affilié</th><th>📅 Inscrit le</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">🔁 Conversions</th><th style="text-align:center">💰 Gains totaux</th></tr></thead><tbody id="top-tbody">${mkRows('gains')}</tbody></table></div></div>`;
@@ -974,12 +975,12 @@ async function doAddOffer(){
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Les mots de passe ne correspondent pas','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
 function filterConv(btn,f,convs){document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');const list=f==='all'?convs:convs.filter(c=>c.status===f);const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';}
 function doSortTop(by){
-  ['gains','conv','clicks'].forEach(k=>{
+  ['gains','conv','clicks','date'].forEach(k=>{
     const el=document.getElementById('sort-'+k);
     if(el)el.className='btn btn-'+(k===by?'grad':'gst')+' btn-sm';
   });
   const ranking=window._topRanking||[];
-  const sorted=[...ranking].sort((a,b)=>by==='gains'?b.totalGains-a.totalGains:by==='conv'?b.totalConversions-a.totalConversions:b.totalClicks-a.totalClicks);
+  const sorted=[...ranking].sort((a,b)=>by==='gains'?b.totalGains-a.totalGains:by==='conv'?b.totalConversions-a.totalConversions:by==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
   const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
   document.getElementById('top-tbody').innerHTML=sorted.map((u,i)=>`<tr><td style="text-align:center;font-size:18px">${getMedal(i)}</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">${u.name[0]}</div><b>${u.name}</b></div></td><td style="color:var(--muted)">${u.created_at?u.created_at.split('T')[0]:'—'}</td><td style="color:#4D9EFF;font-weight:800;text-align:center">${u.totalClicks||0}</td><td style="color:var(--yellow);font-weight:800;text-align:center">${u.totalConversions}</td><td style="color:var(--green);font-weight:800;text-align:center">$${u.totalGains}</td></tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--muted)">Aucun affilié</td></tr>';
 }
