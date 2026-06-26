@@ -269,7 +269,8 @@ function startApp() {
       {section:'GESTION',items:[
         {icon:'👥',label:'Affiliés',page:'admin-aff'},
         {icon:'🔁',label:'Conversions',page:'admin-conv'},
-        {icon:'💸',label:'Retraits',page:'admin-wd'}
+        {icon:'💸',label:'Retraits',page:'admin-wd'},
+        {icon:'🤝',label:'Parrainages',page:'admin-ref'}
       ]},
       {section:'CONFIGURATION',items:[
         {icon:'🎯',label:'Offres',page:'admin-offers'},
@@ -328,13 +329,15 @@ function buildNav(sections){
   });
 }
 
-const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-support':'Support','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-offers':'Offres','admin-links':'Liens & Anti-fraude'};
+const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-support':'Support','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-ref':'Parrainages','admin-offers':'Offres','admin-links':'Liens & Anti-fraude'};
 
 async function goPage(page){
   curPage=page;
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const nav=document.getElementById('nav-'+page);if(nav)nav.classList.add('active');
-  document.getElementById('page-title').textContent=TITLES[page]||page;
+  // For dynamic pages, use parent nav
+  if(page.startsWith('admin-ref-')) { const n=document.getElementById('nav-admin-ref'); if(n)n.classList.add('active'); }
+  document.getElementById('page-title').textContent=page.startsWith('admin-ref-')?'Détail parrainage':(TITLES[page]||page);
   document.getElementById('content').innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';
   try{const html=await renderPage(page);document.getElementById('content').innerHTML=html;}
   catch(e){document.getElementById('content').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}
@@ -584,6 +587,82 @@ async function renderPage(page){
     return `<div class="card"><div class="card-title" style="margin-bottom:16px">Demandes de retraits</div>${rows?'<div class="tw"><table><thead><tr><th>Date</th><th>Affilié</th><th>Montant</th><th>Crypto</th><th>Adresse</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>'}</div>`;
   }
 
+  if(page==='admin-ref'){
+    const affiliates=await api('GET','/api/admin/referrals');
+    if(affiliates.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🤝</div><p>Aucun parrainage pour l\'instant</p></div></div>';
+    const cards=affiliates.map(aff=>`
+      <div class="card" style="cursor:pointer;transition:border-color .2s" onclick="openRefProfile('${aff.id}')" id="ref-card-${aff.id}">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <div style="display:flex;align-items:center;gap:12px">
+            <div class="avatar" style="width:44px;height:44px;font-size:18px;flex-shrink:0">${aff.name[0]}</div>
+            <div>
+              <div style="font-size:15px;font-weight:700">${aff.name}</div>
+              <div style="font-size:12px;color:var(--muted)">${aff.email}</div>
+            </div>
+          </div>
+          <div style="display:flex;gap:20px;text-align:center">
+            <div><div style="font-size:20px;font-weight:800;color:var(--yellow)">${aff.filleules.length}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Filleuls</div></div>
+            <div><div style="font-size:20px;font-weight:800;color:var(--green)">$${aff.totalEarned.toFixed(2)}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Commissions</div></div>
+            <div style="display:flex;align-items:center"><span style="color:var(--muted);font-size:18px">→</span></div>
+          </div>
+        </div>
+      </div>`).join('');
+    return `<div style="margin-bottom:20px"><div style="font-size:13px;color:var(--muted)">Cliquez sur un affilié pour voir le détail de ses parrainages</div></div>${cards}`;
+  }
+
+  if(page.startsWith('admin-ref-')){
+    const affId=page.replace('admin-ref-','');
+    const affiliates=await api('GET','/api/admin/referrals');
+    const aff=affiliates.find(a=>a.id===affId);
+    if(!aff)return '<div class="card"><div class="empty"><p>Affilié introuvable</p></div></div>';
+    const filleuleRows=aff.filleules.map(f=>{
+      const isActive=f.referral_active!==false;
+      const earned=aff.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);
+      return `<tr>
+        <td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">${f.name[0]}</div><b>${f.name}</b></div></td>
+        <td style="color:var(--muted)">${fmt(f.created_at)}</td>
+        <td style="color:var(--green);font-weight:700">$${earned.toFixed(2)}</td>
+        <td>${isActive?'<span class="badge bg2">✅ Actif</span>':'<span class="badge br2">🚫 Arrêté</span>'}</td>
+        <td>${isActive
+          ?`<button class="btn btn-red btn-sm" onclick="toggleRef('${f.id}',false,'${affId}')">🚫 Arrêter</button>`
+          :`<button class="btn btn-grn btn-sm" onclick="toggleRef('${f.id}',true,'${affId}')">✅ Réactiver</button>`
+        }</td>
+      </tr>`;
+    }).join('');
+    const commRows=aff.commissions.map(c=>`<tr>
+      <td style="color:var(--muted)">${fmt(c.created_at)}</td>
+      <td><b>${c.users?.name||'?'}</b></td>
+      <td style="color:var(--yellow)">$${c.conversions?.amount||0}</td>
+      <td style="color:var(--green);font-weight:700">$${c.amount.toFixed(2)}</td>
+    </tr>`).join('');
+    return `
+      <button class="btn btn-gst btn-sm" onclick="goPage('admin-ref')" style="margin-bottom:20px">← Retour</button>
+      <div style="background:linear-gradient(135deg,rgba(245,200,66,.1),rgba(240,66,122,.1));border:1px solid rgba(245,200,66,.2);border-radius:16px;padding:24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px">
+        <div style="display:flex;align-items:center;gap:14px">
+          <div class="avatar" style="width:52px;height:52px;font-size:22px">${aff.name[0]}</div>
+          <div>
+            <div style="font-size:20px;font-weight:800">${aff.name}</div>
+            <div style="font-size:13px;color:var(--muted)">${aff.email}</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:24px">
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:var(--yellow)">${aff.filleules.length}</div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Filleuls</div></div>
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:var(--green)">$${aff.totalEarned.toFixed(2)}</div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Total commissions</div></div>
+          <div style="text-align:center"><div style="font-size:28px;font-weight:800;color:var(--pink)">${aff.commissions.length}</div><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Transactions</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">👥 Filleuls</div>
+        ${aff.filleules.length===0?'<div class="empty"><p>Aucun filleul</p></div>':
+        '<div class="tw"><table><thead><tr><th>Filleul</th><th>Inscrit le</th><th>Gains générés</th><th>Statut</th><th>Action</th></tr></thead><tbody>'+filleuleRows+'</tbody></table></div>'}
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:16px">💸 Historique des commissions</div>
+        ${aff.commissions.length===0?'<div class="empty"><p>Aucune commission</p></div>':
+        '<div class="tw"><table><thead><tr><th>Date</th><th>Filleul</th><th>Vente</th><th>Commission (5%)</th></tr></thead><tbody>'+commRows+'</tbody></table></div>'}
+      </div>`;
+  }
+
   if(page==='admin-offers'){
     const offers=await api('GET','/api/offers');
     const catLabel={'casino':'🎰 Casino','dating':'💕 Dating','autre':'📦 Autre'};
@@ -672,6 +751,16 @@ function confirmDeleteAff(id,name,email){
 async function deleteAff(id){
   try{await api('DELETE',`/api/users/${id}`);closeMo();toast('Compte supprimé','s');goPage('admin-aff');}
   catch(e){toast(e.message,'e');}
+}
+function openRefProfile(affId){
+  goPage('admin-ref-'+affId);
+}
+async function toggleRef(userId, active, affId){
+  try{
+    await api('PATCH',`/api/admin/referral/${userId}/toggle`,{active});
+    toast(active?'Parrainage réactivé ✅':'Parrainage arrêté 🚫', active?'s':'e');
+    goPage('admin-ref-'+affId);
+  }catch(e){toast(e.message,'e');}
 }
 function confirmDeleteWd(id){
   document.getElementById('m-title').textContent='Supprimer ce retrait';
