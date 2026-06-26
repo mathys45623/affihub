@@ -137,6 +137,13 @@ app.post('/api/offers', auth, adminOnly, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
+app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
+  const { name, description, url, commission } = req.body;
+  if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
+  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10 }).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
 app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
   const id = req.params.id;
   // Supprimer les conversions liées aux liens de cette offre
