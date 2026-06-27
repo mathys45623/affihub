@@ -188,7 +188,92 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .ref-hero::before{content:'';position:absolute;top:-30px;right:-30px;width:180px;height:180px;background:radial-gradient(circle,rgba(0,0,0,.1) 0%,transparent 70%);pointer-events:none}
 .ref-link-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:11px 14px;margin-top:14px}
 .ref-link-box code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:#000;letter-spacing:.3px}
+/* ── ANIMATIONS ── */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeInLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(245,200,66,.2)}50%{box-shadow:0 0 40px rgba(245,200,66,.5),0 0 80px rgba(240,66,122,.2)}}
+@keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
+@keyframes gradient-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes particle-float{0%{transform:translateY(100vh) rotate(0deg);opacity:0}10%{opacity:.6}90%{opacity:.4}100%{transform:translateY(-100px) rotate(720deg);opacity:0}}
+@keyframes border-glow{0%,100%{border-color:rgba(245,200,66,.2)}50%{border-color:rgba(240,66,122,.4)}}
+
+/* Page content animation */
+.content > *{animation:fadeInUp .4s ease both}
+.content > *:nth-child(1){animation-delay:.05s}
+.content > *:nth-child(2){animation-delay:.1s}
+.content > *:nth-child(3){animation-delay:.15s}
+.content > *:nth-child(4){animation-delay:.2s}
+.content > *:nth-child(5){animation-delay:.25s}
+
+/* Stats cards hover glow */
+.stat-card{transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+.stat-card:hover{border-color:rgba(245,200,66,.4);transform:translateY(-4px) scale(1.02);box-shadow:0 12px 40px rgba(245,200,66,.12),0 4px 16px rgba(0,0,0,.3)}
+.stat-card:hover .stat-icon{animation:float 2s ease-in-out infinite}
+
+/* Button effects */
+.btn-grad{position:relative;overflow:hidden;background-size:200% auto;transition:all .3s ease}
+.btn-grad::after{content:'';position:absolute;top:-50%;left:-60%;width:60px;height:200%;background:rgba(255,255,255,.15);transform:skewX(-20deg);transition:left .5s ease}
+.btn-grad:hover::after{left:130%}
+.btn-grad:hover{background-position:right center;box-shadow:0 6px 24px rgba(240,66,122,.5);transform:translateY(-2px)}
+.btn-grad:active{transform:translateY(0) scale(.97)}
+
+/* Nav item active pulse */
+.nav-item.active{animation:border-glow 3s ease-in-out infinite}
+.nav-item{transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.nav-item:hover{transform:translateX(4px)}
+
+/* Logo pulse */
+.logo-icon{animation:pulse-glow 4s ease-in-out infinite}
+
+/* Auth box entrance */
+.auth-box{animation:scaleIn .5s cubic-bezier(.34,1.56,.64,1)}
+
+/* Card hover */
+.card{transition:all .25s ease}
+.offer-card{transition:all .25s cubic-bezier(.34,1.56,.64,1)}
+.offer-card:hover{transform:translateY(-3px) scale(1.01)}
+
+/* Balance hero gradient animation */
+.bal-hero{background-size:200% 200%;animation:gradient-shift 6s ease infinite}
+.ref-hero{background-size:200% 200%;animation:gradient-shift 6s ease infinite}
+.support-hero{background-size:200% 200%;animation:gradient-shift 6s ease infinite}
+
+/* Role badge shimmer */
+.role-badge{background-size:200% auto;animation:gradient-shift 3s ease infinite}
+
+/* Avatar hover */
+.avatar{transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.avatar:hover{transform:scale(1.1) rotate(5deg)}
+
+/* Spinner improved */
+.spinner{border-top-color:var(--yellow);border-right-color:var(--pink)}
+
+/* Particles canvas */
+#particles-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.4}
+.shell,.content,#auth-screen > .auth-box{position:relative;z-index:1}
+
+/* Modal animation */
+.mo.open .modal{animation:scaleIn .3s cubic-bezier(.34,1.56,.64,1)}
+
+/* Toast slide */
+#toast.show{animation:fadeInUp .35s cubic-bezier(.34,1.56,.64,1) forwards}
+
+/* Table rows */
+tbody tr{transition:all .15s ease}
+tbody tr:hover td{background:rgba(245,200,66,.04);transform:translateX(2px)}
+
+/* Glow on inputs focus */
+.fi input:focus,.fi select:focus,.fg input:focus{transition:all .3s ease;box-shadow:0 0 0 3px rgba(245,200,66,.15),0 0 20px rgba(245,200,66,.1)}
+
+/* Crypto options */
+.crypto-opt{transition:all .25s cubic-bezier(.34,1.56,.64,1)}
+.crypto-opt:hover{transform:translateY(-3px) scale(1.05)}
+.crypto-opt.sel{transform:translateY(-3px) scale(1.05);animation:border-glow 2s ease-in-out infinite}
 </style>
+
+<canvas id="particles-canvas"></canvas>
 
 <div id="auth-screen">
   <div class="auth-box">
@@ -1219,6 +1304,31 @@ const LOGO_URL='https://rhrhtqmgqwkdcrcglkys.supabase.co/storage/v1/object/publi
 const urlParams=new URLSearchParams(window.location.search);
 const refCode=urlParams.get('ref');
 if(refCode){switchTab('register');setTimeout(()=>{const refInput=document.getElementById('r-ref');if(refInput){refInput.value=refCode;refInput.style.borderColor='var(--yellow)';}},100);}
+
+// ── PARTICLES ──
+(function(){
+  const canvas=document.getElementById('particles-canvas');
+  const ctx=canvas.getContext('2d');
+  let particles=[];
+  function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  function createParticle(){
+    return{x:Math.random()*canvas.width,y:canvas.height+10,size:Math.random()*2.5+.5,speedY:Math.random()*1.2+.4,speedX:(Math.random()-.5)*.6,opacity:Math.random()*.4+.1,color:Math.random()>.5?'245,200,66':'240,66,122',rotation:Math.random()*360,rotSpeed:(Math.random()-.5)*2};
+  }
+  for(let i=0;i<35;i++){const p=createParticle();p.y=Math.random()*canvas.height;particles.push(p);}
+  function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    if(particles.length<50&&Math.random()<.04)particles.push(createParticle());
+    particles=particles.filter(p=>{
+      p.y-=p.speedY;p.x+=p.speedX;p.rotation+=p.rotSpeed;
+      ctx.save();ctx.globalAlpha=p.opacity;ctx.translate(p.x,p.y);ctx.rotate(p.rotation*Math.PI/180);
+      ctx.fillStyle=`rgba(${p.color},1)`;ctx.beginPath();ctx.arc(0,0,p.size,0,Math.PI*2);ctx.fill();
+      ctx.restore();return p.y>-20;
+    });
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
 </script>
 </body>
 </html>
