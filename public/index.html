@@ -515,7 +515,8 @@ function confirmDeleteConv(id,amount,userName){
   </div>`;
   document.getElementById('mo').classList.add('open');
 }
-async function deleteConv(id){try{await api('DELETE',`/api/conversions/${id}`);closeMo();toast('Conversion supprimée','s');goPage('admin-conv');}catch(e){toast(e.message,'e');}}try{await api('POST','/api/links',{offer_id:offerId});toast('Lien généré !','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
+async function deleteConv(id){try{await api('DELETE',`/api/conversions/${id}`);closeMo();toast('Conversion supprimée','s');goPage('admin-conv');}catch(e){toast(e.message,'e');}}
+async function genLink(offerId){try{await api('POST','/api/links',{offer_id:offerId});toast('Lien généré !','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
 async function regenLink(linkId,offerId){document.getElementById('m-title').textContent='Regénérer le lien';document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔄</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous regénérer ce lien ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doRegenLink('${linkId}',${offerId})" style="flex:1">Regénérer</button></div></div>`;document.getElementById('mo').classList.add('open');}
 async function doRegenLink(linkId,offerId){try{await api('DELETE',`/api/links/${linkId}`);await api('POST','/api/links',{offer_id:offerId});closeMo();toast('Lien regénéré ✓','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
 function cpLink(id,btn){navigator.clipboard?.writeText(window.location.origin+'/go/'+id);btn.textContent='✅';toast('Lien copié !','s');setTimeout(()=>btn.textContent='📋',2000);}
