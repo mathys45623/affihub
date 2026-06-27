@@ -358,8 +358,7 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .tab.active{
   box-shadow:0 0 20px rgba(240,66,122,.3);
 }
-</style>
-@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+/* ── ANIMATIONS ── */from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeInLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
 @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
@@ -441,8 +440,104 @@ tbody tr:hover td{background:rgba(245,200,66,.04);transform:translateX(2px)}
 .crypto-opt{transition:all .25s cubic-bezier(.34,1.56,.64,1)}
 .crypto-opt:hover{transform:translateY(-3px) scale(1.05)}
 .crypto-opt.sel{transform:translateY(-3px) scale(1.05);animation:border-glow 2s ease-in-out infinite}
-</style>
+/* ── ANIMATIONS ── */
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes scaleIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
+@keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(245,200,66,.2)}50%{box-shadow:0 0 40px rgba(245,200,66,.5),0 0 80px rgba(240,66,122,.2)}}
+@keyframes gradient-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes border-glow{0%,100%{border-color:rgba(245,200,66,.2)}50%{border-color:rgba(240,66,122,.4)}}
+@keyframes aurora{0%,100%{background-position:0% 50%}25%{background-position:50% 100%}50%{background-position:100% 50%}75%{background-position:50% 0%}}
+@keyframes ripple{0%{transform:scale(0);opacity:.6}100%{transform:scale(4);opacity:0}}
+@keyframes card-shine{0%{left:-100%}100%{left:200%}}
+@keyframes neon-pulse{0%,100%{filter:drop-shadow(0 0 8px rgba(245,200,66,.6))}50%{filter:drop-shadow(0 0 16px rgba(240,66,122,.8))}}
 
+/* Page entrance animations */
+.content>*{animation:fadeInUp .4s ease both}
+.content>*:nth-child(1){animation-delay:.05s}
+.content>*:nth-child(2){animation-delay:.1s}
+.content>*:nth-child(3){animation-delay:.15s}
+.content>*:nth-child(4){animation-delay:.2s}
+.content>*:nth-child(5){animation-delay:.25s}
+
+/* Card glassmorphism */
+.card{backdrop-filter:blur(10px);background:rgba(17,17,17,.8)!important;position:relative;overflow:hidden}
+.card::after{content:'';position:absolute;top:-50%;left:-100%;width:60%;height:200%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);transform:skewX(-20deg);animation:card-shine 8s ease-in-out infinite;pointer-events:none}
+
+/* Stat cards */
+.stat-card{transition:all .3s cubic-bezier(.34,1.56,.64,1)}
+.stat-card:hover{border-color:rgba(245,200,66,.4)!important;transform:translateY(-4px) scale(1.02);box-shadow:0 0 30px rgba(245,200,66,.12),0 12px 40px rgba(0,0,0,.4)!important}
+.stat-card:hover .stat-icon{animation:float 2s ease-in-out infinite}
+.stat-val.gy{filter:drop-shadow(0 0 8px rgba(245,200,66,.4))}
+.stat-val.gg{filter:drop-shadow(0 0 8px rgba(0,214,143,.4))}
+
+/* Logo pulse */
+.logo-icon{animation:pulse-glow 4s ease-in-out infinite}
+
+/* Auth box */
+.auth-box{animation:scaleIn .5s cubic-bezier(.34,1.56,.64,1)}
+
+/* Auth background aurora */
+#auth-screen{background-size:400% 400%!important;animation:aurora 12s ease infinite!important}
+
+/* Balance hero */
+.bal-hero{background-size:200% 200%;animation:gradient-shift 6s ease infinite}
+.ref-hero{background-size:200% 200%;animation:gradient-shift 6s ease infinite}
+.support-hero{background-size:200% 200%;animation:gradient-shift 6s ease infinite}
+.bal-amount{animation:float 4s ease-in-out infinite}
+
+/* Role badge */
+.role-badge{background-size:200% auto;animation:gradient-shift 3s ease infinite;box-shadow:0 0 20px rgba(245,200,66,.3),0 0 40px rgba(240,66,122,.15)!important}
+
+/* Buttons */
+.btn-grad{position:relative;overflow:hidden;transition:all .3s ease}
+.btn-grad::after{content:'';position:absolute;top:-50%;left:-60%;width:60px;height:200%;background:rgba(255,255,255,.15);transform:skewX(-20deg);transition:left .5s ease;pointer-events:none}
+.btn-grad:hover::after{left:130%}
+.btn-grad:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(240,66,122,.5)!important}
+.btn-grad:active{transform:translateY(0) scale(.97)}
+.btn-grad .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.3);transform:scale(0);animation:ripple .6s linear;pointer-events:none}
+
+/* Nav */
+.nav-item{transition:all .2s cubic-bezier(.34,1.56,.64,1)}
+.nav-item:hover{transform:translateX(4px)}
+.nav-item.active{box-shadow:inset 3px 0 0 var(--yellow),0 0 20px rgba(245,200,66,.06)}
+
+/* Avatar */
+.avatar{transition:all .2s cubic-bezier(.34,1.56,.64,1);box-shadow:0 0 20px rgba(240,66,122,.3)!important}
+.avatar:hover{transform:scale(1.1) rotate(5deg)}
+
+/* Topbar glass */
+.topbar{backdrop-filter:blur(20px) saturate(200%)}
+
+/* Offer cards */
+.offer-card{transition:all .25s cubic-bezier(.34,1.56,.64,1)}
+.offer-card:hover{transform:translateY(-3px) scale(1.01)}
+
+/* Crypto */
+.crypto-opt{transition:all .25s cubic-bezier(.34,1.56,.64,1)}
+.crypto-opt:hover{transform:translateY(-3px) scale(1.05)}
+.crypto-opt.sel{transform:translateY(-3px) scale(1.05);animation:border-glow 2s ease-in-out infinite}
+
+/* Modal */
+.mo.open .modal{animation:scaleIn .3s cubic-bezier(.34,1.56,.64,1)}
+.modal{box-shadow:0 0 40px rgba(245,200,66,.08),0 20px 60px rgba(0,0,0,.6)!important}
+
+/* Table hover */
+tbody tr{transition:all .15s ease}
+
+/* Particles */
+#particles-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.35}
+.shell,.content{position:relative;z-index:1}
+
+/* Scrollbar neon */
+::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(245,200,66,.5),rgba(240,66,122,.5))}
+
+/* Spinner */
+.spinner{border-top-color:var(--yellow);border-right-color:var(--pink);box-shadow:0 0 10px rgba(245,200,66,.3)}
+
+</style>
+</head>
+<body>
 <canvas id="particles-canvas"></canvas>
 
 <div id="auth-screen">
