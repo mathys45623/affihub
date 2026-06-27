@@ -462,7 +462,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04);transform:translateX(2px)}
 
 /* Card glassmorphism */
 .card{backdrop-filter:blur(10px);background:rgba(17,17,17,.8)!important;position:relative;overflow:hidden}
-.card::after{content:'';position:absolute;top:-50%;left:-100%;width:60%;height:200%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);transform:skewX(-20deg);animation:card-shine 8s ease-in-out infinite;pointer-events:none}
+
 
 /* Stat cards */
 .stat-card{transition:all .3s cubic-bezier(.34,1.56,.64,1)}
@@ -1583,40 +1583,7 @@ document.addEventListener('click',function(e){
   setTimeout(()=>ripple.remove(),600);
 });
 
-// ── COUNTER ANIMATION ──
-function animateCounter(el,target,duration=1200){
-  const start=performance.now();
-  const isFloat=String(target).includes('.');
-  const startVal=0;
-  function update(now){
-    const elapsed=now-start;
-    const progress=Math.min(elapsed/duration,1);
-    const ease=1-Math.pow(1-progress,4);
-    const current=startVal+(target-startVal)*ease;
-    el.textContent=isFloat?'$'+current.toFixed(2):(target>999?Math.floor(current).toLocaleString():Math.floor(current));
-    if(progress<1)requestAnimationFrame(update);
-    else el.textContent=isFloat?'$'+target.toFixed(2):(target>999?target.toLocaleString():target);
-  }
-  requestAnimationFrame(update);
-}
 
-// Apply counter to stat values when page loads
-const _origGoPage=goPage;
-async function goPage(page){
-  await _origGoPage(page);
-  // Animate stat numbers after render
-  setTimeout(()=>{
-    document.querySelectorAll('.stat-val').forEach(el=>{
-      const text=el.textContent.trim();
-      const num=parseFloat(text.replace(/[$,]/g,''));
-      if(!isNaN(num)&&num>0&&text.length<15){
-        const isPrice=text.includes('$');
-        animateCounter(el,num,1000);
-        if(isPrice){el.dataset.prefix='$';}
-      }
-    });
-  },200);
-}
 (function(){
   const canvas=document.getElementById('particles-canvas');
   const ctx=canvas.getContext('2d');
