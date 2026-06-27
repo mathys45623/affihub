@@ -339,10 +339,18 @@ app.patch('/api/me/ranking', auth, async (req, res) => {
 
 // ── TICKETS ──
 app.get('/api/tickets', auth, async (req, res) => {
-  let query = supabase.from('tickets').select('*, users(name,email), ticket_messages(id)').order('created_at', { ascending: false });
+  let query = supabase.from('tickets').select('*, users(name,email), ticket_messages(id,read_by_admin,read_by_user,user_id)').order('created_at', { ascending: false });
   if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
   const { data } = await query;
-  res.json(data || []);
+  const isAdmin = req.user.role === 'admin';
+  const result = (data||[]).map(t => {
+    const unread = (t.ticket_messages||[]).filter(m => {
+      if(isAdmin) return !m.read_by_admin && m.user_id !== req.user.id;
+      return !m.read_by_user && m.user_id !== req.user.id;
+    }).length;
+    return { ...t, unread };
+  });
+  res.json(result);
 });
 
 app.post('/api/tickets', auth, async (req, res) => {
@@ -359,6 +367,9 @@ app.get('/api/tickets/:id', auth, async (req, res) => {
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
   if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   const { data: messages } = await supabase.from('ticket_messages').select('*, users(name,role)').eq('ticket_id', req.params.id).order('created_at', { ascending: true });
+  const isAdmin = req.user.role === 'admin';
+  const unreadIds = (messages||[]).filter(m => isAdmin ? !m.read_by_admin : !m.read_by_user).map(m => m.id);
+  if(unreadIds.length > 0) await supabase.from('ticket_messages').update(isAdmin ? { read_by_admin: true } : { read_by_user: true }).in('id', unreadIds);
   res.json({ ...ticket, messages: messages || [] });
 });
 
