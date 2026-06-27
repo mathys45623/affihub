@@ -598,7 +598,7 @@ async function renderPage(page){
         </div>
       </div>`;
     }).join('');
-    return `<button class="btn btn-gst btn-sm" onclick="goPage('aff-tickets')" style="margin-bottom:20px">← Retour</button>
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px"><button class="btn btn-gst btn-sm" onclick="goPage('aff-tickets')">← Retour</button>${ticket.status==='open'?'<button class="btn btn-red btn-sm" onclick="closeMyTicket('+ticket.id+')">🔴 Fermer mon ticket</button>':''}</div>
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between">
         <div><div style="font-size:16px;font-weight:800">Ticket #${ticket.id} — ${reasons[ticket.reason]||ticket.reason}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Créé le ${fmt(ticket.created_at)}</div></div>
@@ -774,9 +774,10 @@ async function renderPage(page){
         </div>
       </div>`;
     }).join('');
-    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+    return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px">
       <button class="btn btn-gst btn-sm" onclick="goPage('admin-tickets')">← Retour</button>
-      ${ticket.status==='open'?`<button class="btn btn-grn btn-sm" onclick="closeTicket(${ticket.id},'resolved')">✅ Marquer résolu</button><button class="btn btn-gst btn-sm" onclick="closeTicket(${ticket.id},'closed')">🔴 Fermer</button>`:''}
+      ${ticket.status==='open'?`<button class="btn btn-grn btn-sm" onclick="closeTicket(${ticket.id},'resolved')">✅ Résolu</button><button class="btn btn-gst btn-sm" onclick="closeTicket(${ticket.id},'closed')">🔴 Fermer</button>`:''}
+      <button class="btn btn-red btn-sm" onclick="confirmDeleteTicket(${ticket.id})" style="margin-left:auto">🗑 Supprimer</button>
     </div>
     <div class="card" style="margin-bottom:16px">
       <div style="display:flex;align-items:center;justify-content:space-between">
@@ -1160,15 +1161,28 @@ async function sendReply(ticketId){
     toast('Réponse envoyée ✓','s');goPage(curPage);
   }catch(e){toast(e.message,'e');}
 }
+async function closeMyTicket(id){
+  document.getElementById('m-title').textContent='Fermer le ticket';
+  document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔴</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous fermer ce ticket ?<br>Vous ne pourrez plus envoyer de messages.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doCloseMyTicket(${id})" style="flex:1">Fermer le ticket</button></div></div>`;
+  document.getElementById('mo').classList.add('open');
+}
+async function doCloseMyTicket(id){
+  try{await api('PATCH',`/api/tickets/${id}/status`,{status:'closed'});closeMo();toast('Ticket fermé','s');goPage('aff-tickets');}
+  catch(e){toast(e.message,'e');}
+}
+function confirmDeleteTicket(id){
+  document.getElementById('m-title').textContent='Supprimer le ticket';
+  document.getElementById('m-body').innerHTML=`<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous supprimer ce ticket ?<br>Tous les messages seront perdus.</div><div style="font-size:12px;color:var(--red);background:var(--red-dim);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Action irréversible.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteTicket(${id})" style="flex:1">Supprimer</button></div></div>`;
+  document.getElementById('mo').classList.add('open');
+}
+async function deleteTicket(id){
+  try{await api('DELETE',`/api/tickets/${id}`);closeMo();toast('Ticket supprimé','s');goPage('admin-tickets');}
+  catch(e){toast(e.message,'e');}
+}
 async function closeTicket(id,status){
   try{await api('PATCH',`/api/tickets/${id}/status`,{status});toast(status==='resolved'?'Ticket résolu ✅':'Ticket fermé 🔴','s');goPage('admin-tickets');}
   catch(e){toast(e.message,'e');}
 }
-  ['gains','conv','clicks','date'].forEach(k=>{
-    const el=document.getElementById('sort-'+k);
-    if(el)el.className='btn btn-'+(k===by?'grad':'gst')+' btn-sm';
-  });
-  const ranking=window._topRanking||[];
 function doSortTop(by){
   ['gains','conv','clicks','date'].forEach(k=>{
     const el=document.getElementById('sort-'+k);
