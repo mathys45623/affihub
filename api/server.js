@@ -85,10 +85,9 @@ app.get('/go/:linkId', async (req, res) => {
 app.get('/api/postback', async (req, res) => {
   const { ref, amount } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
-  const { data: link } = await supabase.from('links').select('*, offers(commission)').eq('id', ref).single();
+  const { data: link } = await supabase.from('links').select('*').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
-  // Use offer commission (what affiliate earns) not the payout from partner
-  const convAmount = link.offers?.commission || parseFloat(amount) || 10;
+  const convAmount = parseFloat(amount) || 10;
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'pending' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
   res.json({ success: true, conversion_id: conv.id });
@@ -116,33 +115,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 
-// ── MANUAL CONVERSION ──
-app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
-  const { user_id, offer_id, amount, status } = req.body;
-  if (!user_id || !offer_id || !amount) return res.status(400).json({ error: 'Champs requis' });
-  // Find a link for this user+offer or use a fake ref
-  const { data: link } = await supabase.from('links').select('id').eq('user_id', user_id).eq('offer_id', offer_id).single();
-  const link_id = link ? link.id : 'manual';
-  const { data: conv, error } = await supabase.from('conversions').insert({ link_id, user_id, offer_id, amount: parseFloat(amount), status: status || 'pending' }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  // If approved directly, credit the balance
-  if (status === 'approved') {
-    const { data: user } = await supabase.from('users').select('balance,referred_by').eq('id', user_id).single();
-    if (user) {
-      await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
-      // Parrainage commission
-      if (user.referred_by) {
-        const commission = parseFloat((amount * 0.05).toFixed(2));
-        const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
-        if (referrer) {
-          await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-          await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: user_id, conversion_id: conv.id, amount: commission });
-        }
-      }
-    }
-  }
-  res.json(conv);
-});
+app.patch('/api/conversions/:id/reject', auth, adminOnly, async (req, res) => {
   await supabase.from('conversions').update({ status: 'rejected' }).eq('id', req.params.id);
   res.json({ success: true });
 });
