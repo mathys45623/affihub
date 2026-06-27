@@ -85,12 +85,39 @@ app.get('/go/:linkId', async (req, res) => {
 app.get('/api/postback', async (req, res) => {
   const { ref, amount } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
-  const { data: link } = await supabase.from('links').select('*').eq('id', ref).single();
+  const { data: link } = await supabase.from('links').select('*, offers(commission)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
-  const convAmount = parseFloat(amount) || 10;
+  // Utilise la commission de l'offre (ce que l'affilié gagne)
+  const convAmount = link.offers?.commission || parseFloat(amount) || 10;
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'pending' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
   res.json({ success: true, conversion_id: conv.id });
+});
+
+// ── MANUAL CONVERSION ──
+app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
+  const { user_id, offer_id, amount, status } = req.body;
+  if (!user_id || !offer_id || !amount) return res.status(400).json({ error: 'Champs requis' });
+  // Find existing link or use null for manual conversions
+  const { data: link } = await supabase.from('links').select('id').eq('user_id', user_id).eq('offer_id', offer_id).single();
+  const link_id = link ? link.id : null;
+  const { data: conv, error } = await supabase.from('conversions').insert({ link_id, user_id, offer_id, amount: parseFloat(amount), status: status || 'pending' }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  if (status === 'approved') {
+    const { data: user } = await supabase.from('users').select('balance,referred_by').eq('id', user_id).single();
+    if (user) {
+      await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
+      if (user.referred_by) {
+        const commission = parseFloat((parseFloat(amount) * 0.05).toFixed(2));
+        const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+        if (referrer) {
+          await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
+          await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: user_id, conversion_id: conv.id, amount: commission });
+        }
+      }
+    }
+  }
+  res.json(conv);
 });
 
 // ── APPROVE CONVERSION + PARRAINAGE ──
@@ -100,7 +127,6 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   await supabase.from('conversions').update({ status: 'approved' }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance,referred_by').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
-  // Commission parrainage 5%
   if (user.referred_by) {
     const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
     if (referee && referee.referral_active !== false) {
@@ -149,7 +175,6 @@ app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
 });
 app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
   const id = req.params.id;
-  // Supprimer les conversions liées aux liens de cette offre
   const { data: links } = await supabase.from('links').select('id').eq('offer_id', id);
   if (links && links.length > 0) {
     const linkIds = links.map(l => l.id);
@@ -171,7 +196,6 @@ app.post('/api/links', auth, async (req, res) => {
   const { offer_id } = req.body;
   const { data: existing } = await supabase.from('links').select('*').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
   if (existing) return res.status(400).json({ error: 'Lien déjà généré' });
-  // Get offer name for friendly URL
   const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
   const slug = offer ? offer.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 20) : 'offre';
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -187,7 +211,6 @@ app.patch('/api/links/:id', auth, adminOnly, async (req, res) => {
   res.json(data);
 });
 app.delete('/api/links/:id', auth, async (req, res) => {
-  // Allow affiliate to delete their own link, or admin to delete any
   const { data: link } = await supabase.from('links').select('user_id').eq('id', req.params.id).single();
   if (!link) return res.status(404).json({ error: 'Lien introuvable' });
   if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
@@ -205,8 +228,8 @@ app.get('/api/withdrawals', auth, async (req, res) => {
 app.post('/api/withdrawals', auth, async (req, res) => {
   const { amount, crypto, address } = req.body;
   const { data: user } = await supabase.from('users').select('balance').eq('id', req.user.id).single();
-  if (!user || user.balance < 10) return res.status(400).json({ error: 'Solde insuffisant (minimum $10)' });
-  if (amount < 10 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
+  if (!user || user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
+  if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
   await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
   res.json(data);
@@ -229,7 +252,6 @@ app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
 app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
   const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
-  // Si le retrait est encore en attente, on rembourse le solde
   if (wd.status === 'pending') {
     const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
     if (user) await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
@@ -246,7 +268,6 @@ app.get('/api/users', auth, adminOnly, async (req, res) => {
 app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
   const uid = req.params.id;
   try {
-    // Supprimer dans l'ordre pour éviter les erreurs de foreign key
     const { data: links } = await supabase.from('links').select('id').eq('user_id', uid);
     if (links && links.length > 0) {
       const linkIds = links.map(l => l.id);
@@ -295,6 +316,7 @@ app.patch('/api/admin/referral/:userId/toggle', auth, adminOnly, async (req, res
   await supabase.from('users').update({ referral_active: active }).eq('id', req.params.userId);
   res.json({ success: true });
 });
+
 app.get('/api/referrals', auth, async (req, res) => {
   const { data: filleules } = await supabase.from('users').select('id,name,created_at').eq('referred_by', req.user.id);
   const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', req.user.id).order('created_at', { ascending: false });
@@ -302,23 +324,7 @@ app.get('/api/referrals', auth, async (req, res) => {
   res.json({ filleules: filleules || [], commissions: commissions || [], totalEarned });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
-
-// ── IMAGE UPLOAD ──
-app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
-  const { data: base64, fileName, mimeType } = req.body;
-  if (!base64 || !fileName) return res.status(400).json({ error: 'Données manquantes' });
-  const buffer = Buffer.from(base64, 'base64');
-  const uniqueName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-  const { data, error } = await supabase.storage.from('offers').upload(uniqueName, buffer, {
-    contentType: mimeType || 'image/jpeg',
-    upsert: false
-  });
-  if (error) return res.status(500).json({ error: error.message });
-  const { data: urlData } = supabase.storage.from('offers').getPublicUrl(uniqueName);
-  res.json({ url: urlData.publicUrl });
-});
+// ── RANKING ──
 app.get('/api/ranking', auth, async (req, res) => {
   const { data: users } = await supabase.from('users').select('id,name,created_at').eq('role','affiliate').eq('show_ranking',true);
   const result = await Promise.all((users||[]).map(async u => {
@@ -387,7 +393,6 @@ app.patch('/api/tickets/:id/status', auth, async (req, res) => {
   const { status } = req.body;
   const { data: ticket } = await supabase.from('tickets').select('user_id').eq('id', req.params.id).single();
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-  // Affiliate can only close their own ticket
   if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   if (req.user.role !== 'admin' && status !== 'closed') return res.status(403).json({ error: 'Non autorisé' });
   await supabase.from('tickets').update({ status }).eq('id', req.params.id);
@@ -399,3 +404,18 @@ app.delete('/api/tickets/:id', auth, adminOnly, async (req, res) => {
   await supabase.from('tickets').delete().eq('id', req.params.id);
   res.json({ success: true });
 });
+
+// ── IMAGE UPLOAD ──
+app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
+  const { data: base64, fileName, mimeType } = req.body;
+  if (!base64 || !fileName) return res.status(400).json({ error: 'Données manquantes' });
+  const buffer = Buffer.from(base64, 'base64');
+  const uniqueName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+  const { data, error } = await supabase.storage.from('offers').upload(uniqueName, buffer, { contentType: mimeType || 'image/jpeg', upsert: false });
+  if (error) return res.status(500).json({ error: error.message });
+  const { data: urlData } = supabase.storage.from('offers').getPublicUrl(uniqueName);
+  res.json({ url: urlData.publicUrl });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
