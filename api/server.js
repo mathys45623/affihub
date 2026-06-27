@@ -120,6 +120,18 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
   res.json(conv);
 });
 
+app.delete('/api/conversions/:id', auth, adminOnly, async (req, res) => {
+  const { data: conv } = await supabase.from('conversions').select('*').eq('id', req.params.id).single();
+  if (!conv) return res.status(404).json({ error: 'Introuvable' });
+  // If approved, remove amount from user balance
+  if (conv.status === 'approved') {
+    const { data: user } = await supabase.from('users').select('balance').eq('id', conv.user_id).single();
+    if (user) await supabase.from('users').update({ balance: Math.max(0, user.balance - conv.amount) }).eq('id', conv.user_id);
+  }
+  await supabase.from('conversions').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
+
 // ── APPROVE CONVERSION + PARRAINAGE ──
 app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   const { data: conv } = await supabase.from('conversions').select('*').eq('id', req.params.id).single();
