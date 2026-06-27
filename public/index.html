@@ -531,7 +531,22 @@ function openAddConv(){
     document.getElementById('m-title').textContent='Ajouter une conversion manuellement';
     const userOpts=users.map(u=>`<option value="${u.id}">${u.name}</option>`).join('');
     const offerOpts=offers.filter(o=>o.active!==false).map(o=>`<option value="${o.id}">${o.name} ($${o.commission})</option>`).join('');
-    document.getElementById('m-body').innerHTML=`<div class="fi"><label>Affilié</label><select id="mc-user" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="">-- Choisir un affilié --</option>${userOpts}</select></div><div class="fi"><label>Offre</label><select id="mc-offer" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="">-- Choisir une offre --</option>${offerOpts}</select></div><div class="fi"><label>Montant ($)</label><input type="number" id="mc-amount" placeholder="Ex: 20" min="0" step="0.01"></div><div class="fi"><label>Statut</label><select id="mc-status" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><option value="pending">⏳ En attente</option><option value="approved">✅ Approuvée directement</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doAddConv()" style="flex:1;justify-content:center">➕ Ajouter</button></div>`;
+    document.getElementById('m-body').innerHTML=`
+      <div class="fi"><label>Affilié</label><select id="mc-user" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+        <option value="">-- Choisir un affilié --</option>${userOpts}
+      </select></div>
+      <div class="fi"><label>Offre</label><select id="mc-offer" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+        <option value="">-- Choisir une offre --</option>${offerOpts}
+      </select></div>
+      <div class="fi"><label>Montant ($)</label><input type="number" id="mc-amount" placeholder="Ex: 20" min="0" step="0.01"></div>
+      <div class="fi"><label>Statut</label><select id="mc-status" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+        <option value="pending">⏳ En attente</option>
+        <option value="approved">✅ Approuvée directement</option>
+      </select></div>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>
+        <button class="btn btn-grad" onclick="doAddConv()" style="flex:1;justify-content:center">➕ Ajouter</button>
+      </div>`;
     document.getElementById('mo').classList.add('open');
   }).catch(e=>toast(e.message,'e'));
 }
