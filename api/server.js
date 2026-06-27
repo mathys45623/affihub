@@ -385,6 +385,17 @@ app.post('/api/tickets/:id/reply', auth, async (req, res) => {
 
 app.patch('/api/tickets/:id/status', auth, async (req, res) => {
   const { status } = req.body;
+  const { data: ticket } = await supabase.from('tickets').select('user_id').eq('id', req.params.id).single();
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  // Affiliate can only close their own ticket
+  if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
+  if (req.user.role !== 'admin' && status !== 'closed') return res.status(403).json({ error: 'Non autorisé' });
   await supabase.from('tickets').update({ status }).eq('id', req.params.id);
+  res.json({ success: true });
+});
+
+app.delete('/api/tickets/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('ticket_messages').delete().eq('ticket_id', req.params.id);
+  await supabase.from('tickets').delete().eq('id', req.params.id);
   res.json({ success: true });
 });
