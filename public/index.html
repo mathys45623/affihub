@@ -188,7 +188,177 @@ tbody tr:hover td{background:rgba(255,255,255,.02)}
 .ref-hero::before{content:'';position:absolute;top:-30px;right:-30px;width:180px;height:180px;background:radial-gradient(circle,rgba(0,0,0,.1) 0%,transparent 70%);pointer-events:none}
 .ref-link-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:11px 14px;margin-top:14px}
 .ref-link-box code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:#000;letter-spacing:.3px}
-/* ── ANIMATIONS ── */
+/* ── PREMIUM EFFECTS ── */
+@keyframes neon-pulse{0%,100%{text-shadow:0 0 10px rgba(245,200,66,.8),0 0 20px rgba(245,200,66,.5),0 0 40px rgba(245,200,66,.3)}50%{text-shadow:0 0 20px rgba(240,66,122,.9),0 0 40px rgba(240,66,122,.6),0 0 80px rgba(240,66,122,.4)}}
+@keyframes glitch{0%,100%{transform:translate(0)}10%{transform:translate(-2px,1px);filter:hue-rotate(90deg)}20%{transform:translate(2px,-1px)}30%{transform:translate(-1px,2px);filter:hue-rotate(-90deg)}40%{transform:translate(1px,-2px)}50%{transform:translate(0)}60%{transform:translate(-1px,1px)}70%{transform:translate(2px,1px);filter:hue-rotate(45deg)}80%{transform:translate(-2px,-1px)}90%{transform:translate(1px,2px)}}
+@keyframes ripple{0%{transform:scale(0);opacity:.6}100%{transform:scale(4);opacity:0}}
+@keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
+@keyframes aurora{0%,100%{background-position:0% 50%}25%{background-position:50% 100%}50%{background-position:100% 50%}75%{background-position:50% 0%}}
+@keyframes count-up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes card-shine{0%{left:-100%}100%{left:200%}}
+@keyframes border-rotate{0%{background-position:0% 0%}100%{background-position:300% 300%}}
+
+/* Glassmorphism cards */
+.card{
+  background:rgba(17,17,17,.7) !important;
+  backdrop-filter:blur(20px) saturate(180%);
+  border:1px solid rgba(245,200,66,.08) !important;
+  position:relative;overflow:hidden;
+}
+.card::after{
+  content:'';position:absolute;top:-50%;left:-100%;
+  width:60%;height:200%;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);
+  transform:skewX(-20deg);
+  animation:card-shine 6s ease-in-out infinite;
+}
+
+/* Neon page title */
+.page-title{
+  animation:neon-pulse 4s ease-in-out infinite !important;
+  background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+
+/* Glitch effect on logo text */
+.sb-head span{
+  position:relative;
+  animation:glitch 8s ease-in-out infinite;
+  animation-delay:3s;
+}
+
+/* Aurora background on auth */
+#auth-screen{
+  background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(245,200,66,.12),transparent 50%),
+             radial-gradient(ellipse 60% 80% at 80% 80%,rgba(240,66,122,.12),transparent 50%),
+             radial-gradient(ellipse 50% 50% at 50% 50%,rgba(100,50,200,.06),transparent 100%),
+             var(--bg) !important;
+  background-size:400% 400% !important;
+  animation:aurora 12s ease infinite !important;
+}
+
+/* Animated border on auth box */
+.auth-box{
+  position:relative;
+  background:rgba(17,17,17,.9) !important;
+  backdrop-filter:blur(20px);
+}
+.auth-box::before{
+  content:'';position:absolute;inset:-1px;
+  background:linear-gradient(var(--angle,0deg),#F5C842,#F0427A,#a855f7,#F5C842);
+  background-size:300% 300%;
+  border-radius:21px;z-index:-1;
+  animation:aurora 4s linear infinite;
+}
+
+/* Ripple effect on buttons */
+.btn-grad{overflow:hidden}
+.btn-grad .ripple{
+  position:absolute;border-radius:50%;
+  background:rgba(255,255,255,.3);
+  transform:scale(0);animation:ripple .6s linear;
+  pointer-events:none;
+}
+
+/* Scanline overlay */
+.sidebar::after{
+  content:'';position:absolute;top:0;left:0;right:0;bottom:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(255,255,255,.01) 2px,rgba(255,255,255,.01) 4px);
+  pointer-events:none;z-index:0;
+}
+
+/* Stat card neon glow on hover */
+.stat-card:hover{
+  box-shadow:0 0 30px rgba(245,200,66,.15),0 0 60px rgba(245,200,66,.05),0 12px 40px rgba(0,0,0,.4) !important;
+}
+.stat-val.gy{
+  animation:neon-pulse 3s ease-in-out infinite;
+  -webkit-text-fill-color:transparent;
+  background:var(--grad);-webkit-background-clip:text;
+}
+
+/* Animated gradient sidebar */
+.sidebar{
+  background:linear-gradient(180deg,rgba(17,17,17,1) 0%,rgba(20,12,30,1) 50%,rgba(17,17,17,1) 100%) !important;
+  background-size:100% 200%;
+  animation:aurora 10s ease infinite;
+}
+
+/* Topbar glassmorphism */
+.topbar{
+  background:rgba(10,10,10,.7) !important;
+  backdrop-filter:blur(20px) saturate(200%);
+  border-bottom:1px solid rgba(245,200,66,.1) !important;
+  box-shadow:0 1px 0 rgba(240,66,122,.1),0 4px 20px rgba(0,0,0,.3) !important;
+}
+
+/* Avatar neon */
+.avatar{
+  box-shadow:0 0 20px rgba(240,66,122,.4),0 0 40px rgba(240,66,122,.15) !important;
+}
+
+/* Role badge glow */
+.role-badge{
+  box-shadow:0 0 20px rgba(245,200,66,.4),0 0 40px rgba(240,66,122,.2) !important;
+  text-shadow:0 0 10px rgba(0,0,0,.5);
+}
+
+/* Offer cards shine */
+.offer-card::before{
+  content:'';position:absolute;top:-2px;left:-2px;right:-2px;bottom:-2px;
+  background:linear-gradient(135deg,rgba(245,200,66,.1),transparent,rgba(240,66,122,.1));
+  border-radius:15px;z-index:-1;opacity:0;transition:opacity .3s;
+}
+.offer-card:hover::before{opacity:1}
+
+/* Balance amount neon */
+.bal-amount{
+  text-shadow:0 0 30px rgba(0,0,0,.5);
+  animation:float 4s ease-in-out infinite;
+}
+
+/* Gradient text for numbers */
+.stat-val.gg{
+  text-shadow:0 0 20px rgba(0,214,143,.3);
+}
+
+/* Loading spinner neon */
+.spinner{
+  box-shadow:0 0 20px rgba(245,200,66,.4);
+  border-width:3px;
+}
+
+/* Modal neon border */
+.modal{
+  box-shadow:0 0 40px rgba(245,200,66,.1),0 0 80px rgba(240,66,122,.05),0 20px 60px rgba(0,0,0,.6) !important;
+}
+.modal::before{
+  height:2px;
+  background:linear-gradient(90deg,transparent,#F5C842,#F0427A,transparent) !important;
+  box-shadow:0 0 20px rgba(245,200,66,.5);
+}
+
+/* Nav active neon */
+.nav-item.active{
+  box-shadow:inset 3px 0 0 var(--yellow),0 0 20px rgba(245,200,66,.08);
+  text-shadow:0 0 10px rgba(245,200,66,.3);
+}
+
+/* Crypto selected neon */
+.crypto-opt.sel{
+  box-shadow:0 0 20px rgba(245,200,66,.3),0 0 40px rgba(245,200,66,.1) !important;
+}
+
+/* Scrollbar neon */
+::-webkit-scrollbar-thumb{
+  background:linear-gradient(180deg,rgba(245,200,66,.5),rgba(240,66,122,.5));
+  box-shadow:0 0 10px rgba(245,200,66,.3);
+}
+
+/* Tab active neon */
+.tab.active{
+  box-shadow:0 0 20px rgba(240,66,122,.3);
+}
+</style>
 @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes fadeInLeft{from{opacity:0;transform:translateX(-20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes scaleIn{from{opacity:0;transform:scale(.92)}to{opacity:1;transform:scale(1)}}
@@ -1305,7 +1475,53 @@ const urlParams=new URLSearchParams(window.location.search);
 const refCode=urlParams.get('ref');
 if(refCode){switchTab('register');setTimeout(()=>{const refInput=document.getElementById('r-ref');if(refInput){refInput.value=refCode;refInput.style.borderColor='var(--yellow)';}},100);}
 
-// ── PARTICLES ──
+// ── RIPPLE EFFECT ──
+document.addEventListener('click',function(e){
+  const btn=e.target.closest('.btn-grad');
+  if(!btn)return;
+  const ripple=document.createElement('span');
+  ripple.className='ripple';
+  const rect=btn.getBoundingClientRect();
+  const size=Math.max(rect.width,rect.height)*2;
+  ripple.style.cssText=`width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+  btn.appendChild(ripple);
+  setTimeout(()=>ripple.remove(),600);
+});
+
+// ── COUNTER ANIMATION ──
+function animateCounter(el,target,duration=1200){
+  const start=performance.now();
+  const isFloat=String(target).includes('.');
+  const startVal=0;
+  function update(now){
+    const elapsed=now-start;
+    const progress=Math.min(elapsed/duration,1);
+    const ease=1-Math.pow(1-progress,4);
+    const current=startVal+(target-startVal)*ease;
+    el.textContent=isFloat?'$'+current.toFixed(2):(target>999?Math.floor(current).toLocaleString():Math.floor(current));
+    if(progress<1)requestAnimationFrame(update);
+    else el.textContent=isFloat?'$'+target.toFixed(2):(target>999?target.toLocaleString():target);
+  }
+  requestAnimationFrame(update);
+}
+
+// Apply counter to stat values when page loads
+const _origGoPage=goPage;
+async function goPage(page){
+  await _origGoPage(page);
+  // Animate stat numbers after render
+  setTimeout(()=>{
+    document.querySelectorAll('.stat-val').forEach(el=>{
+      const text=el.textContent.trim();
+      const num=parseFloat(text.replace(/[$,]/g,''));
+      if(!isNaN(num)&&num>0&&text.length<15){
+        const isPrice=text.includes('$');
+        animateCounter(el,num,1000);
+        if(isPrice){el.dataset.prefix='$';}
+      }
+    });
+  },200);
+}
 (function(){
   const canvas=document.getElementById('particles-canvas');
   const ctx=canvas.getContext('2d');
