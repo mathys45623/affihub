@@ -352,11 +352,77 @@ async function renderPage(page){
   }
 
   if(page==='aff-stats'){
-    const [links,convs]=await Promise.all([api('GET','/api/links'),api('GET','/api/conversions')]);
+    const [links,convs,offers]=await Promise.all([api('GET','/api/links'),api('GET','/api/conversions'),api('GET','/api/offers')]);
     if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>Aucun lien généré.</p></div></div>';
     const origin=window.location.origin;
-    const rows=links.map(l=>{const lc=convs.filter(c=>c.link_id===l.id&&c.status==='approved');const gains=lc.reduce((s,c)=>s+c.amount,0);const rate=l.clicks>0?((lc.length/l.clicks)*100).toFixed(1):'0.0';return `<tr><td><code style="font-family:monospace;font-size:12px;color:var(--yellow)">${origin}/go/${l.id}</code></td><td>${l.offers?.name||'?'}</td><td>${l.clicks}</td><td>${lc.length}</td><td style="color:var(--green)">$${gains}</td><td><span class="badge bb2">${rate}%</span></td></tr>`;}).join('');
-    return `<div class="card"><div class="card-header"><div class="card-title">Performance par lien</div></div><div class="tw"><table><thead><tr><th>🔗 Lien</th><th>🎯 Offre</th><th>🖱️ Clics</th><th>🔁 Conversions</th><th>💰 Gains</th><th>📊 Taux</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
+    const totalConvs=convs.filter(c=>c.status==='approved').length;
+    const totalGains=convs.filter(c=>c.status==='approved').reduce((s,c)=>s+c.amount,0);
+    const avgRate=totalClicks>0?((totalConvs/totalClicks)*100).toFixed(1):'0.0';
+    const cats=[{key:'casino',label:'🎰 Casino',color:'#F5C842',border:'rgba(245,200,66,.3)',bg:'rgba(245,200,66,.06)'},{key:'dating',label:'💕 Dating',color:'#F0427A',border:'rgba(240,66,122,.3)',bg:'rgba(240,66,122,.06)'},{key:'ia',label:'🤖 IA',color:'#4D9EFF',border:'rgba(77,158,255,.3)',bg:'rgba(77,158,255,.06)'},{key:'autre',label:'📦 Autre',color:'#888',border:'rgba(136,136,136,.25)',bg:'rgba(136,136,136,.06)'}];
+    let html=`<div class="stats-grid" style="margin-bottom:28px">
+      <div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">${totalClicks}</div><div class="stat-sub">sur ${links.length} lien(s)</div></div>
+      <div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Conversions approuvées</div><div class="stat-val gg">${totalConvs}</div></div>
+      <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gy">$${totalGains}</div></div>
+      <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux de conversion</div><div class="stat-val" style="color:var(--blue)">${avgRate}%</div></div>
+    </div>`;
+    cats.forEach(cat=>{
+      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);
+      const catLinks=links.filter(l=>catOffers.find(o=>o.id===l.offer_id));
+      if(catLinks.length===0)return;
+      html+=`<div style="margin-bottom:24px">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,${cat.border},transparent)"></div>
+          <span style="font-size:15px;font-weight:800;color:${cat.color}">${cat.label}</span>
+          <div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,${cat.border})"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">`;
+      catLinks.forEach(l=>{
+        const lc=convs.filter(c=>c.link_id===l.id);
+        const approved=lc.filter(c=>c.status==='approved');
+        const pending=lc.filter(c=>c.status==='pending');
+        const gains=approved.reduce((s,c)=>s+c.amount,0);
+        const rate=l.clicks>0?((approved.length/l.clicks)*100).toFixed(1):'0.0';
+        const offerName=catOffers.find(o=>o.id===l.offer_id)?.name||'?';
+        html+=`<div style="background:#111;border:1px solid ${cat.border};border-radius:14px;padding:20px;position:relative;overflow:hidden">
+          <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,${cat.color},transparent)"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+            <div>
+              <div style="font-size:14px;font-weight:800;color:var(--text);margin-bottom:4px">${offerName}</div>
+              <div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:7px;padding:5px 10px;display:inline-flex;align-items:center;gap:6px">
+                <code style="font-family:monospace;font-size:10px;color:${cat.color};max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${origin}/go/${l.id}</code>
+                <button class="copy-btn" onclick="cpLink('${l.id}',this)" style="font-size:12px;padding:0">📋</button>
+              </div>
+            </div>
+            ${l.active?'<span class="badge bg2" style="flex-shrink:0">✓ Actif</span>':'<span class="badge br2" style="flex-shrink:0">Off</span>'}
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            <div style="background:${cat.bg};border:1px solid ${cat.border};border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:20px;font-weight:900;color:${cat.color}">${l.clicks}</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Clics</div>
+            </div>
+            <div style="background:rgba(0,214,143,.06);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:20px;font-weight:900;color:var(--green)">${approved.length}</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Approuvées</div>
+            </div>
+            <div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:20px;font-weight:900;color:var(--yellow)">${pending.length}</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">En attente</div>
+            </div>
+            <div style="background:rgba(77,158,255,.06);border:1px solid rgba(77,158,255,.2);border-radius:10px;padding:10px;text-align:center">
+              <div style="font-size:20px;font-weight:900;color:var(--blue)">${rate}%</div>
+              <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-top:2px">Taux</div>
+            </div>
+          </div>
+          <div style="margin-top:12px;padding-top:12px;border-top:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:12px;color:var(--muted)">Gains approuvés</div>
+            <div style="font-size:16px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$${gains}</div>
+          </div>
+        </div>`;
+      });
+      html+='</div></div>';
+    });
+    return html;
   }
 
   if(page==='aff-conv'){
