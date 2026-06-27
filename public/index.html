@@ -573,7 +573,7 @@ async function renderPage(page){
     const tickets=await api('GET','/api/tickets');
     const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
     const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
-    const rows=tickets.map(t=>`<tr><td><b>#${t.id}</b></td><td>${reasons[t.reason]||t.reason}</td><td style="color:var(--muted)">${fmt(t.created_at)}</td><td>${statusBadge(t.status)}</td><td><span style="color:var(--muted);font-size:12px">${(t.ticket_messages||[]).length} msg(s)</span></td><td><button class="btn btn-gst btn-sm" onclick="goPage('aff-ticket-${t.id}')">👁 Voir</button></td></tr>`).join('');
+    const rows=tickets.map(t=>`<tr><td><b>#${t.id}</b></td><td>${reasons[t.reason]||t.reason}</td><td style="color:var(--muted)">${fmt(t.created_at)}</td><td>${statusBadge(t.status)}</td><td>${t.unread>0?`<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px;display:inline-block">${t.unread} nouveau${t.unread>1?'x':''}</span>`:`<span style="color:var(--muted);font-size:12px">${(t.ticket_messages||[]).length} msg(s)</span>`}</td><td><button class="btn ${t.unread>0?'btn-grad':'btn-gst'} btn-sm" onclick="goPage('aff-ticket-${t.id}')">👁 Voir</button></td></tr>`).join('');
     return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
       <div style="font-size:13px;color:var(--muted)">${tickets.length} ticket(s)</div>
       <button class="btn btn-grad" onclick="openCreateTicket()">+ Nouveau ticket</button>
@@ -606,12 +606,12 @@ async function renderPage(page){
       </div>
     </div>
     <div class="card" style="min-height:300px;margin-bottom:16px">${msgs||'<div class="empty"><p>Aucun message</p></div>'}</div>
-    ${ticket.status!=='closed'?`
+    ${ticket.status==='open'?`
     <div class="card">
       <div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Écrivez votre message..." style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none;resize:vertical;min-height:80px"></textarea></div>
       <div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" id="reply-img-zone" onclick="document.getElementById('reply-img-file').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px;object-fit:cover"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div>
       <button class="btn btn-grad" onclick="sendReply(${ticket.id})" style="width:100%;justify-content:center">📨 Envoyer</button>
-    </div>`:'<div class="card" style="text-align:center;color:var(--muted);padding:20px">Ce ticket est fermé</div>'}`;
+    </div>`:'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==="resolved"?'✅':'🔴')+'</div><div style="font-weight:700;color:var(--text)">'+(ticket.status==="resolved"?'Ticket résolu':'Ticket fermé')+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Ce ticket ne peut plus recevoir de réponses</div></div>'}`;
   }
 
   if(page==='aff-support'){
@@ -754,7 +754,7 @@ async function renderPage(page){
     const tickets=await api('GET','/api/tickets');
     const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
     const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
-    const rows=tickets.map(t=>`<tr><td><b>#${t.id}</b></td><td>${t.users?.name||'?'}</td><td>${reasons[t.reason]||t.reason}</td><td style="color:var(--muted)">${fmt(t.created_at)}</td><td>${statusBadge(t.status)}</td><td><span style="color:var(--muted);font-size:12px">${(t.ticket_messages||[]).length} msg(s)</span></td><td><button class="btn btn-grad btn-sm" onclick="goPage('admin-ticket-${t.id}')">💬 Répondre</button></td></tr>`).join('');
+    const rows=tickets.map(t=>`<tr><td><b>#${t.id}</b></td><td>${t.users?.name||'?'}</td><td>${reasons[t.reason]||t.reason}</td><td style="color:var(--muted)">${fmt(t.created_at)}</td><td>${statusBadge(t.status)}</td><td>${t.unread>0?`<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px;display:inline-block">${t.unread} nouveau${t.unread>1?'x':''}</span>`:`<span style="color:var(--muted);font-size:12px">${(t.ticket_messages||[]).length} msg(s)</span>`}</td><td><button class="btn ${t.unread>0?'btn-red':'btn-grad'} btn-sm" onclick="goPage('admin-ticket-${t.id}')">💬 Répondre</button></td></tr>`).join('');
     const open=tickets.filter(t=>t.status==='open').length;
     return `<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎫 Tickets support</div>${open>0?`<span class="badge by2">🟡 ${open} ouvert(s)</span>`:''}</div>
     <div class="card">${tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>Aucun ticket</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>👤 Affilié</th><th>🏷️ Raison</th><th>📅 Date</th><th>📌 Statut</th><th>💬 Messages</th><th>⚙️ Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>'}</div>`;
@@ -785,12 +785,12 @@ async function renderPage(page){
       </div>
     </div>
     <div class="card" style="min-height:300px;margin-bottom:16px">${msgs||'<div class="empty"><p>Aucun message</p></div>'}</div>
-    ${ticket.status!=='closed'?`
+    ${ticket.status==='open'?`
     <div class="card">
       <div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Répondre à l'affilié..." style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none;resize:vertical;min-height:80px"></textarea></div>
       <div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" id="reply-img-zone" onclick="document.getElementById('reply-img-file').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px;object-fit:cover"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div>
       <button class="btn btn-grad" onclick="sendReply(${ticket.id})" style="width:100%;justify-content:center">📨 Envoyer la réponse</button>
-    </div>`:'<div class="card" style="text-align:center;color:var(--muted);padding:20px">Ce ticket est fermé</div>'}`;
+    </div>`:'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==="resolved"?'✅':'🔴')+'</div><div style="font-weight:700;color:var(--text)">'+(ticket.status==="resolved"?'Ticket résolu':'Ticket fermé')+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Ce ticket ne peut plus recevoir de réponses</div></div>'}`;
   }
 
   if(page==='admin-settings'){
