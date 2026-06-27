@@ -311,7 +311,7 @@ function startApp() {
     document.getElementById('role-badge').textContent='👑 Admin';
     buildNav([
       {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
-      {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'}]},
+      {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'}]},
       {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
       {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
     ]);
@@ -323,7 +323,7 @@ function startApp() {
       {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
       {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
       {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-      {section:'SUPPORT',items:[{icon:'💬',label:'Support',page:'aff-support'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+      {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
     ]);
     goPage('aff-dash');
   }
@@ -356,14 +356,16 @@ function buildNav(sections){
   });
 }
 
-const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Support','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-ref':'Parrainages','admin-offers':'Offres','admin-links':'Liens & Anti-fraude','admin-settings':'Paramètres du site'};
+const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager','aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-offers':'Offres','admin-links':'Liens & Anti-fraude','admin-settings':'Paramètres du site'};
 
 async function goPage(page){
   curPage=page;
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   const nav=document.getElementById('nav-'+page);if(nav)nav.classList.add('active');
-  if(page.startsWith('admin-ref-')) { const n=document.getElementById('nav-admin-ref'); if(n)n.classList.add('active'); }
-  document.getElementById('page-title').textContent=page.startsWith('admin-ref-')?'Détail parrainage':(TITLES[page]||page);
+  if(page.startsWith('admin-ref-')){const n=document.getElementById('nav-admin-ref');if(n)n.classList.add('active');}
+  if(page.startsWith('aff-ticket-')){const n=document.getElementById('nav-aff-tickets');if(n)n.classList.add('active');}
+  if(page.startsWith('admin-ticket-')){const n=document.getElementById('nav-admin-tickets');if(n)n.classList.add('active');}
+  document.getElementById('page-title').textContent=page.startsWith('admin-ref-')?'Détail parrainage':page.startsWith('aff-ticket-')||page.startsWith('admin-ticket-')?'💬 Détail ticket':(TITLES[page]||page);
   document.getElementById('content').innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';
   try{const html=await renderPage(page);document.getElementById('content').innerHTML=html;}
   catch(e){document.getElementById('content').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}
@@ -567,6 +569,51 @@ async function renderPage(page){
     <div class="card"><div class="tw"><table><thead><tr><th style="text-align:center">🏅 Rang</th><th>👤 Affilié</th><th>📅 Inscrit le</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">🔁 Conversions</th><th style="text-align:center">💰 Gains totaux</th></tr></thead><tbody id="top-tbody">${mkRows('gains')}</tbody></table></div></div>`;
   }
 
+  if(page==='aff-tickets'){
+    const tickets=await api('GET','/api/tickets');
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
+    const rows=tickets.map(t=>`<tr><td><b>#${t.id}</b></td><td>${reasons[t.reason]||t.reason}</td><td style="color:var(--muted)">${fmt(t.created_at)}</td><td>${statusBadge(t.status)}</td><td><span style="color:var(--muted);font-size:12px">${(t.ticket_messages||[]).length} msg(s)</span></td><td><button class="btn btn-gst btn-sm" onclick="goPage('aff-ticket-${t.id}')">👁 Voir</button></td></tr>`).join('');
+    return `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div style="font-size:13px;color:var(--muted)">${tickets.length} ticket(s)</div>
+      <button class="btn btn-grad" onclick="openCreateTicket()">+ Nouveau ticket</button>
+    </div>
+    <div class="card">
+      ${tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>Aucun ticket pour l\'instant.<br>Créez votre premier ticket si vous avez besoin d\'aide.</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>🏷️ Raison</th><th>📅 Date</th><th>📌 Statut</th><th>💬 Messages</th><th>⚙️ Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>'}
+    </div>`;
+  }
+
+  if(page.startsWith('aff-ticket-')){
+    const tid=page.replace('aff-ticket-','');
+    const ticket=await api('GET',`/api/tickets/${tid}`);
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const msgs=ticket.messages.map(m=>{
+      const isMe=m.user_id===ME.id;
+      const isAdmin=m.users?.role==='admin';
+      return `<div style="display:flex;flex-direction:column;align-items:${isMe?'flex-end':'flex-start'};margin-bottom:16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${isAdmin?'👑 Admin':'👤 '+m.users?.name} • ${fmt(m.created_at)}</div>
+        <div style="background:${isMe?'var(--grad)':'var(--bg3)'};color:${isMe?'#000':'var(--text)'};border-radius:${isMe?'14px 14px 4px 14px':'14px 14px 14px 4px'};padding:12px 16px;max-width:70%;box-shadow:0 2px 8px rgba(0,0,0,.2)">
+          ${m.content?`<div style="font-size:13px;line-height:1.6">${m.content}</div>`:''}
+          ${m.image_url?`<img src="${m.image_url}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:${m.content?'8px':'0'};object-fit:cover" onclick="window.open('${m.image_url}','_blank')" style="cursor:pointer">`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<button class="btn btn-gst btn-sm" onclick="goPage('aff-tickets')" style="margin-bottom:20px">← Retour</button>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><div style="font-size:16px;font-weight:800">Ticket #${ticket.id} — ${reasons[ticket.reason]||ticket.reason}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Créé le ${fmt(ticket.created_at)}</div></div>
+        ${ticket.status==='open'?'<span class="badge by2">🟡 Ouvert</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 Résolu</span>':'<span class="badge br2">🔴 Fermé</span>'}
+      </div>
+    </div>
+    <div class="card" style="min-height:300px;margin-bottom:16px">${msgs||'<div class="empty"><p>Aucun message</p></div>'}</div>
+    ${ticket.status!=='closed'?`
+    <div class="card">
+      <div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Écrivez votre message..." style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none;resize:vertical;min-height:80px"></textarea></div>
+      <div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" id="reply-img-zone" onclick="document.getElementById('reply-img-file').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px;object-fit:cover"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div>
+      <button class="btn btn-grad" onclick="sendReply(${ticket.id})" style="width:100%;justify-content:center">📨 Envoyer</button>
+    </div>`:'<div class="card" style="text-align:center;color:var(--muted);padding:20px">Ce ticket est fermé</div>'}`;
+  }
+
   if(page==='aff-support'){
     return `<div class="support-hero">
       <div class="founder-avatar">🍍</div>
@@ -701,6 +748,49 @@ async function renderPage(page){
       </div>
       <div class="card"><div class="card-title" style="margin-bottom:16px">👥 Filleuls</div>${aff.filleules.length===0?'<div class="empty"><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Gains générés</th><th>📌 Statut</th><th>⚙️ Action</th></tr></thead><tbody>'+filleuleRows+'</tbody></table></div>'}</div>
       <div class="card"><div class="card-title" style="margin-bottom:16px">💸 Historique des commissions</div>${aff.commissions.length===0?'<div class="empty"><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission (5%)</th></tr></thead><tbody>'+commRows+'</tbody></table></div>'}</div>`;
+  }
+
+  if(page==='admin-tickets'){
+    const tickets=await api('GET','/api/tickets');
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
+    const rows=tickets.map(t=>`<tr><td><b>#${t.id}</b></td><td>${t.users?.name||'?'}</td><td>${reasons[t.reason]||t.reason}</td><td style="color:var(--muted)">${fmt(t.created_at)}</td><td>${statusBadge(t.status)}</td><td><span style="color:var(--muted);font-size:12px">${(t.ticket_messages||[]).length} msg(s)</span></td><td><button class="btn btn-grad btn-sm" onclick="goPage('admin-ticket-${t.id}')">💬 Répondre</button></td></tr>`).join('');
+    const open=tickets.filter(t=>t.status==='open').length;
+    return `<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎫 Tickets support</div>${open>0?`<span class="badge by2">🟡 ${open} ouvert(s)</span>`:''}</div>
+    <div class="card">${tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>Aucun ticket</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>👤 Affilié</th><th>🏷️ Raison</th><th>📅 Date</th><th>📌 Statut</th><th>💬 Messages</th><th>⚙️ Action</th></tr></thead><tbody>'+rows+'</tbody></table></div>'}</div>`;
+  }
+
+  if(page.startsWith('admin-ticket-')){
+    const tid=page.replace('admin-ticket-','');
+    const ticket=await api('GET',`/api/tickets/${tid}`);
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const msgs=ticket.messages.map(m=>{
+      const isAdmin=m.users?.role==='admin';
+      return `<div style="display:flex;flex-direction:column;align-items:${isAdmin?'flex-end':'flex-start'};margin-bottom:16px">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${isAdmin?'👑 Admin':'👤 '+m.users?.name} • ${fmt(m.created_at)}</div>
+        <div style="background:${isAdmin?'var(--grad)':'var(--bg3)'};color:${isAdmin?'#000':'var(--text)'};border-radius:${isAdmin?'14px 14px 4px 14px':'14px 14px 14px 4px'};padding:12px 16px;max-width:70%;box-shadow:0 2px 8px rgba(0,0,0,.2)">
+          ${m.content?`<div style="font-size:13px;line-height:1.6">${m.content}</div>`:''}
+          ${m.image_url?`<img src="${m.image_url}" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:${m.content?'8px':'0'};object-fit:cover;cursor:pointer" onclick="window.open('${m.image_url}','_blank')">`:''}
+        </div>
+      </div>`;
+    }).join('');
+    return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:20px">
+      <button class="btn btn-gst btn-sm" onclick="goPage('admin-tickets')">← Retour</button>
+      ${ticket.status==='open'?`<button class="btn btn-grn btn-sm" onclick="closeTicket(${ticket.id},'resolved')">✅ Marquer résolu</button><button class="btn btn-gst btn-sm" onclick="closeTicket(${ticket.id},'closed')">🔴 Fermer</button>`:''}
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div><div style="font-size:16px;font-weight:800">Ticket #${ticket.id} — ${reasons[ticket.reason]||ticket.reason}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">De <b>${ticket.users?.name}</b> (${ticket.users?.email}) • ${fmt(ticket.created_at)}</div></div>
+        ${ticket.status==='open'?'<span class="badge by2">🟡 Ouvert</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 Résolu</span>':'<span class="badge br2">🔴 Fermé</span>'}
+      </div>
+    </div>
+    <div class="card" style="min-height:300px;margin-bottom:16px">${msgs||'<div class="empty"><p>Aucun message</p></div>'}</div>
+    ${ticket.status!=='closed'?`
+    <div class="card">
+      <div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Répondre à l'affilié..." style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none;resize:vertical;min-height:80px"></textarea></div>
+      <div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" id="reply-img-zone" onclick="document.getElementById('reply-img-file').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px;object-fit:cover"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div>
+      <button class="btn btn-grad" onclick="sendReply(${ticket.id})" style="width:100%;justify-content:center">📨 Envoyer la réponse</button>
+    </div>`:'<div class="card" style="text-align:center;color:var(--muted);padding:20px">Ce ticket est fermé</div>'}`;
   }
 
   if(page==='admin-settings'){
@@ -1005,6 +1095,80 @@ async function doAddOffer(){
 }
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Les mots de passe ne correspondent pas','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
 function filterConv(btn,f,convs){document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');const list=f==='all'?convs:convs.filter(c=>c.status===f);const rows=list.map(c=>`<tr><td style="color:var(--muted)">${fmt(c.created_at)}</td><td>${c.offers?.name||'?'}</td><td><code style="font-size:11px;color:var(--muted)">${c.link_id}</code></td><td style="color:var(--yellow);font-weight:600">$${c.amount}</td><td>${sbadge(c.status)}</td></tr>`).join('');document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';}
+function openCreateTicket(){
+  document.getElementById('m-title').textContent='Nouveau ticket';
+  document.getElementById('m-body').innerHTML=`
+    <div class="fi"><label>Raison</label><select id="tk-reason" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none">
+      <option value="">-- Choisir une raison --</option>
+      <option value="question">❓ Question</option>
+      <option value="bug">🐛 Bug</option>
+      <option value="payement">💸 Paiement</option>
+      <option value="compte">👤 Compte</option>
+      <option value="offre">🎯 Offre</option>
+      <option value="mes-liens">🔗 Mes liens</option>
+      <option value="suggestion">💡 Suggestion</option>
+    </select></div>
+    <div class="fi"><label>Expliquez votre problème</label><textarea id="tk-content" placeholder="Décrivez votre problème en détail..." style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none;resize:vertical;min-height:100px"></textarea></div>
+    <div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById('tk-img-file').click()"><input type="file" id="tk-img-file" accept="image/*" style="display:none" onchange="previewTkImg(this)"><div id="tk-img-prev" style="display:none;margin-bottom:8px"><img id="tk-img-prev-img" style="max-height:120px;border-radius:8px;object-fit:cover"></div><div id="tk-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div>
+    <div style="display:flex;gap:10px;margin-top:6px">
+      <button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>
+      <button class="btn btn-grad" onclick="submitTicket()" style="flex:1;justify-content:center">📨 Envoyer</button>
+    </div>`;
+  document.getElementById('mo').classList.add('open');
+}
+function previewTkImg(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{document.getElementById('tk-img-prev').style.display='block';document.getElementById('tk-img-prev-img').src=e.target.result;document.getElementById('tk-img-ph').style.display='none';};
+  reader.readAsDataURL(file);
+}
+function previewReplyImg(input){
+  const file=input.files[0]; if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{document.getElementById('reply-img-prev').style.display='block';document.getElementById('reply-img-prev-img').src=e.target.result;document.getElementById('reply-img-ph').style.display='none';};
+  reader.readAsDataURL(file);
+}
+async function uploadTicketImg(file){
+  const SURL='https://rhrhtqmgqwkdcrcglkys.supabase.co';
+  const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmh0cW1ncXdrZGNyY2dsa3lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NDEzMzAsImV4cCI6MjA5ODAxNzMzMH0.QJuNi5x9u_o4PZyYykU6Ft96cGBFJWqVvgQsJ0fGJvM';
+  const fileName=Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const r=await fetch(`${SURL}/storage/v1/object/tickets/${fileName}`,{method:'POST',headers:{'Authorization':'Bearer '+SKEY,'Content-Type':file.type,'x-upsert':'true'},body:file});
+  if(!r.ok)throw new Error('Upload échoué');
+  return `${SURL}/storage/v1/object/public/tickets/${fileName}`;
+}
+async function submitTicket(){
+  const reason=document.getElementById('tk-reason').value;
+  const content=document.getElementById('tk-content').value.trim();
+  if(!reason){toast('Choisissez une raison','e');return;}
+  if(!content){toast('Décrivez votre problème','e');return;}
+  try{
+    let imgUrl=null;
+    const file=document.getElementById('tk-img-file').files[0];
+    if(file){toast('Upload image...','i');imgUrl=await uploadTicketImg(file);}
+    await api('POST','/api/tickets',{reason,content,image_url:imgUrl});
+    closeMo();toast('Ticket créé ✓','s');goPage('aff-tickets');
+  }catch(e){toast(e.message,'e');}
+}
+async function sendReply(ticketId){
+  const content=document.getElementById('reply-msg')?.value.trim()||'';
+  const file=document.getElementById('reply-img-file')?.files[0];
+  if(!content&&!file){toast('Écrivez un message ou ajoutez une image','e');return;}
+  try{
+    let imgUrl=null;
+    if(file){toast('Upload image...','i');imgUrl=await uploadTicketImg(file);}
+    await api('POST',`/api/tickets/${ticketId}/reply`,{content,image_url:imgUrl});
+    toast('Réponse envoyée ✓','s');goPage(curPage);
+  }catch(e){toast(e.message,'e');}
+}
+async function closeTicket(id,status){
+  try{await api('PATCH',`/api/tickets/${id}/status`,{status});toast(status==='resolved'?'Ticket résolu ✅':'Ticket fermé 🔴','s');goPage('admin-tickets');}
+  catch(e){toast(e.message,'e');}
+}
+  ['gains','conv','clicks','date'].forEach(k=>{
+    const el=document.getElementById('sort-'+k);
+    if(el)el.className='btn btn-'+(k===by?'grad':'gst')+' btn-sm';
+  });
+  const ranking=window._topRanking||[];
 function doSortTop(by){
   ['gains','conv','clicks','date'].forEach(k=>{
     const el=document.getElementById('sort-'+k);
