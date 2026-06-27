@@ -244,8 +244,25 @@ app.get('/api/users', auth, adminOnly, async (req, res) => {
   res.json(data || []);
 });
 app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
-  await supabase.from('users').delete().eq('id', req.params.id);
-  res.json({ success: true });
+  const uid = req.params.id;
+  try {
+    // Supprimer dans l'ordre pour éviter les erreurs de foreign key
+    const { data: links } = await supabase.from('links').select('id').eq('user_id', uid);
+    if (links && links.length > 0) {
+      const linkIds = links.map(l => l.id);
+      await supabase.from('conversions').delete().in('link_id', linkIds);
+    }
+    await supabase.from('conversions').delete().eq('user_id', uid);
+    await supabase.from('links').delete().eq('user_id', uid);
+    await supabase.from('withdrawals').delete().eq('user_id', uid);
+    await supabase.from('referral_commissions').delete().eq('referrer_id', uid);
+    await supabase.from('referral_commissions').delete().eq('referee_id', uid);
+    await supabase.from('users').update({ referred_by: null }).eq('referred_by', uid);
+    await supabase.from('users').delete().eq('id', uid);
+    res.json({ success: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── STATS ADMIN ──
@@ -317,5 +334,46 @@ app.get('/api/ranking', auth, async (req, res) => {
 app.patch('/api/me/ranking', auth, async (req, res) => {
   const { show } = req.body;
   await supabase.from('users').update({ show_ranking: show }).eq('id', req.user.id);
+  res.json({ success: true });
+});
+
+// ── TICKETS ──
+app.get('/api/tickets', auth, async (req, res) => {
+  let query = supabase.from('tickets').select('*, users(name,email), ticket_messages(id)').order('created_at', { ascending: false });
+  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
+  const { data } = await query;
+  res.json(data || []);
+});
+
+app.post('/api/tickets', auth, async (req, res) => {
+  const { reason, content, image_url } = req.body;
+  if (!reason || !content) return res.status(400).json({ error: 'Raison et message requis' });
+  const { data: ticket, error } = await supabase.from('tickets').insert({ user_id: req.user.id, reason, status: 'open' }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  await supabase.from('ticket_messages').insert({ ticket_id: ticket.id, user_id: req.user.id, content, image_url: image_url || null });
+  res.json(ticket);
+});
+
+app.get('/api/tickets/:id', auth, async (req, res) => {
+  const { data: ticket } = await supabase.from('tickets').select('*, users(name,email)').eq('id', req.params.id).single();
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
+  const { data: messages } = await supabase.from('ticket_messages').select('*, users(name,role)').eq('ticket_id', req.params.id).order('created_at', { ascending: true });
+  res.json({ ...ticket, messages: messages || [] });
+});
+
+app.post('/api/tickets/:id/reply', auth, async (req, res) => {
+  const { content, image_url } = req.body;
+  if (!content && !image_url) return res.status(400).json({ error: 'Message requis' });
+  const { data: ticket } = await supabase.from('tickets').select('user_id').eq('id', req.params.id).single();
+  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
+  if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
+  await supabase.from('ticket_messages').insert({ ticket_id: parseInt(req.params.id), user_id: req.user.id, content: content || '', image_url: image_url || null });
+  res.json({ success: true });
+});
+
+app.patch('/api/tickets/:id/status', auth, async (req, res) => {
+  const { status } = req.body;
+  await supabase.from('tickets').update({ status }).eq('id', req.params.id);
   res.json({ success: true });
 });
