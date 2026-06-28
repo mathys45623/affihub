@@ -176,6 +176,7 @@ app.post('/api/offers', auth, adminOnly, async (req, res) => {
   if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
   const validCats = ['casino','dating','influenceuse','ia','autre'];
   const cat = validCats.includes(category) ? category : 'autre';
+  const { data, error } = await supabase.from('offers').insert({ name, description, url, commission: commission || 10, category: cat, image_url: image_url || null }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
