@@ -217,8 +217,8 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 
 /* ── MOBILE RESPONSIVE ── */
 @media (max-width: 768px) {
-  .sidebar{transform:translateX(-100%);transition:transform .3s ease;width:280px}
-  .sidebar.open{transform:translateX(0)}
+  .sidebar{transform:translateX(-100%);transition:transform .3s ease;width:280px;z-index:200!important}
+  .sidebar.open{transform:translateX(0);box-shadow:4px 0 30px rgba(0,0,0,.8)}
   .main{margin-left:0}
   .topbar{padding:0 16px}
   .content{padding:16px}
@@ -227,9 +227,8 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
   .bal-amount{font-size:36px}
   .modal{width:95vw;padding:22px}
   .crypto-grid{grid-template-columns:repeat(3,1fr)}
-  #mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;backdrop-filter:blur(4px)}
+  #mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:199;backdrop-filter:blur(2px)}
   #mobile-overlay.open{display:block}
-  #mobile-menu-btn{display:flex}
   .auth-box{width:95vw;padding:28px 22px}
   table{font-size:12px}
   thead th{padding:8px 10px}
@@ -237,6 +236,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
   .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .ref-hero{padding:20px}
   .discord-card{flex-direction:column;align-items:flex-start}
+  .nav-item{padding:14px 12px;font-size:14px}
 }
 @media (min-width: 769px) {
   #mobile-menu-btn{display:none!important}
