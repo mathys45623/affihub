@@ -215,7 +215,33 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 /* Page title neon */
 .page-title{animation:neon-pulse 4s ease-in-out infinite!important}
 
-/* Particles */
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 768px) {
+  .sidebar{transform:translateX(-100%);transition:transform .3s ease;width:280px}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0}
+  .topbar{padding:0 16px}
+  .content{padding:16px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .bal-hero{padding:20px;flex-direction:column;gap:14px;text-align:center}
+  .bal-amount{font-size:36px}
+  .modal{width:95vw;padding:22px}
+  .crypto-grid{grid-template-columns:repeat(3,1fr)}
+  #mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;backdrop-filter:blur(4px)}
+  #mobile-overlay.open{display:block}
+  #mobile-menu-btn{display:flex}
+  .auth-box{width:95vw;padding:28px 22px}
+  table{font-size:12px}
+  thead th{padding:8px 10px}
+  tbody td{padding:10px}
+  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .ref-hero{padding:20px}
+  .discord-card{flex-direction:column;align-items:flex-start}
+}
+@media (min-width: 769px) {
+  #mobile-menu-btn{display:none}
+  #mobile-overlay{display:none!important}
+}
 #particles-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.4}
 #auth-screen,#app,.shell,.content,.auth-box{position:relative;z-index:1}
 .support-hero{background:var(--grad);border-radius:18px;padding:40px 36px;text-align:center;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(240,66,122,.35);background-size:200% 200%;animation:gradient-shift 6s ease infinite}
@@ -281,11 +307,17 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
       </div>
     </aside>
     <div class="main">
-      <div class="topbar"><div class="page-title" id="page-title">Dashboard</div></div>
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button id="mobile-menu-btn" onclick="toggleMobileMenu()" style="background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:6px;border-radius:8px;display:none">☰</button>
+          <div class="page-title" id="page-title">Dashboard</div>
+        </div>
+      </div>
       <div class="content" id="content"></div>
     </div>
   </div>
 </div>
+<div id="mobile-overlay" onclick="toggleMobileMenu()"></div>
 <div id="toast"></div>
 <div class="mo" id="mo">
   <div class="modal">
@@ -308,7 +340,7 @@ function startApp(){document.getElementById('auth-screen').style.display='none';
 function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
 function buildNav(sections){var nav=document.getElementById('sb-nav');nav.innerHTML='';sections.forEach(sec=>{var div=document.createElement('div');div.className='nav-section';div.innerHTML='<div class="nav-section-label">'+sec.section+'</div>';sec.items.forEach(item=>{var el=document.createElement('div');el.className='nav-item';el.id='nav-'+item.page;el.innerHTML='<span style="font-size:15px;width:20px;text-align:center">'+item.icon+'</span>'+item.label;el.onclick=()=>goPage(item.page);div.appendChild(el);});nav.appendChild(div);});}
 const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager','aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-offers':'Offres','admin-links':'Liens & Anti-fraude','admin-settings':'Paramètres du site'};
-async function goPage(page){curPage=page;document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));const nav=document.getElementById('nav-'+page);if(nav)nav.classList.add('active');if(page.startsWith('admin-ref-')){const n=document.getElementById('nav-admin-ref');if(n)n.classList.add('active');}if(page.startsWith('aff-ticket-')){const n=document.getElementById('nav-aff-tickets');if(n)n.classList.add('active');}if(page.startsWith('admin-ticket-')){const n=document.getElementById('nav-admin-tickets');if(n)n.classList.add('active');}document.getElementById('page-title').textContent=page.startsWith('admin-ref-')?'Détail parrainage':page.startsWith('aff-ticket-')||page.startsWith('admin-ticket-')?'💬 Détail ticket':(TITLES[page]||page);document.getElementById('content').innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';try{const html=await renderPage(page);document.getElementById('content').innerHTML=html;}catch(e){document.getElementById('content').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}}
+async function goPage(page){curPage=page;document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));const nav=document.getElementById('nav-'+page);if(nav)nav.classList.add('active');if(page.startsWith('admin-ref-')){const n=document.getElementById('nav-admin-ref');if(n)n.classList.add('active');}if(page.startsWith('aff-ticket-')){const n=document.getElementById('nav-aff-tickets');if(n)n.classList.add('active');}if(page.startsWith('admin-ticket-')){const n=document.getElementById('nav-admin-tickets');if(n)n.classList.add('active');}document.getElementById('page-title').textContent=page.startsWith('admin-ref-')?'Détail parrainage':page.startsWith('aff-ticket-')||page.startsWith('admin-ticket-')?'💬 Détail ticket':(TITLES[page]||page);document.getElementById('content').innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';try{const html=await renderPage(page);document.getElementById('content').innerHTML=html;}catch(e){document.getElementById('content').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}document.querySelector('.sidebar')?.classList.remove('open');document.getElementById('mobile-overlay')?.classList.remove('open');}
 function sbadge(s){const m={approved:'<span class="badge bg2"><span class="dot dg"></span>Approuvée</span>',pending:'<span class="badge by2"><span class="dot dy"></span>En attente</span>',rejected:'<span class="badge br2"><span class="dot dr"></span>Rejetée</span>',paid:'<span class="badge bg2"><span class="dot dg"></span>Payé</span>',active:'<span class="badge bg2">Actif</span>',disabled:'<span class="badge br2">Désactivé</span>'};return m[s]||s;}
 function gtext(v){return '<span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900">'+v+'</span>';}
 function fmt(d){return d?d.split('T')[0]:'—';}
@@ -711,6 +743,10 @@ function previewLogo(input){const file=input.files[0];if(!file)return;const read
 async function saveLogo(){const fileInput=document.getElementById('logo-file');if(!fileInput.files[0]){toast('Choisissez une image','e');return;}try{toast('Upload...','i');const file=fileInput.files[0];const SURL='https://rhrhtqmgqwkdcrcglkys.supabase.co';const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmh0cW1ncXdrZGNyY2dsa3lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NDEzMzAsImV4cCI6MjA5ODAxNzMzMH0.QJuNi5x9u_o4PZyYykU6Ft96cGBFJWqVvgQsJ0fGJvM';const r=await fetch(`${SURL}/storage/v1/object/settings/logo.png`,{method:'POST',headers:{'Authorization':'Bearer '+SKEY,'Content-Type':file.type,'x-upsert':'true'},body:file});if(!r.ok)throw new Error('Upload échoué');const logoUrl=`${SURL}/storage/v1/object/public/settings/logo.png`;localStorage.setItem('affihub_logo',logoUrl);updateLogo(logoUrl);toast('Logo mis à jour ✓','s');goPage('admin-settings');}catch(e){toast(e.message,'e');}}
 function updateLogo(url){document.querySelectorAll('.logo-icon-img').forEach(el=>{el.src=url+'?t='+Date.now();el.style.display='block';});document.querySelectorAll('.logo-icon-emoji').forEach(el=>{el.style.display='none';});}
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Mots de passe différents','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
+function toggleMobileMenu(){
+  document.querySelector('.sidebar').classList.toggle('open');
+  document.getElementById('mobile-overlay').classList.toggle('open');
+}
 function closeMo(){document.getElementById('mo').classList.remove('open');}
 document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
 var toastTimer;
