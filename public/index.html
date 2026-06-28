@@ -217,30 +217,31 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 
 /* ── MOBILE RESPONSIVE ── */
 @media (max-width: 768px) {
-  .sidebar{transform:translateX(-100%);transition:transform .3s ease;width:280px;z-index:200!important}
-  .sidebar.open{transform:translateX(0);box-shadow:4px 0 30px rgba(0,0,0,.8)}
-  .main{margin-left:0}
+  #particles-canvas{display:none!important}
+  .sidebar{transform:translateX(-100%);transition:transform .3s ease;width:82%;max-width:280px;z-index:500!important;position:fixed!important;top:0;left:0;height:100vh}
+  .sidebar.open{transform:translateX(0)!important;box-shadow:6px 0 40px rgba(0,0,0,.95)}
+  .main{margin-left:0!important}
   .topbar{padding:0 16px}
   .content{padding:16px}
   .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
   .bal-hero{padding:20px;flex-direction:column;gap:14px;text-align:center}
-  .bal-amount{font-size:36px}
-  .modal{width:95vw;padding:22px}
+  .bal-amount{font-size:32px}
+  .modal{width:95vw;padding:20px}
   .crypto-grid{grid-template-columns:repeat(3,1fr)}
-  #mobile-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:199;backdrop-filter:blur(2px)}
-  #mobile-overlay.open{display:block}
-  .auth-box{width:95vw;padding:28px 22px}
-  table{font-size:12px}
-  thead th{padding:8px 10px}
-  tbody td{padding:10px}
+  #mobile-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:499!important}
+  #mobile-overlay.open{display:block!important}
+  .auth-box{width:95vw;padding:28px 20px}
+  table{font-size:11px}
+  thead th{padding:7px 8px}
+  tbody td{padding:9px 8px}
   .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
   .ref-hero{padding:20px}
-  .discord-card{flex-direction:column;align-items:flex-start}
-  .nav-item{padding:14px 12px;font-size:14px}
+  .nav-item{padding:13px 12px;font-size:14px}
 }
 @media (min-width: 769px) {
   #mobile-menu-btn{display:none!important}
   #mobile-overlay{display:none!important}
+  .sidebar{transform:none!important;z-index:100}
 }
 #particles-canvas{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:.4}
 #auth-screen,#app,.shell,.content,.auth-box{position:relative;z-index:1}
