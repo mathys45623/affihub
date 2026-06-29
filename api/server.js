@@ -433,3 +433,37 @@ app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
+
+// ── CUSTOM LINK REQUESTS ──
+app.get('/api/custom-requests', auth, async (req, res) => {
+  let query = supabase.from('custom_link_requests').select('*, users(name,email), offers(name)').order('created_at', { ascending: false });
+  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
+  const { data } = await query;
+  res.json(data || []);
+});
+
+app.post('/api/custom-requests', auth, async (req, res) => {
+  const { offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text } = req.body;
+  // Check if already exists
+  const { data: existing } = await supabase.from('custom_link_requests').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
+  if (existing) {
+    const { data, error } = await supabase.from('custom_link_requests').update({ server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text, status: 'pending', updated_at: new Date() }).eq('id', existing.id).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json(data);
+  }
+  const { data, error } = await supabase.from('custom_link_requests').insert({ user_id: req.user.id, offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.patch('/api/custom-requests/:id/link', auth, adminOnly, async (req, res) => {
+  const { custom_link } = req.body;
+  const { data, error } = await supabase.from('custom_link_requests').update({ custom_link, status: 'approved', updated_at: new Date() }).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.delete('/api/custom-requests/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('custom_link_requests').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
