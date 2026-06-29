@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AffiHub</title>
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 :root{--bg:#0A0A0A;--bg2:#111111;--bg3:#1A1A1A;--bg4:#222222;--border:#2A2A2A;--text:#FFFFFF;--muted:#777777;--yellow:#F5C842;--pink:#F0427A;--grad:linear-gradient(135deg,#F5C842,#F0427A);--green:#00D68F;--red:#FF4757;--blue:#4D9EFF;}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -34,6 +35,8 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;cursor:pointer;font-size:13px;font-weight:600;color:#666;transition:all .2s;margin-bottom:2px;border-left:3px solid transparent;-webkit-tap-highlight-color:rgba(245,200,66,.2);touch-action:manipulation;user-select:none;width:100%;text-align:left;background:none;border-top:none;border-right:none;border-bottom:none;font-family:inherit}
 .nav-item:hover{background:rgba(255,255,255,.05);color:#ccc}
 .nav-item.active{background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.08));color:var(--text);border-left:3px solid var(--yellow)}
+.notif-badge{background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;margin-left:auto;min-width:18px;text-align:center;animation:pulse-notif 2s ease-in-out infinite}
+@keyframes pulse-notif{0%,100%{opacity:1}50%{opacity:.6}}
 .sb-foot{padding:14px 16px;border-top:1px solid #1E1E1E;display:flex;align-items:center;gap:10px;flex-shrink:0}
 .avatar{width:34px;height:34px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#000;flex-shrink:0}
 .uname{font-size:13px;font-weight:700}.uemail{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -164,6 +167,28 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 </head>
 <body>
 <canvas id="particles-canvas"></canvas>
+<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:1">
+  <nav style="padding:20px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,10,.8);backdrop-filter:blur(20px);border-bottom:1px solid rgba(245,200,66,.1);z-index:10">
+    <div style="display:flex;align-items:center;gap:10px"><div class="logo-icon" style="width:36px;height:36px;font-size:18px"><img id="land-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="land-logo-emoji">🔗</span></div><span style="font-size:18px;font-weight:800">AffiHub</span></div>
+    <button class="btn btn-grad" onclick="showAuth()" style="font-size:13px">Se connecter →</button>
+  </nav>
+  <div style="max-width:900px;margin:0 auto;padding:80px 24px;text-align:center">
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.2);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:24px">⚡ Plateforme d'affiliation privée</div>
+    <h1 style="font-size:clamp(36px,6vw,68px);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:20px">Monétise ton<br><span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">audience</span></h1>
+    <p style="font-size:18px;color:var(--muted);max-width:500px;margin:0 auto 36px;line-height:1.7">Rejoins notre réseau d'affiliés privé. Génère des liens, suis tes gains en temps réel et retire en crypto.</p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:60px">
+      <button class="btn btn-grad" onclick="showAuthRegister()" style="font-size:15px;padding:14px 32px">🚀 Rejoindre maintenant</button>
+      <button class="btn btn-gst" onclick="showAuth()" style="font-size:15px;padding:14px 32px">Se connecter</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;max-width:800px;margin:0 auto 60px">
+      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">🔗</div><div style="font-weight:800;margin-bottom:6px">Liens trackés</div><div style="font-size:13px;color:var(--muted)">Chaque clic et conversion enregistrés automatiquement</div></div>
+      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">💰</div><div style="font-weight:800;margin-bottom:6px">Paiements crypto</div><div style="font-size:13px;color:var(--muted)">BTC, Solana, Litecoin — retrait dès $25</div></div>
+      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">👥</div><div style="font-weight:800;margin-bottom:6px">Parrainage 5%</div><div style="font-size:13px;color:var(--muted)">Gagne 5% sur toutes les ventes de tes filleuls</div></div>
+      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">📊</div><div style="font-weight:800;margin-bottom:6px">Stats temps réel</div><div style="font-size:13px;color:var(--muted)">Dashboard complet avec clics, conversions et gains</div></div>
+    </div>
+    <div style="font-size:13px;color:var(--muted)">Accès sur invitation uniquement — <button onclick="showAuthRegister()" style="background:none;border:none;color:var(--yellow);cursor:pointer;font-family:inherit;font-size:13px;font-weight:700">Demander l'accès →</button></div>
+  </div>
+</div>
 <div id="auth-screen">
   <div class="auth-box">
     <div style="text-align:center;margin-bottom:30px">
@@ -291,7 +316,7 @@ function startApp(){
     document.getElementById('role-badge').textContent='⚡ Affilié';
     buildNav(affNav);buildMobileNav(affNav);goPage('aff-dash');
   }
-  clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(curPage)goPage(curPage);},30000);
+  clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(curPage)goPage(curPage);refreshNotifs();},30000);setTimeout(refreshNotifs,500);
 }
 
 function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
@@ -303,12 +328,42 @@ function buildNav(sections){
     div.innerHTML='<div class="nav-section-label">'+sec.section+'</div>';
     sec.items.forEach(item=>{
       var el=document.createElement('button');el.className='nav-item';el.id='nav-'+item.page;
-      el.innerHTML='<span style="font-size:15px;width:20px;text-align:center">'+item.icon+'</span>'+item.label;
+      el.innerHTML='<span style="font-size:15px;width:20px;text-align:center">'+item.icon+'</span><span>'+item.label+'</span><span class="notif-badge" id="notif-'+item.page+'" style="display:none">0</span>';
       el.addEventListener('click',()=>goPage(item.page));
       div.appendChild(el);
     });
     nav.appendChild(div);
   });
+}
+
+async function refreshNotifs(){
+  if(!ME||!TOKEN)return;
+  try{
+    if(ME.role==='admin'){
+      const [convs,wds,tickets,customs]=await Promise.all([
+        api('GET','/api/conversions'),api('GET','/api/withdrawals'),
+        api('GET','/api/tickets'),api('GET','/api/custom-requests')
+      ]);
+      const pendingConvs=convs.filter(c=>c.status==='pending').length;
+      const pendingWds=wds.filter(w=>w.status==='pending').length;
+      const unreadTickets=tickets.filter(t=>t.unread>0).length;
+      const pendingCustoms=customs.filter(c=>c.status==='pending').length;
+      setNotif('admin-conv',pendingConvs);
+      setNotif('admin-wd',pendingWds);
+      setNotif('admin-tickets',unreadTickets);
+      setNotif('admin-custom',pendingCustoms);
+    } else {
+      const tickets=await api('GET','/api/tickets');
+      const unread=tickets.filter(t=>t.unread>0).length;
+      setNotif('aff-tickets',unread);
+    }
+  }catch(e){}
+}
+function setNotif(page,count){
+  const el=document.getElementById('notif-'+page);
+  if(!el)return;
+  if(count>0){el.textContent=count;el.style.display='inline-block';}
+  else{el.style.display='none';}
 }
 
 function buildMobileNav(sections){
@@ -522,12 +577,37 @@ async function renderPage(page){
   }
 
   if(page==='admin-dash'){
-    const [stats,convs,wds]=await Promise.all([api('GET','/api/stats'),api('GET','/api/conversions'),api('GET','/api/withdrawals')]);
+    const [stats,convs,wds,tickets,customs]=await Promise.all([api('GET','/api/stats'),api('GET','/api/conversions'),api('GET','/api/withdrawals'),api('GET','/api/tickets'),api('GET','/api/custom-requests')]);
     const pending=convs.filter(c=>c.status==='pending');const pendWd=wds.filter(w=>w.status==='pending');
+
+    // Build last 7 days chart data
+    const days=[];const gainsByDay=[];const convsByDay=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      const dayStr=d.toISOString().split('T')[0];
+      days.push(d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric'}));
+      gainsByDay.push(convs.filter(c=>c.status==='approved'&&c.created_at?.startsWith(dayStr)).reduce((s,c)=>s+c.amount,0));
+      convsByDay.push(convs.filter(c=>c.created_at?.startsWith(dayStr)).length);
+    }
+
     const prows=pending.slice(0,4).map(c=>'<div class="act-item"><div class="act-icon" style="background:rgba(245,200,66,.1)">🔁</div><div style="flex:1;font-size:13px"><b>'+(c.users?.name||'?')+'</b> — '+(c.offers?.name||'?')+'<div style="font-size:11px;color:var(--yellow)">$'+c.amount+'</div></div><div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprC('+c.id+')">✔</button><button class="btn btn-red btn-sm" onclick="rejtC('+c.id+')">✕</button></div></div>').join('');
-    const wrows=pendWd.slice(0,4).map(w=>'<div class="act-item"><div class="act-icon" style="background:rgba(240,66,122,.1)">💳</div><div style="flex:1;font-size:13px"><b>'+(w.users?.name||'?')+'</b><div style="font-size:11px;color:var(--muted)">'+w.crypto+' — '+w.address.substring(0,16)+'...</div></div><div style="font-weight:900;color:var(--yellow)">$'+w.amount+'</div></div>').join('');
+    const wrows=pendWd.slice(0,4).map(w=>'<div class="act-item"><div class="act-icon" style="background:rgba(240,66,122,.1)">💳</div><div style="flex:1;font-size:13px"><b>'+(w.users?.name||'?')+'</b><div style="font-size:11px;color:var(--muted)">'+w.crypto+' — $'+w.amount+'</div></div><button class="btn btn-grn btn-sm" onclick="apprW('+w.id+')">✔ Payé</button></div>').join('');
+
+    const pendingTickets=tickets.filter(t=>t.status==='open'&&t.unread>0).length;
+    const pendingCustoms=customs.filter(c=>c.status==='pending').length;
+
+    setTimeout(()=>{
+      const ctx=document.getElementById('gains-chart');
+      if(ctx){new Chart(ctx,{type:'bar',data:{labels:days,datasets:[{label:'Gains ($)',data:gainsByDay,backgroundColor:'rgba(245,200,66,.3)',borderColor:'rgba(245,200,66,.8)',borderWidth:2,borderRadius:6},{label:'Conversions',data:convsByDay,backgroundColor:'rgba(240,66,122,.2)',borderColor:'rgba(240,66,122,.7)',borderWidth:2,borderRadius:6}]},options:{responsive:true,plugins:{legend:{labels:{color:'#888',font:{size:11}}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.dataset.label==='Gains ($)'?'$':'')+ctx.parsed.y}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#666',font:{size:11}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#666',font:{size:11}}}}}});}
+    },100);
+
     return '<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Affiliés</div><div class="stat-val gy">'+stats.affiliates+'</div></div><div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics</div><div class="stat-val gy">'+stats.totalClicks+'</div></div><div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">'+stats.totalConversions+'</div><div class="stat-sub">'+stats.pendingConversions+' en attente</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains distribués</div><div class="stat-val gg">$'+stats.totalGains+'</div></div><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Retraits en attente</div><div class="stat-val">'+stats.pendingWithdrawals+'</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Retraits payés</div><div class="stat-val gg">'+stats.paidWithdrawals+'</div></div></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">⏳ À valider</div><button class="btn btn-gst btn-sm" onclick="goPage(\'admin-conv\')">Voir tout →</button></div>'+(pending.length===0?'<div class="empty" style="padding:20px"><p>✅ Tout à jour</p></div>':prows)+'</div><div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">💸 Retraits</div><button class="btn btn-gst btn-sm" onclick="goPage(\'admin-wd\')">Voir tout →</button></div>'+(pendWd.length===0?'<div class="empty" style="padding:20px"><p>✅ Aucun en attente</p></div>':wrows)+'</div></div>';
+
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📊 Activité des 7 derniers jours</div><canvas id="gains-chart" height="80"></canvas></div>'
+
+    +(pendingTickets>0||pendingCustoms>0?'<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">'+(pendingTickets>0?'<div class="card" style="margin-bottom:0;flex:1;min-width:200px;border-color:rgba(255,71,87,.3);cursor:pointer" onclick="goPage(\'admin-tickets\')"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:13px;font-weight:700">🎫 Tickets non lus</div><div style="font-size:24px;font-weight:900;color:var(--red);margin-top:4px">'+pendingTickets+'</div></div><div style="font-size:32px;opacity:.3">🔔</div></div></div>':'')+(pendingCustoms>0?'<div class="card" style="margin-bottom:0;flex:1;min-width:200px;border-color:rgba(168,85,247,.3);cursor:pointer" onclick="goPage(\'admin-custom\')"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:13px;font-weight:700">🎨 Liens perso en attente</div><div style="font-size:24px;font-weight:900;color:#a855f7;margin-top:4px">'+pendingCustoms+'</div></div><div style="font-size:32px;opacity:.3">⏳</div></div></div>':'')+'</div>':'')
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">⏳ Conversions à valider</div><button class="btn btn-gst btn-sm" onclick="goPage(\'admin-conv\')">Voir tout →</button></div>'+(pending.length===0?'<div class="empty" style="padding:20px"><p>✅ Tout à jour</p></div>':prows)+'</div><div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">💸 Retraits en attente</div><button class="btn btn-gst btn-sm" onclick="goPage(\'admin-wd\')">Voir tout →</button></div>'+(pendWd.length===0?'<div class="empty" style="padding:20px"><p>✅ Aucun en attente</p></div>':wrows)+'</div></div>';
   }
 
   if(page==='admin-aff'){
@@ -845,9 +925,30 @@ var toastTimer;
 function toast(msg,type){const el=document.getElementById('toast');const ic={s:'✅',e:'❌',i:'💡'};el.innerHTML=(ic[type]||'💡')+' '+msg;el.className='show t'+(type||'i');el.classList.add(type==='s'?'ts':type==='e'?'te':'ti');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.className='';},3200);}
 
 // ── INIT ──
-if(TOKEN&&ME)startApp();
+if(TOKEN&&ME){startApp();}else{showLanding();}
 const urlParams=new URLSearchParams(window.location.search);const refCode=urlParams.get('ref');
 if(refCode){switchTab('register');setTimeout(()=>{const el=document.getElementById('r-ref');if(el){el.value=refCode;el.style.borderColor='var(--yellow)';}},100);}
+
+function showLanding(){
+  const hasRef=new URLSearchParams(window.location.search).get('ref');
+  if(hasRef){showAuthRegister();return;}
+  document.getElementById('landing').style.display='block';
+  document.getElementById('auth-screen').style.display='none';
+  setTimeout(()=>updateLogoLanding(),200);
+}
+function updateLogoLanding(){
+  const img=document.getElementById('land-logo-img');const emoji=document.getElementById('land-logo-emoji');
+  if(img&&LOGO_URL){img.src=LOGO_URL+'?t='+Date.now();img.style.display='block';if(emoji)emoji.style.display='none';}
+}
+function showAuth(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+}
+function showAuthRegister(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  switchTab('register');
+}
 
 // Ripple effect
 document.addEventListener('click',function(e){const btn=e.target.closest('.btn-grad');if(!btn)return;const r=document.createElement('span');r.className='ripple';const rect=btn.getBoundingClientRect();const size=Math.max(rect.width,rect.height)*2;r.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(e.clientX-rect.left-size/2)+'px;top:'+(e.clientY-rect.top-size/2)+'px';btn.appendChild(r);setTimeout(()=>r.remove(),600);});
