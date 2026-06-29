@@ -352,7 +352,7 @@ function startApp(){
     document.getElementById('role-badge').textContent='⚡ Affilié';
     buildNav(affNav);buildMobileNav(affNav);goPage('aff-dash');
   }
-  clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(curPage)goPage(curPage);refreshNotifs();},30000);setTimeout(refreshNotifs,500);
+  setTimeout(refreshNotifs,500);
 }
 
 function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
