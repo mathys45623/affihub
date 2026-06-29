@@ -11,7 +11,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(245,200,66,.5),rgba(240,66,122,.5));border-radius:4px}
-#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)!important;position:relative;z-index:2}
 .auth-box{background:rgba(17,17,17,.95);border-radius:20px;padding:44px 40px;width:410px;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .auth-box::before{content:'';position:absolute;inset:-1px;background:linear-gradient(135deg,#F5C842,#F0427A,#a855f7,#F5C842);background-size:300% 300%;border-radius:21px;z-index:-1;animation:aurora 4s linear infinite}
 .logo-wrap{display:inline-flex;align-items:center;gap:11px;font-size:24px;font-weight:800;color:var(--text)}
@@ -167,7 +167,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 </head>
 <body>
 <canvas id="particles-canvas"></canvas>
-<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:1;overflow:hidden">
+<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:2;overflow:hidden;isolation:isolate">
   <!-- Bg glow -->
   <div style="position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse,rgba(245,200,66,.07) 0%,transparent 70%);pointer-events:none"></div>
   <div style="position:absolute;bottom:-100px;right:-100px;width:500px;height:500px;background:radial-gradient(ellipse,rgba(240,66,122,.08) 0%,transparent 70%);pointer-events:none"></div>
@@ -970,6 +970,7 @@ function showLanding(){
   if(hasRef){showAuthRegister();return;}
   document.getElementById('landing').style.display='block';
   document.getElementById('auth-screen').style.display='none';
+  history.pushState({page:'landing'},'','');
   setTimeout(()=>updateLogoLanding(),200);
 }
 function updateLogoLanding(){
@@ -979,12 +980,21 @@ function updateLogoLanding(){
 function showAuth(){
   document.getElementById('landing').style.display='none';
   document.getElementById('auth-screen').style.display='flex';
+  history.pushState({page:'auth'},'','');
 }
 function showAuthRegister(){
   document.getElementById('landing').style.display='none';
   document.getElementById('auth-screen').style.display='flex';
   switchTab('register');
+  history.pushState({page:'auth'},'','');
 }
+window.addEventListener('popstate',function(e){
+  if(!TOKEN&&!ME){
+    document.getElementById('landing').style.display='block';
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='none';
+  }
+});
 
 // Ripple effect
 document.addEventListener('click',function(e){const btn=e.target.closest('.btn-grad');if(!btn)return;const r=document.createElement('span');r.className='ripple';const rect=btn.getBoundingClientRect();const size=Math.max(rect.width,rect.height)*2;r.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(e.clientX-rect.left-size/2)+'px;top:'+(e.clientY-rect.top-size/2)+'px';btn.appendChild(r);setTimeout(()=>r.remove(),600);});
