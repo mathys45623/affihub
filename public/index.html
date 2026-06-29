@@ -521,39 +521,29 @@ async function renderPage(page){
   if(page==='aff-stats'){
     const [links,convs,offers]=await Promise.all([api('GET','/api/links'),api('GET','/api/conversions'),api('GET','/api/offers')]);
     if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>Aucun lien généré.</p></div></div>';
-
     const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
-    const totalApproved=convs.filter(c=>c.status==='approved').length;
     const totalGains=convs.filter(c=>c.status==='approved').reduce((s,c)=>s+c.amount,0);
-
-    let html='<div class="stats-grid" style="margin-bottom:24px">'
-    +'<div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">'+totalClicks+'</div></div>'
-    +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Conversions</div><div class="stat-val gg">'+totalApproved+'</div></div>'
-    +'<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gy">$'+totalGains+'</div></div>'
-    +'</div>';
-
-    html+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">';
-    links.forEach(l=>{
-      const approved=convs.filter(c=>c.link_id===l.id&&c.status==='approved');
-      const pending=convs.filter(c=>c.link_id===l.id&&c.status==='pending');
-      const gains=approved.reduce((s,c)=>s+c.amount,0);
+    const totalApproved=convs.filter(c=>c.status==='approved').length;
+    const rows=links.map(l=>{
+      const approved=convs.filter(c=>c.link_id===l.id&&c.status==='approved').length;
+      const pending=convs.filter(c=>c.link_id===l.id&&c.status==='pending').length;
+      const gains=convs.filter(c=>c.link_id===l.id&&c.status==='approved').reduce((s,c)=>s+c.amount,0);
       const offerName=offers.find(o=>o.id===l.offer_id)?.name||'?';
-      html+='<div style="background:#111;border:1px solid rgba(245,200,66,.1);border-radius:14px;padding:18px;position:relative;overflow:hidden">'
-      +'<div style="position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad)"></div>'
-      +'<div style="font-size:14px;font-weight:800;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between">'
-      +offerName
-      +(l.active?'<span class="badge bg2" style="font-size:9px">✓ Actif</span>':'<span class="badge br2" style="font-size:9px">Off</span>')
+      return '<tr><td style="font-weight:700">'+offerName+'</td>'
+        +'<td style="text-align:center;font-weight:800">'+l.clicks+'</td>'
+        +'<td style="text-align:center"><span style="color:var(--green);font-weight:800">'+approved+'</span>'+(pending>0?' <span style="color:var(--yellow);font-size:11px">(+'+pending+')</span>':'')+'</td>'
+        +'<td style="text-align:center;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+gains+'</td>'
+        +'<td style="text-align:center">'+(l.active?'<span class="badge bg2">✓</span>':'<span class="badge br2">Off</span>')+'</td>'
+      +'</tr>';
+    }).join('');
+    return '<div class="stats-grid" style="margin-bottom:24px">'
+      +'<div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">'+totalClicks+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Conversions</div><div class="stat-val gg">'+totalApproved+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gy">$'+totalGains+'</div></div>'
       +'</div>'
-      +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center">'
-      +'<div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 6px"><div style="font-size:18px;font-weight:900">'+l.clicks+'</div><div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Clics</div></div>'
-      +'<div style="background:rgba(0,214,143,.06);border-radius:8px;padding:10px 6px"><div style="font-size:18px;font-weight:900;color:var(--green)">'+approved.length+'</div><div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Conv.</div></div>'
-      +'<div style="background:rgba(245,200,66,.06);border-radius:8px;padding:10px 6px"><div style="font-size:18px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+gains+'</div><div style="font-size:9px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px">Gains</div></div>'
-      +'</div>'
-      +(pending.length>0?'<div style="margin-top:10px;font-size:11px;color:var(--yellow);text-align:center">⏳ '+pending.length+' en attente</div>':'')
-      +'</div>';
-    });
-    html+='</div>';
-    return html;
+      +'<div class="card"><div class="tw"><table><thead><tr>'
+      +'<th>🎯 Offre</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">✅ Conv.</th><th style="text-align:center">💰 Gains</th><th style="text-align:center">📌</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   if(page==='aff-conv'){
