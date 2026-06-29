@@ -217,29 +217,30 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 
 /* ── MOBILE RESPONSIVE ── */
 @media (max-width: 768px) {
-  #particles-canvas{display:none!important}
-  .sidebar{display:none;width:82%;max-width:280px;z-index:502!important;position:fixed!important;top:0;left:0;height:100vh;background:#111111!important}
-  .sidebar.open{display:flex!important;flex-direction:column;box-shadow:6px 0 40px rgba(0,0,0,.95)}
+  .sidebar{display:none!important}
   .main{margin-left:0!important}
-  .topbar{padding:0 16px}
+  .topbar{padding:0 16px;position:relative}
   .content{padding:16px}
   .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
   .bal-hero{padding:20px;flex-direction:column;gap:14px;text-align:center}
   .bal-amount{font-size:32px}
   .modal{width:95vw;padding:20px}
   .crypto-grid{grid-template-columns:repeat(3,1fr)}
-  #mobile-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.8);z-index:501!important}
-  #mobile-overlay.open{display:block!important}
   .auth-box{width:95vw;padding:28px 20px}
   table{font-size:11px}
   thead th{padding:7px 8px}
   tbody td{padding:9px 8px}
-  .tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
-  .ref-hero{padding:20px}
-  .nav-item{padding:13px 12px;font-size:14px}
+  .tw{overflow-x:auto}
+  #mobile-overlay{display:none!important}
+  #mobile-menu-btn{display:flex!important}
+  #mobile-nav{display:none;position:fixed;top:58px;left:0;right:0;bottom:0;background:#0a0a0a;z-index:999;overflow-y:auto;padding:16px}
+  #mobile-nav.open{display:block}
 }
 @media (min-width: 769px) {
   #mobile-menu-btn{display:none!important}
+  #mobile-nav{display:none!important}
+  .sidebar{display:flex!important}
+}
   #mobile-overlay{display:none!important}
   .sidebar{transform:none!important;z-index:100}
 }
@@ -293,6 +294,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
   </div>
 </div>
 <div id="mobile-overlay" onclick="closeSidebar()"></div>
+<div id="mobile-nav"></div>
 <div id="app">
   <div class="shell">
     <aside class="sidebar">
@@ -337,7 +339,7 @@ async function api(method,path,body){const opts={method,headers:{'Content-Type':
 function switchTab(t){document.getElementById('tab-login').classList.toggle('active',t==='login');document.getElementById('tab-register').classList.toggle('active',t==='register');document.getElementById('login-form').style.display=t==='login'?'block':'none';document.getElementById('register-form').style.display=t==='register'?'block':'none';}
 async function doLogin(){try{const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();}catch(e){toast(e.message,'e');}}
 async function doRegister(){try{const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();toast('Bienvenue sur AffiHub !','s');}catch(e){toast(e.message,'e');}}
-function startApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='block';document.getElementById('u-name').textContent=ME.name;document.getElementById('u-email').textContent=ME.email;document.getElementById('u-avatar').textContent=ME.name[0].toUpperCase();setTimeout(()=>updateLogo(LOGO_URL+'?t='+Date.now()),100);if(ME.role==='admin'){document.getElementById('role-badge').textContent='👑 Admin';buildNav([{section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},{section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'}]},{section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},{section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}]);goPage('admin-dash');}else{document.getElementById('role-badge').textContent='⚡ Affilié';buildNav([{section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},{section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},{section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},{section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},{section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}]);goPage('aff-dash');}clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(curPage)goPage(curPage);},30000);}
+function startApp(){document.getElementById('auth-screen').style.display='none';document.getElementById('app').style.display='block';document.getElementById('u-name').textContent=ME.name;document.getElementById('u-email').textContent=ME.email;document.getElementById('u-avatar').textContent=ME.name[0].toUpperCase();setTimeout(()=>updateLogo(LOGO_URL+'?t='+Date.now()),100);if(ME.role==='admin'){document.getElementById('role-badge').textContent='👑 Admin';buildNav([{section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},{section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'}]},{section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},{section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}]);buildMobileNav([{section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},{section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'}]},{section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},{section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}]);goPage('admin-dash');}else{document.getElementById('role-badge').textContent='⚡ Affilié';buildNav([{section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},{section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},{section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},{section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},{section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}]);buildMobileNav([{section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},{section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},{section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},{section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},{section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}]);goPage('aff-dash');}clearInterval(refreshTimer);refreshTimer=setInterval(()=>{if(curPage)goPage(curPage);},30000);}
 function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
 function buildNav(sections){var nav=document.getElementById('sb-nav');nav.innerHTML='';sections.forEach(sec=>{var div=document.createElement('div');div.className='nav-section';div.innerHTML='<div class="nav-section-label">'+sec.section+'</div>';sec.items.forEach(item=>{var el=document.createElement('button');el.className='nav-item';el.id='nav-'+item.page;el.style.cssText='width:100%;text-align:left;background:none;border:none;font-family:inherit;cursor:pointer;';el.innerHTML='<span style="font-size:15px;width:20px;text-align:center">'+item.icon+'</span>'+item.label;el.addEventListener('click',(e)=>{e.stopPropagation();goPage(item.page);closeSidebar();});div.appendChild(el);});nav.appendChild(div);});}
 const TITLES={'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions','aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager','aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits','admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-offers':'Offres','admin-links':'Liens & Anti-fraude','admin-settings':'Paramètres du site'};
@@ -776,18 +778,28 @@ async function saveLogo(){const fileInput=document.getElementById('logo-file');i
 function updateLogo(url){document.querySelectorAll('.logo-icon-img').forEach(el=>{el.src=url+'?t='+Date.now();el.style.display='block';});document.querySelectorAll('.logo-icon-emoji').forEach(el=>{el.style.display='none';});}
 async function changePass(){const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Mots de passe différents','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}}
 function closeSidebar(){
-  document.querySelector('.sidebar')?.classList.remove('open');
-  document.getElementById('mobile-overlay')?.classList.remove('open');
+  document.getElementById('mobile-nav')?.classList.remove('open');
 }
 function toggleMobileMenu(){
-  const sidebar=document.querySelector('.sidebar');
-  const overlay=document.getElementById('mobile-overlay');
-  if(sidebar.classList.contains('open')){
-    closeSidebar();
-  } else {
-    sidebar.classList.add('open');
-    overlay.classList.add('open');
-  }
+  const nav=document.getElementById('mobile-nav');
+  if(!nav)return;
+  nav.classList.toggle('open');
+}
+function buildMobileNav(sections){
+  const nav=document.getElementById('mobile-nav');
+  if(!nav)return;
+  let html='<div style="padding-bottom:40px">';
+  sections.forEach(sec=>{
+    html+=`<div style="margin-bottom:8px"><div style="font-size:9px;font-weight:800;color:rgba(245,200,66,.5);text-transform:uppercase;letter-spacing:1.5px;padding:10px 4px 5px">${sec.section}</div>`;
+    sec.items.forEach(item=>{
+      html+=`<button onclick="closeSidebar();goPage('${item.page}')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:none;border:none;border-radius:12px;color:#888;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:2px;-webkit-tap-highlight-color:rgba(245,200,66,.2)" id="mnav-${item.page}">
+        <span style="font-size:18px;width:24px;text-align:center">${item.icon}</span>${item.label}
+      </button>`;
+    });
+    html+='</div>';
+  });
+  html+='</div>';
+  nav.innerHTML=html;
 }
 function closeMo(){document.getElementById('mo').classList.remove('open');}
 document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
