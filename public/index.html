@@ -576,6 +576,7 @@ async function renderPage(page){
     +'<div class="crypto-opt" onclick="pickCrypto(\'CADEAU\',this)"><div style="font-size:22px;margin-bottom:6px">🎁</div>Carte cadeau</div>'
     +'</div></div>'
     +'<div class="fi" id="addr-field"><label id="addr-label">Adresse / Coordonnées</label><input type="text" id="wd-addr" placeholder="Selon le moyen choisi"></div>'
+    +'<div class="fi" id="virement-name-field" style="display:none"><label>Nom & Prénom (titulaire du compte)</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
     +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre</button></div>'
     +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement — dès $25</div><div>✅ Carte cadeau — dès $25</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Historique</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>💰 Montant</th><th>🪙 Crypto</th><th>📬 Adresse</th><th>📌 Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
@@ -831,12 +832,18 @@ function pickCrypto(c,el){
   const lbl=document.getElementById('addr-label');const inp=document.getElementById('wd-addr');
   if(lbl)lbl.textContent=labels[c]||'Adresse';
   if(inp)inp.placeholder=placeholders[c]||'';
+  // Show name field only for VIREMENT
+  const nameField=document.getElementById('virement-name-field');
+  if(nameField)nameField.style.display=c==='VIREMENT'?'block':'none';
 }
 async function doWd(){
   const amt=parseFloat(document.getElementById('wd-amt').value);const addr=document.getElementById('wd-addr').value.trim();
   if(!amt||amt<25){toast('Minimum $25','e');return;}if(selCrypto==='PAYPAL'&&amt<50){toast('PayPal : minimum $50','e');return;}if(!selCrypto){toast('Choisissez une crypto','e');return;}if(!addr){toast('Entrez votre adresse','e');return;}
   if(amt>(ME.balance||0)){toast('Solde insuffisant','e');return;}
-  try{await api('POST','/api/withdrawals',{amount:amt,crypto:selCrypto,address:addr});toast('Demande envoyée !','s');selCrypto=null;goPage('aff-pay');}catch(e){toast(e.message,'e');}
+  try{
+    let finalAddr=addr;
+    if(selCrypto==='VIREMENT'){const name=document.getElementById('wd-name')?.value.trim();if(name)finalAddr=addr+' | '+name;}
+    await api('POST','/api/withdrawals',{amount:amt,crypto:selCrypto,address:finalAddr});toast('Demande envoyée !','s');selCrypto=null;goPage('aff-pay');}catch(e){toast(e.message,'e');}
 }
 async function apprC(id){try{await api('PATCH','/api/conversions/'+id+'/approve');toast('Approuvée ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}}
 async function rejtC(id){try{await api('PATCH','/api/conversions/'+id+'/reject');toast('Rejetée','e');goPage(curPage);}catch(e){toast(e.message,'e');}}
