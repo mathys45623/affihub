@@ -488,6 +488,10 @@ async function renderPage(page){
     let html='<div style="margin-bottom:20px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+active.length+' offre(s) disponibles</div></div>';
     CATS.forEach(cat=>{
       const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
+      if(cat.key==='influenceuse'){
+        html+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;opacity:.6"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">🔒 Bientôt disponible</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div></div></div>';
+        return;
+      }
       html+='<div style="margin-bottom:16px"><div onclick="toggleCat(\'aff-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catOffers.length+' offre(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-aff-cat-'+cat.key+'">▸</span></div>';
       html+='<div id="aff-cat-'+cat.key+'" style="display:none;padding-top:12px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
       catOffers.forEach(o=>{
@@ -771,8 +775,17 @@ async function renderPage(page){
     const [links,offers,users]=await Promise.all([api('GET','/api/links'),api('GET','/api/offers'),api('GET','/api/users')]);
     const origin=window.location.origin;
     if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🔗</div><p>Aucun lien généré</p></div></div>';
+    // Group links by user_id, include users not in the users list (e.g. admin)
+    const allUserIds=[...new Set(links.map(l=>l.user_id))];
+    const allUsers=allUserIds.map(uid=>{
+      const u=users.find(u=>u.id===uid);
+      if(u)return u;
+      // Get user info from link data if available
+      const l=links.find(l=>l.user_id===uid);
+      return {id:uid,name:l?.users?.name||'Admin',email:l?.users?.email||''};
+    });
     let html='<div class="card-header" style="margin-bottom:20px"><div class="card-title">🔗 Liens par affilié</div><span style="font-size:12px;color:var(--muted)">'+links.length+' lien(s)</span></div>';
-    users.forEach(u=>{
+    allUsers.forEach(u=>{
       const userLinks=links.filter(l=>l.user_id===u.id);if(userLinks.length===0)return;
       const totalClicks=userLinks.reduce((s,l)=>s+l.clicks,0);
       html+='<div class="card" style="cursor:pointer;margin-bottom:12px" onclick="toggleAffLinks(\'aff-links-'+u.id+'\',this)"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><div class="avatar" style="width:42px;height:42px;font-size:18px;flex-shrink:0">'+u.name[0]+'</div><div><div style="font-size:15px;font-weight:800">'+u.name+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+userLinks.length+' lien(s) • '+totalClicks+' clics</div></div></div><span style="color:var(--muted);font-size:18px;transition:transform .2s" class="chevron-'+u.id+'">▸</span></div>';
