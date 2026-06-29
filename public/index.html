@@ -11,7 +11,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
 ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(245,200,66,.5),rgba(240,66,122,.5));border-radius:4px}
-#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)}
 .auth-box{background:rgba(17,17,17,.95);border-radius:20px;padding:44px 40px;width:410px;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
 .auth-box::before{content:'';position:absolute;inset:-1px;background:linear-gradient(135deg,#F5C842,#F0427A,#a855f7,#F5C842);background-size:300% 300%;border-radius:21px;z-index:-1;animation:aurora 4s linear infinite}
 .logo-wrap{display:inline-flex;align-items:center;gap:11px;font-size:24px;font-weight:800;color:var(--text)}
@@ -139,7 +139,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 .content>*{animation:fadeInUp .4s ease both}
 .content>*:nth-child(1){animation-delay:.05s}.content>*:nth-child(2){animation-delay:.1s}.content>*:nth-child(3){animation-delay:.15s}
 .logo-icon{animation:pulse-glow 4s ease-in-out infinite}
-#auth-screen{background:radial-gradient(ellipse 80% 60% at 20% 20%,rgba(245,200,66,.12),transparent 50%),radial-gradient(ellipse 60% 80% at 80% 80%,rgba(240,66,122,.12),transparent 50%),var(--bg)!important;background-size:400% 400%!important;animation:aurora 12s ease infinite!important}
+#auth-screen{background:radial-gradient(ellipse 60% 50% at 20% 10%,rgba(245,200,66,.1) 0%,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 90%,rgba(240,66,122,.1) 0%,transparent 60%),var(--bg)}
 .btn-grad .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.3);transform:scale(0);animation:ripple .6s linear;pointer-events:none}
 #particles-canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;opacity:.4}
 #auth-screen,#app,.shell,.content,.auth-box{position:relative;z-index:1}
@@ -167,26 +167,58 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 </head>
 <body>
 <canvas id="particles-canvas"></canvas>
-<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:1">
-  <nav style="padding:20px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,10,.8);backdrop-filter:blur(20px);border-bottom:1px solid rgba(245,200,66,.1);z-index:10">
-    <div style="display:flex;align-items:center;gap:10px"><div class="logo-icon" style="width:36px;height:36px;font-size:18px"><img id="land-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="land-logo-emoji">🔗</span></div><span style="font-size:18px;font-weight:800">AffiHub</span></div>
-    <button class="btn btn-grad" onclick="showAuth()" style="font-size:13px">Se connecter →</button>
+<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:1;overflow:hidden">
+  <!-- Bg glow -->
+  <div style="position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse,rgba(245,200,66,.07) 0%,transparent 70%);pointer-events:none"></div>
+  <div style="position:absolute;bottom:-100px;right:-100px;width:500px;height:500px;background:radial-gradient(ellipse,rgba(240,66,122,.08) 0%,transparent 70%);pointer-events:none"></div>
+
+  <!-- Nav -->
+  <nav style="padding:18px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,10,.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06);z-index:10">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo-icon" style="width:34px;height:34px;font-size:16px"><img id="land-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="land-logo-emoji">🔗</span></div>
+      <span style="font-size:17px;font-weight:800">AffiHub</span>
+    </div>
+    <button class="btn btn-gst btn-sm" onclick="showAuth()" style="font-size:12px">Connexion</button>
   </nav>
-  <div style="max-width:900px;margin:0 auto;padding:80px 24px;text-align:center">
-    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,.1);border:1px solid rgba(245,200,66,.2);border-radius:20px;padding:6px 16px;font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:24px">⚡ Plateforme d'affiliation privée</div>
-    <h1 style="font-size:clamp(36px,6vw,68px);font-weight:900;line-height:1.1;letter-spacing:-2px;margin-bottom:20px">Monétise ton<br><span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">audience</span></h1>
-    <p style="font-size:18px;color:var(--muted);max-width:500px;margin:0 auto 36px;line-height:1.7">Rejoins notre réseau d'affiliés privé. Génère des liens, suis tes gains en temps réel et retire en crypto.</p>
-    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:60px">
-      <button class="btn btn-grad" onclick="showAuthRegister()" style="font-size:15px;padding:14px 32px">🚀 Rejoindre maintenant</button>
-      <button class="btn btn-gst" onclick="showAuth()" style="font-size:15px;padding:14px 32px">Se connecter</button>
+
+  <!-- Hero -->
+  <div style="max-width:860px;margin:0 auto;padding:90px 24px 60px;text-align:center;position:relative">
+    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.18);border-radius:20px;padding:6px 18px;font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:28px;letter-spacing:.5px">⚡ Accès sur invitation</div>
+    <h1 style="font-size:clamp(40px,7vw,72px);font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:22px;color:var(--text)">Transforme ton<br><span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 200%;animation:gradient-shift 4s ease infinite">audience en revenus</span></h1>
+    <p style="font-size:17px;color:var(--muted);max-width:480px;margin:0 auto 44px;line-height:1.75">Rejoins notre réseau d'affiliation privé. Génère tes liens, suis tes gains en temps réel et retire en crypto.</p>
+    <button class="btn btn-grad" onclick="showAuthRegister()" style="font-size:16px;padding:16px 40px;border-radius:14px;box-shadow:0 8px 32px rgba(240,66,122,.4)">🚀 Commencer l'aventure</button>
+    <div style="margin-top:16px;font-size:12px;color:var(--muted)">Déjà inscrit ? <button onclick="showAuth()" style="background:none;border:none;color:var(--yellow);cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Se connecter</button></div>
+  </div>
+
+  <!-- Stats bar -->
+  <div style="max-width:700px;margin:0 auto 70px;padding:0 24px">
+    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:20px 32px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
+      <div><div style="font-size:26px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$25</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Retrait minimum</div></div>
+      <div style="border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08)"><div style="font-size:26px;font-weight:900;color:var(--green)">5%</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Commission parrainage</div></div>
+      <div><div style="font-size:26px;font-weight:900;color:var(--yellow)">3</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Cryptos acceptées</div></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;max-width:800px;margin:0 auto 60px">
-      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">🔗</div><div style="font-weight:800;margin-bottom:6px">Liens trackés</div><div style="font-size:13px;color:var(--muted)">Chaque clic et conversion enregistrés automatiquement</div></div>
-      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">💰</div><div style="font-weight:800;margin-bottom:6px">Paiements crypto</div><div style="font-size:13px;color:var(--muted)">BTC, Solana, Litecoin — retrait dès $25</div></div>
-      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">👥</div><div style="font-weight:800;margin-bottom:6px">Parrainage 5%</div><div style="font-size:13px;color:var(--muted)">Gagne 5% sur toutes les ventes de tes filleuls</div></div>
-      <div class="card" style="text-align:left"><div style="font-size:28px;margin-bottom:10px">📊</div><div style="font-weight:800;margin-bottom:6px">Stats temps réel</div><div style="font-size:13px;color:var(--muted)">Dashboard complet avec clics, conversions et gains</div></div>
+  </div>
+
+  <!-- Features -->
+  <div style="max-width:860px;margin:0 auto 70px;padding:0 24px">
+    <div style="text-align:center;margin-bottom:36px"><h2 style="font-size:28px;font-weight:900;margin-bottom:8px">Tout ce dont tu as besoin</h2><p style="color:var(--muted);font-size:14px">Un dashboard complet pour gérer ton activité d'affiliation</p></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
+      <div style="background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">🔗</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Liens trackés</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Chaque clic et conversion enregistrés automatiquement en temps réel</div></div>
+      <div style="background:rgba(0,214,143,.05);border:1px solid rgba(0,214,143,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">💰</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Paiements crypto</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Retire tes gains en Bitcoin, Solana ou Litecoin dès $25</div></div>
+      <div style="background:rgba(77,158,255,.05);border:1px solid rgba(77,158,255,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">📊</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Stats complètes</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Clics, conversions, gains et taux par offre — tout en un coup d'œil</div></div>
+      <div style="background:rgba(240,66,122,.05);border:1px solid rgba(240,66,122,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">👥</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Parrainage 5%</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Invite tes amis et gagne 5% sur toutes leurs conversions approuvées</div></div>
+      <div style="background:rgba(168,85,247,.05);border:1px solid rgba(168,85,247,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">🎨</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Liens personnalisés</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Personnalise ta page avec ton branding — logo, photos, slogan</div></div>
+      <div style="background:rgba(136,136,136,.05);border:1px solid rgba(136,136,136,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">🎫</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Support dédié</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Un manager disponible sur Discord pour t'accompagner</div></div>
     </div>
-    <div style="font-size:13px;color:var(--muted)">Accès sur invitation uniquement — <button onclick="showAuthRegister()" style="background:none;border:none;color:var(--yellow);cursor:pointer;font-family:inherit;font-size:13px;font-weight:700">Demander l'accès →</button></div>
+  </div>
+
+  <!-- CTA final -->
+  <div style="max-width:600px;margin:0 auto;padding:0 24px 80px;text-align:center">
+    <div style="background:var(--grad);border-radius:20px;padding:40px 32px;background-size:200% 200%;animation:gradient-shift 4s ease infinite">
+      <h2 style="font-size:26px;font-weight:900;color:#000;margin-bottom:10px">Prêt à commencer ?</h2>
+      <p style="font-size:14px;color:rgba(0,0,0,.65);margin-bottom:24px">Crée ton compte en 30 secondes et commence à générer tes premiers gains</p>
+      <button class="btn" onclick="showAuthRegister()" style="background:rgba(0,0,0,.15);color:#000;border:2px solid rgba(0,0,0,.2);font-size:15px;padding:14px 36px;border-radius:12px;font-weight:800">🚀 Créer mon compte</button>
+    </div>
   </div>
 </div>
 <div id="auth-screen">
