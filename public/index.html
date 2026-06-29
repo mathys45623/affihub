@@ -25,7 +25,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .fg input::placeholder{color:var(--muted)}
 .btn-primary{width:100%;padding:13px;background:var(--grad);border:none;border-radius:11px;color:#000;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;transition:all .2s;margin-top:10px;box-shadow:0 4px 24px rgba(240,66,122,.4)}
 .btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 32px rgba(240,66,122,.5)}
-#app{display:none}.shell{display:flex;height:100vh;overflow:hidden}
+#app{display:none}.shell{display:flex;min-height:100vh}
 .sidebar{width:248px;background:var(--bg2);border-right:1px solid #1E1E1E;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
 .sb-head{padding:20px;border-bottom:1px solid #1E1E1E;display:flex;align-items:center;gap:11px;flex-shrink:0;background:linear-gradient(180deg,rgba(245,200,66,.04) 0%,transparent 100%)}
 .sb-role{padding:12px 16px 6px;flex-shrink:0}
@@ -41,10 +41,10 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .uname{font-size:13px;font-weight:700;color:var(--text)}.uemail{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:6px;border-radius:8px;margin-left:auto;transition:all .15s}
 .logout-btn:hover{color:var(--red)}
-.main{margin-left:248px;flex:1;display:flex;flex-direction:column;min-width:0;height:100vh;overflow:hidden}
+.main{margin-left:248px;flex:1;display:flex;flex-direction:column;min-width:0}
 .topbar{background:rgba(10,10,10,.7);backdrop-filter:blur(20px);border-bottom:1px solid rgba(245,200,66,.1);padding:0 28px;height:58px;display:flex;align-items:center;position:sticky;top:0;z-index:50}
 .page-title{font-size:18px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.content{padding:28px;flex:1;overflow-y:auto;height:calc(100vh - 58px)}
+.content{padding:28px;flex:1}
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
 .stat-card{background:var(--bg2);border:1px solid #222;border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:all .3s}
 .stat-card:hover{border-color:rgba(245,200,66,.4);transform:translateY(-4px);box-shadow:0 0 30px rgba(245,200,66,.12)}
@@ -244,7 +244,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
   #mobile-overlay{display:none!important}
   .sidebar{transform:none!important;z-index:100}
 }
-#particles-canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;opacity:.4}
+#particles-canvas{display:none}
 #auth-screen,#app,.shell,.content,.auth-box{position:relative;z-index:1}
 .support-hero{background:var(--grad);border-radius:18px;padding:40px 36px;text-align:center;margin-bottom:20px;position:relative;overflow:hidden;box-shadow:0 8px 40px rgba(240,66,122,.35);background-size:200% 200%;animation:gradient-shift 6s ease infinite}
 .founder-avatar{width:82px;height:82px;border-radius:50%;background:rgba(0,0,0,.2);border:3px solid rgba(255,255,255,.4);display:flex;align-items:center;justify-content:center;font-size:36px;margin:0 auto 16px}
@@ -268,7 +268,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 </style>
 </head>
 <body>
-<canvas id="particles-canvas"></canvas>
+<canvas id="particles-canvas" style="position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;opacity:.4"></canvas>
 <div id="auth-screen">
   <div class="auth-box">
     <div style="text-align:center;margin-bottom:30px">
