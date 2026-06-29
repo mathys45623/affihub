@@ -1007,10 +1007,13 @@ async function openStarOFRequest(offerId,offerName){
 }
 
 async function submitStarOFRequest(offerId){
-  toast('Envoi en cours...','i');
+  const btn=document.querySelector('#m-body .btn-grad');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Upload en cours... Ne quittez pas la page';}
+  toast('📤 Upload des photos en cours, ne quittez pas la page...','i');
   try{
-    const photoUrls={};
-    for(let i=1;i<=5;i++){const f=document.getElementById('sf-photo'+i).files[0];if(f)photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}
+    const photoUrls={};let uploaded=0;
+    for(let i=1;i<=5;i++){const f=document.getElementById('sf-photo'+i).files[0];if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}}
+    toast('📨 Envoi de la demande...','i');
     await api('POST','/api/custom-requests',{
       offer_id:offerId,
       server_name:document.getElementById('sf-prenom').value.trim(),
@@ -1022,19 +1025,23 @@ async function submitStarOFRequest(offerId){
       photos_blurred:false,
       ...photoUrls
     });
-    closeMo();toast('Demande envoyée ✓','s');goPage('aff-links');
-  }catch(e){toast(e.message,'e');}
+    closeMo();goPage('aff-links');setTimeout(()=>toast('✅ Demande envoyée ! Notre équipe va la traiter rapidement.','s'),300);
+  }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='📨 Envoyer';}}
 }
 
 async function submitCustomRequest(offerId){
-  toast('Envoi en cours...','i');
+  // Show upload progress
+  const btn=document.querySelector('#m-body .btn-grad');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Upload en cours... Ne quittez pas la page';}
+  toast('📤 Upload des photos en cours, ne quittez pas la page...','i');
   try{
-    let logoUrl=null;const lf=document.getElementById('cr-logo-file').files[0];if(lf)logoUrl=await uploadImg(lf,'tickets');
-    const photoUrls={};
-    for(let i=1;i<=6;i++){const f=document.getElementById('cr-photo'+i).files[0];if(f)photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}
+    let logoUrl=null;const lf=document.getElementById('cr-logo-file').files[0];if(lf){toast('📤 Upload logo...','i');logoUrl=await uploadImg(lf,'tickets');}
+    const photoUrls={};let uploaded=0;
+    for(let i=1;i<=6;i++){const f=document.getElementById('cr-photo'+i).files[0];if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}}
+    toast('📨 Envoi de la demande...','i');
     await api('POST','/api/custom-requests',{offer_id:offerId,server_name:document.getElementById('cr-name').value.trim(),slogan:document.getElementById('cr-slogan').value.trim(),tag1:document.getElementById('cr-tag1').value.trim(),tag2:document.getElementById('cr-tag2').value.trim(),tag3:document.getElementById('cr-tag3').value.trim(),logo_url:logoUrl,salons:document.getElementById('cr-salons').value.trim(),photo_text:document.getElementById('cr-phototext').value.trim(),photos_blurred:document.getElementById('cr-blur').checked,...photoUrls});
-    closeMo();toast('Demande envoyée ✓','s');goPage('aff-links');
-  }catch(e){toast(e.message,'e');}
+    closeMo();goPage('aff-links');setTimeout(()=>toast('✅ Demande envoyée ! Notre équipe va la traiter rapidement.','s'),300);
+  }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='📨 Envoyer';}}
 }
 async function sendCustomLink(id){const link=document.getElementById('clink-'+id)?.value.trim();if(!link){toast('Entre le lien','e');return;}try{await api('PATCH','/api/custom-requests/'+id+'/link',{custom_link:link});toast('Lien envoyé ✓','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
 async function deleteCustomReq(id){try{await api('DELETE','/api/custom-requests/'+id);toast('Supprimé','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
