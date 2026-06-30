@@ -787,7 +787,7 @@ async function renderPage(page){
     if(!settings.temp_links_enabled){
       return '<div class="card"><div class="empty"><div class="empty-icon">🔒</div><p>Cette page est temporairement désactivée par l\'administrateur.</p></div></div>';
     }
-    const [offers,tempLinks]=await Promise.all([api('GET','/api/offers'),api('GET','/api/temp-links')]);
+    const [offers,tempLinks,customReqs]=await Promise.all([api('GET','/api/offers'),api('GET','/api/temp-links'),api('GET','/api/custom-requests')]);
     const active=offers.filter(o=>o.active);
     if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">⏳</div><p>Aucune offre disponible.</p></div></div>';
     let html='<div class="warning-box" style="margin-bottom:20px"><div style="font-size:16px">⏳</div><p style="font-size:12px;color:var(--yellow);line-height:1.7">Système temporaire en attendant l\'activation du postback automatique. Demande ton lien personnalisé ci-dessous, l\'admin te l\'enverra manuellement.</p></div>';
@@ -802,7 +802,16 @@ async function renderPage(page){
       catOffers.forEach(o=>{
         const tl=tempLinks.find(t=>t.offer_id===o.id);
         let bottomHtml='';
-        if(tl&&tl.custom_link){
+        if(o.id===54||o.id===55){
+          const cr=customReqs.find(r=>r.offer_id===o.id);
+          if(cr&&cr.custom_link){
+            bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2">✅ Lien reçu</span>';
+          } else if(cr){
+            bottomHtml='<span class="badge by2">⏳ Demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
+          } else {
+            bottomHtml='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 Personnaliser & Demander</button>';
+          }
+        } else if(tl&&tl.custom_link){
           bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tl.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+tl.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2" style="margin-top:8px">✅ Lien reçu</span>';
         } else if(tl){
           bottomHtml='<span class="badge by2">⏳ Demande envoyée — en attente</span>';
@@ -817,24 +826,66 @@ async function renderPage(page){
   }
 
   if(page==='admin-temp'){
-    const [tempLinks,offers]=await Promise.all([api('GET','/api/temp-links'),api('GET','/api/offers')]);
+    const [tempLinks,offers,customReqs]=await Promise.all([api('GET','/api/temp-links'),api('GET','/api/offers'),api('GET','/api/custom-requests')]);
     const pending=tempLinks.filter(t=>t.status==='pending');
-    if(tempLinks.length===0)return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">⏳ Liens temporaires</div></div><div class="card"><div class="empty"><div class="empty-icon">⏳</div><p>Aucune demande</p></div></div>';
-    let html='<div class="card-header" style="margin-bottom:20px"><div class="card-title">⏳ Liens temporaires</div>'+(pending.length>0?'<span class="badge by2">⏳ '+pending.length+' en attente</span>':'')+'</div>';
-    CATS.forEach(cat=>{
-      const catOfferIds=offers.filter(o=>(o.category||'autre')===cat.key).map(o=>o.id);
-      const catLinks=tempLinks.filter(t=>catOfferIds.includes(t.offer_id));
-      if(catLinks.length===0)return;
-      html+='<div style="margin-bottom:16px"><div onclick="toggleCat(\'admtemp-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catLinks.length+' demande(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-admtemp-cat-'+cat.key+'">▸</span></div>';
-      html+='<div id="admtemp-cat-'+cat.key+'" style="display:none;padding-top:12px">';
-      catLinks.forEach(t=>{
-        html+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px"><div class="avatar" style="width:40px;height:40px;font-size:16px">'+(t.users?.name||'?')[0]+'</div><div><div style="font-weight:700">'+(t.users?.name||'?')+'</div><div style="font-size:12px;color:var(--muted)">'+(t.offers?.name||'?')+' • '+fmt(t.created_at)+'</div></div></div>'+(t.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
-          +(t.status==='approved'?'<div style="margin-top:12px;background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+t.custom_link+'</code><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>'
-          :'<div style="margin-top:12px;display:flex;gap:8px;align-items:center"><input type="text" id="tl-'+t.id+'" placeholder="Colle le lien Adunlock avec le nom de l\'affilié..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendTempLink('+t.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>')
-          +'</div>';
+    const customPending=customReqs.filter(r=>r.status==='pending');
+
+    let html='<div class="card-header" style="margin-bottom:20px"><div class="card-title">⏳ Liens temporaires</div></div>';
+    html+='<div class="tabs"><button class="tab active" id="ttab-simple" onclick="switchTempTab(\'simple\')">📨 Demande de lien ('+tempLinks.length+')</button><button class="tab" id="ttab-custom" onclick="switchTempTab(\'custom\')">🎨 Demande de lien personnalisé ('+customReqs.length+')</button></div>';
+
+    // Simple temp links section
+    html+='<div id="ttab-content-simple">';
+    if(tempLinks.length===0){
+      html+='<div class="card"><div class="empty"><div class="empty-icon">📨</div><p>Aucune demande</p></div></div>';
+    } else {
+      CATS.forEach(cat=>{
+        const catOfferIds=offers.filter(o=>(o.category||'autre')===cat.key).map(o=>o.id);
+        const catLinks=tempLinks.filter(t=>catOfferIds.includes(t.offer_id));
+        if(catLinks.length===0)return;
+        html+='<div style="margin-bottom:16px"><div onclick="toggleCat(\'admtemp-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catLinks.length+' demande(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-admtemp-cat-'+cat.key+'">▸</span></div>';
+        html+='<div id="admtemp-cat-'+cat.key+'" style="display:none;padding-top:12px">';
+        catLinks.forEach(t=>{
+          html+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px"><div class="avatar" style="width:40px;height:40px;font-size:16px">'+(t.users?.name||'?')[0]+'</div><div><div style="font-weight:700">'+(t.users?.name||'?')+'</div><div style="font-size:12px;color:var(--muted)">'+(t.offers?.name||'?')+' • '+fmt(t.created_at)+'</div></div></div>'+(t.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
+            +(t.status==='approved'?'<div style="margin-top:12px;background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+t.custom_link+'</code><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>'
+            :'<div style="margin-top:12px;display:flex;gap:8px;align-items:center"><input type="text" id="tl-'+t.id+'" placeholder="Colle le lien Adunlock avec le nom de l\'affilié..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendTempLink('+t.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>')
+            +'</div>';
+        });
+        html+='</div></div>';
       });
-      html+='</div></div>';
-    });
+    }
+    html+='</div>';
+
+    // Custom requests section (offers 54/55)
+    html+='<div id="ttab-content-custom" style="display:none">';
+    if(customReqs.length===0){
+      html+='<div class="card"><div class="empty"><div class="empty-icon">🎨</div><p>Aucune demande personnalisée</p></div></div>';
+    } else {
+      customReqs.forEach(r=>{
+        const photoHtml=[r.photo1_url,r.photo2_url,r.photo3_url,r.photo4_url,r.photo5_url,r.photo6_url].filter(Boolean).map(p=>'<img src="'+p+'" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;'+(r.photos_blurred?'filter:blur(4px)':'')+'" onclick="window.open(\''+p+'\',\'_blank\')">').join('');
+        const isStarOF=r.offer_id===55;
+        const tags=isStarOF?[]:[r.tag1,r.tag2,r.tag3].filter(Boolean).map(t=>'<span class="badge bp2">'+t+'</span>').join('');
+        const linkSection=r.status==='approved'
+          ?'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+r.custom_link+'</code><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>'
+          :'<div style="display:flex;gap:8px;align-items:center"><input type="text" id="clink-'+r.id+'" placeholder="Colle le lien ici..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendCustomLink('+r.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>';
+        html+='<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px">'+(r.logo_url?'<img src="'+r.logo_url+'" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid #2a2a2a;cursor:pointer" onclick="window.open(\''+r.logo_url+'\',\'_blank\')">':'<div style="width:48px;height:48px;border-radius:12px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:20px">🎮</div>')+'<div><div style="font-size:16px;font-weight:800">'+(r.server_name||'Sans nom')+'</div><div style="font-size:12px;color:var(--muted)">'+(r.users?.name)+' • '+(r.offers?.name)+' • '+fmt(r.created_at)+'</div></div></div>'+(r.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px">'+(isStarOF?
+          '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Prénom</div><div style="font-size:13px">'+(r.server_name||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Nom</div><div style="font-size:13px">'+(r.slogan||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Bio</div><div style="font-size:12px;line-height:1.5">'+(r.salons||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">📦 Contenus</div><div style="font-size:18px;font-weight:800">'+(r.tag1||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">🎥 Vidéos</div><div style="font-size:18px;font-weight:800">'+(r.tag2||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">❤️ Likes</div><div style="font-size:18px;font-weight:800">'+(r.tag3||'—')+'</div></div>'
+          :
+          '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Slogan</div><div style="font-size:13px">'+(r.slogan||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Étiquettes</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+(tags||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Salons</div><div style="font-size:13px">'+(r.salons||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Texte photos</div><div style="font-size:13px">'+(r.photo_text||'—')+'</div></div>'
+          +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Photos floutées</div><div style="font-size:13px">'+(r.photos_blurred?'✅ Oui':'❌ Non')+'</div></div>'
+          )+'</div>'
+        +(photoHtml?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+photoHtml+'</div>':'')+linkSection+'</div>';
+      });
+    }
+    html+='</div>';
     return html;
   }
 
@@ -997,6 +1048,12 @@ async function deleteTicket(id){try{await api('DELETE','/api/tickets/'+id);close
 async function closeTicket(id,status){try{await api('PATCH','/api/tickets/'+id+'/status',{status});toast(status==='resolved'?'Ticket résolu ✅':'Ticket fermé 🔴','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
 
 // ── CUSTOM LINK REQUESTS ──
+function switchTempTab(tab){
+  document.getElementById('ttab-simple').className='tab'+(tab==='simple'?' active':'');
+  document.getElementById('ttab-custom').className='tab'+(tab==='custom'?' active':'');
+  document.getElementById('ttab-content-simple').style.display=tab==='simple'?'block':'none';
+  document.getElementById('ttab-content-custom').style.display=tab==='custom'?'block':'none';
+}
 async function requestTempLink(offerId){
   try{await api('POST','/api/temp-links',{offer_id:offerId});toast('Demande envoyée ✓','s');goPage('aff-temp');}catch(e){toast(e.message,'e');}
 }
