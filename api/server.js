@@ -522,3 +522,15 @@ app.delete('/api/temp-links/:id', auth, adminOnly, async (req, res) => {
   await supabase.from('temp_links').delete().eq('id', req.params.id);
   res.json({ success: true });
 });
+
+// ── GLOBAL SETTINGS ──
+app.get('/api/settings', auth, async (req, res) => {
+  const { data } = await supabase.from('settings').select('*').eq('key', 'temp_links_enabled').single();
+  res.json({ temp_links_enabled: data ? data.value === 'true' : true });
+});
+
+app.patch('/api/settings/temp-links', auth, adminOnly, async (req, res) => {
+  const { enabled } = req.body;
+  await supabase.from('settings').upsert({ key: 'temp_links_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  res.json({ success: true });
+});
