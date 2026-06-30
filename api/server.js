@@ -309,7 +309,17 @@ app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
     await supabase.from('referral_commissions').delete().eq('referrer_id', uid);
     await supabase.from('referral_commissions').delete().eq('referee_id', uid);
     await supabase.from('users').update({ referred_by: null }).eq('referred_by', uid);
-    await supabase.from('users').delete().eq('id', uid);
+    await supabase.from('custom_link_requests').delete().eq('user_id', uid);
+    await supabase.from('temp_links').delete().eq('user_id', uid);
+    const { data: tickets } = await supabase.from('tickets').select('id').eq('user_id', uid);
+    if (tickets && tickets.length > 0) {
+      const ticketIds = tickets.map(t => t.id);
+      await supabase.from('ticket_messages').delete().in('ticket_id', ticketIds);
+    }
+    await supabase.from('ticket_messages').delete().eq('user_id', uid);
+    await supabase.from('tickets').delete().eq('user_id', uid);
+    const { error: delError } = await supabase.from('users').delete().eq('id', uid);
+    if (delError) return res.status(500).json({ error: delError.message });
     res.json({ success: true });
   } catch(e) {
     res.status(500).json({ error: e.message });
