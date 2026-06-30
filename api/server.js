@@ -71,6 +71,12 @@ app.post('/api/change-password', auth, async (req, res) => {
   res.json({ success: true });
 });
 
+app.patch('/api/me/postback', auth, async (req, res) => {
+  const { postback_url } = req.body;
+  await supabase.from('users').update({ postback_url: postback_url || null }).eq('id', req.user.id);
+  res.json({ success: true });
+});
+
 // ── TRACKING CLIC ──
 app.get('/go/:linkId', async (req, res) => {
   const { linkId } = req.params;
@@ -137,7 +143,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   const { data: conv } = await supabase.from('conversions').select('*').eq('id', req.params.id).single();
   if (!conv || conv.status !== 'pending') return res.status(400).json({ error: 'Conversion invalide' });
   await supabase.from('conversions').update({ status: 'approved' }).eq('id', req.params.id);
-  const { data: user } = await supabase.from('users').select('balance,referred_by').eq('id', conv.user_id).single();
+  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
   if (user.referred_by) {
     const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
@@ -149,6 +155,16 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
         await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: conv.user_id, conversion_id: conv.id, amount: commission });
       }
     }
+  }
+  // Send postback to affiliate's own system if configured
+  if (user.postback_url) {
+    try {
+      const postbackUrl = user.postback_url
+        .replace('{LINK_ID}', conv.link_id || '')
+        .replace('{AMOUNT}', conv.amount)
+        .replace('{STATUS}', 'approved');
+      fetch(postbackUrl).catch(err => console.error('Postback affilié échoué:', err.message));
+    } catch (e) { console.error('Postback affilié erreur:', e.message); }
   }
   res.json({ success: true });
 });
