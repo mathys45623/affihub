@@ -483,3 +483,32 @@ app.delete('/api/custom-requests/:id', auth, adminOnly, async (req, res) => {
   await supabase.from('custom_link_requests').delete().eq('id', req.params.id);
   res.json({ success: true });
 });
+
+// ── TEMP LINKS (en attente du postback Adunlock) ──
+app.get('/api/temp-links', auth, async (req, res) => {
+  let query = supabase.from('temp_links').select('*, users(name,email), offers(name,category)').order('created_at', { ascending: false });
+  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
+  const { data } = await query;
+  res.json(data || []);
+});
+
+app.post('/api/temp-links', auth, async (req, res) => {
+  const { offer_id } = req.body;
+  const { data: existing } = await supabase.from('temp_links').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
+  if (existing) return res.status(400).json({ error: 'Demande déjà existante pour cette offre' });
+  const { data, error } = await supabase.from('temp_links').insert({ user_id: req.user.id, offer_id }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.patch('/api/temp-links/:id/link', auth, adminOnly, async (req, res) => {
+  const { custom_link } = req.body;
+  const { data, error } = await supabase.from('temp_links').update({ custom_link, status: 'approved' }).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+app.delete('/api/temp-links/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('temp_links').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
