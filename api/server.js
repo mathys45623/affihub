@@ -541,12 +541,25 @@ app.get('/api/settings/all', auth, async (req, res) => {
   (data || []).forEach(s => { obj[s.key] = s.value; });
   res.json({
     temp_links_enabled: obj.temp_links_enabled !== 'false',
-    aff_links_enabled: obj.aff_links_enabled !== 'false'
+    aff_links_enabled: obj.aff_links_enabled !== 'false',
+    cat_casino_enabled: obj.cat_casino_enabled !== 'false',
+    cat_dating_enabled: obj.cat_dating_enabled !== 'false',
+    cat_ia_enabled: obj.cat_ia_enabled !== 'false',
+    cat_autre_enabled: obj.cat_autre_enabled !== 'false',
+    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true'
   });
 });
 
 app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
   const { enabled } = req.body;
   await supabase.from('settings').upsert({ key: 'aff_links_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  res.json({ success: true });
+});
+
+app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
+  const { category, enabled } = req.body;
+  const valid = ['casino', 'dating', 'ia', 'autre', 'influenceuse'];
+  if (!valid.includes(category)) return res.status(400).json({ error: 'Catégorie invalide' });
+  await supabase.from('settings').upsert({ key: 'cat_' + category + '_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
   res.json({ success: true });
 });
