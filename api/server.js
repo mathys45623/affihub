@@ -534,3 +534,19 @@ app.patch('/api/settings/temp-links', auth, adminOnly, async (req, res) => {
   await supabase.from('settings').upsert({ key: 'temp_links_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
   res.json({ success: true });
 });
+
+app.get('/api/settings/all', auth, async (req, res) => {
+  const { data } = await supabase.from('settings').select('*');
+  const obj = {};
+  (data || []).forEach(s => { obj[s.key] = s.value; });
+  res.json({
+    temp_links_enabled: obj.temp_links_enabled !== 'false',
+    aff_links_enabled: obj.aff_links_enabled !== 'false'
+  });
+});
+
+app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
+  const { enabled } = req.body;
+  await supabase.from('settings').upsert({ key: 'aff_links_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  res.json({ success: true });
+});
