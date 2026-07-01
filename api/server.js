@@ -523,6 +523,17 @@ app.delete('/api/temp-links/:id', auth, adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 
+// ── TRACKING CLIC (TEMP LINKS) ──
+app.get('/go-temp/:id', async (req, res) => {
+  const { id } = req.params;
+  const { data: tempLink } = await supabase.from('temp_links').select('*').eq('id', id).single();
+  if (!tempLink || tempLink.status !== 'approved' || !tempLink.custom_link) {
+    return res.status(404).send('Lien invalide ou non disponible');
+  }
+  await supabase.from('temp_links').update({ clicks: (tempLink.clicks || 0) + 1 }).eq('id', id);
+  res.redirect(tempLink.custom_link);
+});
+
 // ── GLOBAL SETTINGS ──
 app.get('/api/settings', auth, async (req, res) => {
   const { data } = await supabase.from('settings').select('*').eq('key', 'temp_links_enabled').single();
