@@ -376,18 +376,20 @@ async function refreshNotifs(){
   if(!ME||!TOKEN)return;
   try{
     if(ME.role==='admin'){
-      const [convs,wds,tickets,customs]=await Promise.all([
+      const [convs,wds,tickets,customs,tempLinks]=await Promise.all([
         api('GET','/api/conversions'),api('GET','/api/withdrawals'),
-        api('GET','/api/tickets'),api('GET','/api/custom-requests')
+        api('GET','/api/tickets'),api('GET','/api/custom-requests'),api('GET','/api/temp-links')
       ]);
       const pendingConvs=convs.filter(c=>c.status==='pending').length;
       const pendingWds=wds.filter(w=>w.status==='pending').length;
       const unreadTickets=tickets.filter(t=>t.unread>0).length;
       const pendingCustoms=customs.filter(c=>c.status==='pending').length;
+      const pendingTempLinks=tempLinks.filter(t=>t.status==='pending').length;
       setNotif('admin-conv',pendingConvs);
       setNotif('admin-wd',pendingWds);
       setNotif('admin-tickets',unreadTickets);
       setNotif('admin-custom',pendingCustoms);
+      setNotif('admin-temp',pendingTempLinks+pendingCustoms);
     } else {
       const tickets=await api('GET','/api/tickets');
       const unread=tickets.filter(t=>t.unread>0).length;
