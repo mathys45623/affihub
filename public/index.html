@@ -826,7 +826,7 @@ async function renderPage(page){
     if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">⏳</div><p>Aucune offre disponible.</p></div></div>';
     let html='<div class="warning-box" style="margin-bottom:20px"><div style="font-size:16px">⏳</div><p style="font-size:12px;color:var(--yellow);line-height:1.7">Système temporaire en attendant l\'activation du postback automatique. Demande ton lien personnalisé ci-dessous, l\'admin te l\'enverra manuellement.</p></div>';
     CATS.forEach(cat=>{
-      if(cat.key==='influenceuse'||cat.key==='autre')return;
+      if(cat.key==='influenceuse')return;
       const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
       html+='<div style="margin-bottom:16px"><div onclick="toggleCat(\'temp-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catOffers.length+' offre(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-temp-cat-'+cat.key+'">▸</span></div>';
       html+='<div id="temp-cat-'+cat.key+'" style="display:none;padding-top:12px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
