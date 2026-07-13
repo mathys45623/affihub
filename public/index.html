@@ -580,13 +580,11 @@ async function renderPage(page){
 
   if(page==='aff-links'){
     const [offers,links,customReqs,allSettings]=await Promise.all([api('GET','/api/offers'),api('GET','/api/links'),api('GET','/api/custom-requests'),api('GET','/api/settings/all')]);
-    const active=offers.filter(o=>o.active);
-    if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible.</p></div></div>';
-    const affLinksEnabled=allSettings.aff_links_enabled;
+    if(offers.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible.</p></div></div>';
     const origin=window.location.origin;
-    let html='<div style="margin-bottom:20px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+active.length+' offre(s) disponibles</div></div>';
+    let html='<div style="margin-bottom:20px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+offers.length+' offre(s) disponibles</div></div>';
     CATS.forEach(cat=>{
-      const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
+      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
       const catEnabled=allSettings['cat_'+cat.key+'_enabled'];
       if(!catEnabled){
         const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé';
@@ -599,7 +597,15 @@ async function renderPage(page){
       catOffers.forEach(o=>{
         const el=links.find(l=>l.offer_id===o.id);
         let bottomHtml='';
-        if(o.id===54||o.id===55){
+        if(!o.active){
+          // Offre désactivée — visible mais pas de génération possible
+          if(el){
+            const linkUrl=origin+'/go/'+el.id;
+            bottomHtml='<div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-family:monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+linkUrl+'</code><button class="copy-btn" onclick="cpLink(\''+el.id+'\',this)">📋</button></div><span class="badge br2">🔒 Offre temporairement indisponible</span>';
+          } else {
+            bottomHtml='<span class="badge br2" style="width:100%;justify-content:center">🔒 Offre temporairement indisponible</span>';
+          }
+        } else if(o.id===54||o.id===55){
           const cr=customReqs.find(r=>r.offer_id===o.id);
           if(cr&&cr.custom_link){
             bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2">✅ Lien reçu</span>';
@@ -617,7 +623,8 @@ async function renderPage(page){
           bottomHtml='<button class="btn btn-grad" onclick="genLink('+o.id+')" style="width:100%;justify-content:center">🔗 Générer mon lien</button>';
         }
         const imgHtml=o.image_url?'<div style="width:100%;height:155px;overflow:hidden"><img src="'+o.image_url+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"></div>':'';
-        html+='<div style="background:#111;border:1px solid '+cat.border+';border-radius:14px;overflow:hidden;position:relative"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+cat.color+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
+        const borderColor=o.active?cat.border:'rgba(255,71,87,.2)';
+        html+='<div style="background:#111;border:1px solid '+borderColor+';border-radius:14px;overflow:hidden;position:relative'+(o.active?'':';opacity:.7')+'"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+(o.active?cat.color:'var(--red)')+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
       });
       html+='</div></div></div>';
     });
