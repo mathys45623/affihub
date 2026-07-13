@@ -62,8 +62,18 @@ app.post('/api/login', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
   const valid = user.password === password || await bcrypt.compare(password, user.password);
   if (!valid) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+  // Check maintenance mode for non-admin
+  if (user.role !== 'admin') {
+    const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
+    if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
+  }
+  // Log activity
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || '';
+  supabase.from('activity_logs').insert({ user_id: user.id, action: 'login', details: 'Connexion depuis '+ip, ip }).then(()=>{});
+  const isFirstLogin = user.first_login !== false;
+  if (isFirstLogin) await supabase.from('users').update({ first_login: false }).eq('id', user.id);
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at } });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, postback_url: user.postback_url, show_ranking: user.show_ranking }, first_login: isFirstLogin });
 });
 
 // ── ME ──
@@ -87,6 +97,17 @@ app.patch('/api/me/postback', auth, async (req, res) => {
   const { postback_url } = req.body;
   await supabase.from('users').update({ postback_url: postback_url || null }).eq('id', req.user.id);
   res.json({ success: true });
+});
+
+app.patch('/api/me/referral-code', auth, async (req, res) => {
+  const { code } = req.body;
+  if (!code) return res.status(400).json({ error: 'Code requis' });
+  const clean = code.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+  if (clean.length < 3 || clean.length > 20) return res.status(400).json({ error: 'Le code doit faire entre 3 et 20 caractères (lettres, chiffres, - et _)' });
+  const { data: existing } = await supabase.from('users').select('id').eq('referral_code', clean).neq('id', req.user.id).single();
+  if (existing) return res.status(400).json({ error: 'Ce code est déjà utilisé par un autre affilié' });
+  await supabase.from('users').update({ referral_code: clean }).eq('id', req.user.id);
+  res.json({ success: true, code: clean });
 });
 
 // ── TRACKING CLIC ──
@@ -607,8 +628,27 @@ app.get('/api/settings/all', auth, async (req, res) => {
     cat_dating_enabled: obj.cat_dating_enabled !== 'false',
     cat_ia_enabled: obj.cat_ia_enabled !== 'false',
     cat_autre_enabled: obj.cat_autre_enabled !== 'false',
-    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true'
+    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true',
+    maintenance_mode: obj.maintenance_mode === 'true',
+    welcome_message: obj.welcome_message || ''
   });
+});
+
+app.patch('/api/settings/maintenance', auth, adminOnly, async (req, res) => {
+  const { enabled } = req.body;
+  await supabase.from('settings').upsert({ key: 'maintenance_mode', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  res.json({ success: true });
+});
+
+app.patch('/api/settings/welcome', auth, adminOnly, async (req, res) => {
+  const { message } = req.body;
+  await supabase.from('settings').upsert({ key: 'welcome_message', value: message || '' }, { onConflict: 'key' });
+  res.json({ success: true });
+});
+
+app.get('/api/logs', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(200);
+  res.json(data || []);
 });
 
 app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
