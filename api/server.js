@@ -563,3 +563,44 @@ app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
   await supabase.from('settings').upsert({ key: 'cat_' + category + '_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
   res.json({ success: true });
 });
+
+// ── NOTES AFFILIÉS ──
+app.patch('/api/users/:id/note', auth, adminOnly, async (req, res) => {
+  const { note } = req.body;
+  await supabase.from('users').update({ admin_note: note }).eq('id', req.params.id);
+  res.json({ success: true });
+});
+
+// ── EXPORT CSV ──
+function toCSV(rows, headers) {
+  const escape = v => '"' + String(v || '').replace(/"/g, '""') + '"';
+  const lines = [headers.map(escape).join(',')];
+  rows.forEach(row => lines.push(headers.map(h => escape(row[h])).join(',')));
+  return lines.join('\n');
+}
+
+app.get('/api/export/affiliates', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('users').select('name,email,balance,referral_code,created_at,admin_note').neq('role', 'admin');
+  const csv = toCSV(data, ['name','email','balance','referral_code','created_at','admin_note']);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="affilies.csv"');
+  res.send(csv);
+});
+
+app.get('/api/export/conversions', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('conversions').select('*, users(name,email), offers(name)').order('created_at', { ascending: false });
+  const rows = (data || []).map(c => ({ date: c.created_at?.split('T')[0], affilié: c.users?.name, email: c.users?.email, offre: c.offers?.name, montant: c.amount, statut: c.status, lien: c.link_id }));
+  const csv = toCSV(rows, ['date','affilié','email','offre','montant','statut','lien']);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="conversions.csv"');
+  res.send(csv);
+});
+
+app.get('/api/export/withdrawals', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('withdrawals').select('*, users(name,email)').order('created_at', { ascending: false });
+  const rows = (data || []).map(w => ({ date: w.created_at?.split('T')[0], affilié: w.users?.name, email: w.users?.email, montant: w.amount, moyen: w.crypto, adresse: w.address, statut: w.status, raison: w.reason }));
+  const csv = toCSV(rows, ['date','affilié','email','montant','moyen','adresse','statut','raison']);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="retraits.csv"');
+  res.send(csv);
+});
