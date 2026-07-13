@@ -314,8 +314,26 @@ function switchTab(t){
 }
 
 async function doLogin(){
-  try{const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
-  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();}
+  try{
+    const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
+    TOKEN=r.token;ME=r.user;
+    localStorage.setItem('affihub_token',TOKEN);
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
+    startApp();
+    // Show welcome message on first login
+    if(r.first_login&&ME.role!=='admin'){
+      setTimeout(async()=>{
+        try{
+          const s=await api('GET','/api/settings/all');
+          if(s.welcome_message){
+            document.getElementById('m-title').textContent='👋 Bienvenue sur AffiHub !';
+            document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:16px">🎉</div><div style="font-size:14px;line-height:1.8;color:var(--muted);white-space:pre-wrap">'+s.welcome_message+'</div><button class="btn btn-grad" onclick="closeMo()" style="margin-top:20px;width:100%;justify-content:center">C\'est parti ! 🚀</button></div>';
+            document.getElementById('mo').classList.add('open');
+          }
+        }catch(e){}
+      },800);
+    }
+  }
   catch(e){toast(e.message,'e');}
 }
 
@@ -342,7 +360,7 @@ function startApp(){
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
     {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'🎨',label:'Liens perso',page:'admin-custom'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
+    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
   const affNav=[
     {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},{icon:'⏳',label:'Liens temporaires',page:'aff-temp'}]},
@@ -440,7 +458,7 @@ const TITLES={
   'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés',
-  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires'
+  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
 };
 
 async function goPage(page){
@@ -897,17 +915,29 @@ async function renderPage(page){
     return html;
   }
 
+  if(page==='admin-logs'){
+    const logs=await api('GET','/api/logs');
+    if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
+    const actionIcon={'login':'🔐','logout':'👋'};
+    const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap">'+fmt(l.created_at)+' <span style="font-size:10px">'+((l.created_at||'').split('T')[1]||'').substring(0,5)+'</span></td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><span style="font-size:12px;color:var(--muted)">200 derniers événements</span></div><div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+
   if(page==='admin-settings'){
     const currentLogo=localStorage.getItem('affihub_logo')||'';
     const settings=await api('GET','/api/settings/all');
     const tempEnabled=settings.temp_links_enabled;
+    const maintenance=settings.maintenance_mode;
+    const welcomeMsg=settings.welcome_message||'';
     const catRows=CATS.map(cat=>{
       const enabled=settings['cat_'+cat.key+'_enabled'];
       return '<div class="info-row"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:16px">'+cat.label.split(' ')[0]+'</span><span style="font-weight:700;font-size:13px">'+cat.label.split(' ').slice(1).join(' ')+'</span></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(enabled?'var(--green)':'var(--red)')+'">'+(enabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(enabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleCategorySetting(\''+cat.key+'\','+(enabled?'false':'true')+')">'+(enabled?'Désactiver':'Activer')+'</button></div></div>';
     }).join('');
     return '<div class="settings-section"><div class="settings-section-title">🖼️ Logo du site</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px"><div style="width:80px;height:80px;border-radius:14px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+(currentLogo?'<img src="'+currentLogo+'" style="width:100%;height:100%;object-fit:contain">':'<span style="font-size:36px">🔗</span>')+'</div><div><div style="font-weight:700;margin-bottom:4px">Logo actuel</div><div style="font-size:12px;color:var(--muted)">Sidebar et page de connexion</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'logo-file\').click()"><input type="file" id="logo-file" accept="image/*" style="display:none" onchange="previewLogo(this)"><div id="logo-prev" style="display:none;margin-bottom:10px"><img id="logo-prev-img" style="max-width:120px;max-height:120px;border-radius:10px;object-fit:contain"></div><div id="logo-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer</div></div></div><button class="btn btn-grad" onclick="saveLogo()" style="width:100%;justify-content:center;margin-top:14px">💾 Sauvegarder</button></div>'
+    +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première connexion</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉&#10;&#10;Pour commencer, rends-toi sur Liens temporaires et demande ton premier lien.&#10;&#10;Si tu as des questions, contacte-moi sur Discord : ananous." style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
-    +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock (11 juillet). Désactive cette page pour les affiliés une fois le postback automatique en place, ou réactive-la en cas de problème.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div><div style="font-size:12px;color:var(--muted)">"⏳ Liens temporaires" dans leur menu</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
+    +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock. Désactive cette page une fois le postback actif.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
   }
 
   return '';
@@ -1033,6 +1063,13 @@ function filterConv(btn,f,convs){
   const list=f==='all'?convs:convs.filter(c=>c.status===f);
   const rows=list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
   document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';
+}
+async function toggleMaintenance(enable){
+  try{await api('PATCH','/api/settings/maintenance',{enabled:enable});toast(enable?'🔧 Maintenance activée':'✅ Site remis en ligne',enable?'i':'s');goPage('admin-settings');}catch(e){toast(e.message,'e');}
+}
+async function saveWelcomeMsg(){
+  const msg=document.getElementById('welcome-msg')?.value.trim();
+  try{await api('PATCH','/api/settings/welcome',{message:msg});toast('Message sauvegardé ✓','s');}catch(e){toast(e.message,'e');}
 }
 async function toggleCategorySetting(category,enable){
   try{await api('PATCH','/api/settings/category',{category,enabled:enable});toast(enable?'Activé ✅':'Désactivé 🔒',enable?'s':'i');goPage('admin-settings');}catch(e){toast(e.message,'e');}
