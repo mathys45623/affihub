@@ -277,6 +277,16 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
           <button id="mobile-menu-btn" onclick="toggleMobileMenu()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:6px 10px;border-radius:8px">☰</button>
           <div class="page-title" id="page-title">Dashboard</div>
         </div>
+        <div style="margin-left:auto;position:relative">
+          <button id="notif-bell-btn" onclick="toggleNotifPanel()" style="background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:var(--muted);font-size:20px;position:relative;transition:color .2s" onmouseover="this.style.color='var(--yellow)'" onmouseout="this.style.color='var(--muted)'">
+            🔔
+            <span id="notif-count" style="display:none;position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:20px;min-width:16px;text-align:center"></span>
+          </button>
+          <div id="notif-panel" style="display:none;position:absolute;right:0;top:44px;width:320px;background:#111;border:1px solid #2a2a2a;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.6);z-index:999;overflow:hidden">
+            <div style="padding:14px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;font-size:13px">🔔 Notifications</span><button onclick="markNotifsRead()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit">Tout lire</button></div>
+            <div id="notif-list" style="max-height:320px;overflow-y:auto"></div>
+          </div>
+        </div>
       </div>
       <div class="content" id="content"></div>
     </div>
@@ -373,12 +383,26 @@ function startApp(){
   ];
   if(ME.role==='admin'){
     document.getElementById('role-badge').textContent='👑 Admin';
+    document.getElementById('notif-bell-btn').style.display='none';
     buildNav(adminNav);buildMobileNav(adminNav);goPage('admin-dash');
+    setTimeout(refreshNotifs,500);
   }else{
     document.getElementById('role-badge').textContent='⚡ Affilié';
-    buildNav(affNav);buildMobileNav(affNav);goPage('aff-dash');
+    document.getElementById('notif-bell-btn').style.display='block';
+    // Check settings before building nav
+    api('GET','/api/settings/all').then(s=>{
+      const nav=[
+        {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},...(s.temp_links_enabled?[{icon:'⏳',label:'Liens temporaires',page:'aff-temp'}]:[]) ]},
+        {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
+        {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
+        {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+        {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+      ];
+      buildNav(nav);buildMobileNav(nav);
+    }).catch(()=>{buildNav(affNav);buildMobileNav(affNav);});
+    goPage('aff-dash');
+    setTimeout(refreshNotifs,500);
   }
-  setTimeout(refreshNotifs,500);
 }
 
 function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
@@ -398,6 +422,40 @@ function buildNav(sections){
   });
 }
 
+async function loadNotifs(){
+  if(!ME||ME.role==='admin')return;
+  try{
+    const notifs=await api('GET','/api/notifications');
+    const unread=notifs.filter(n=>!n.read).length;
+    const count=document.getElementById('notif-count');
+    if(count){if(unread>0){count.textContent=unread;count.style.display='block';}else{count.style.display='none';}}
+    const list=document.getElementById('notif-list');
+    if(list){
+      if(notifs.length===0){list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';return;}
+      const icons={'conversion':'✅','conversion_rejected':'❌','withdrawal_paid':'💸','withdrawal_rejected':'❌','commission':'💰'};
+      list.innerHTML=notifs.map(n=>'<div style="padding:12px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-start;gap:10px;background:'+(n.read?'transparent':'rgba(245,200,66,.04)')+';cursor:pointer" onclick="deleteNotif('+n.id+',this)"><div style="font-size:18px;flex-shrink:0">'+(icons[n.type]||'📌')+'</div><div style="flex:1"><div style="font-size:12px;line-height:1.5">'+(n.message||'')+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+fmtLocal(n.created_at)+'</div></div>'+(n.read?'':'<div style="width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:4px"></div>')+'</div>').join('');
+    }
+  }catch(e){}
+}
+function fmtLocal(d){if(!d)return '—';const dt=new Date(new Date(d).getTime()+2*60*60*1000);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
+function toggleNotifPanel(){
+  const panel=document.getElementById('notif-panel');
+  if(!panel)return;
+  const open=panel.style.display==='none';
+  panel.style.display=open?'block':'none';
+  if(open)loadNotifs();
+}
+document.addEventListener('click',function(e){
+  const panel=document.getElementById('notif-panel');
+  const btn=document.getElementById('notif-bell-btn');
+  if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)){panel.style.display='none';}
+});
+async function markNotifsRead(){
+  try{await api('PATCH','/api/notifications/read');loadNotifs();}catch(e){}
+}
+async function deleteNotif(id,el){
+  try{await api('DELETE','/api/notifications/'+id);if(el)el.remove();loadNotifs();}catch(e){}
+}
 async function refreshNotifs(){
   if(!ME||!TOKEN)return;
   try{
@@ -420,6 +478,7 @@ async function refreshNotifs(){
       const tickets=await api('GET','/api/tickets');
       const unread=tickets.filter(t=>t.unread>0).length;
       setNotif('aff-tickets',unread);
+      loadNotifs();
     }
   }catch(e){}
 }
