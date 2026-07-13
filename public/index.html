@@ -4,12 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AffiHub</title>
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#F5C842">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="AffiHub">
-<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -277,16 +271,6 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
           <button id="mobile-menu-btn" onclick="toggleMobileMenu()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:6px 10px;border-radius:8px">☰</button>
           <div class="page-title" id="page-title">Dashboard</div>
         </div>
-        <div style="margin-left:auto;position:relative">
-          <button id="notif-bell-btn" onclick="toggleNotifPanel()" style="background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:var(--muted);font-size:20px;position:relative;transition:color .2s" onmouseover="this.style.color='var(--yellow)'" onmouseout="this.style.color='var(--muted)'">
-            🔔
-            <span id="notif-count" style="display:none;position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:20px;min-width:16px;text-align:center"></span>
-          </button>
-          <div id="notif-panel" style="display:none;position:absolute;right:0;top:44px;width:320px;background:#111;border:1px solid #2a2a2a;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.6);z-index:999;overflow:hidden">
-            <div style="padding:14px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;font-size:13px">🔔 Notifications</span><button onclick="markNotifsRead()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit">Tout lire</button></div>
-            <div id="notif-list" style="max-height:320px;overflow-y:auto"></div>
-          </div>
-        </div>
       </div>
       <div class="content" id="content"></div>
     </div>
@@ -324,34 +308,14 @@ function switchTab(t){
 }
 
 async function doLogin(){
-  try{
-    const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
-    TOKEN=r.token;ME=r.user;
-    localStorage.setItem('affihub_token',TOKEN);
-    localStorage.setItem('affihub_user',JSON.stringify(ME));
-    startApp();
-  }
+  try{const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
+  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();}
   catch(e){toast(e.message,'e');}
 }
 
 async function doRegister(){
-  try{
-    const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
-    TOKEN=r.token;ME=r.user;
-    localStorage.setItem('affihub_token',TOKEN);
-    localStorage.setItem('affihub_user',JSON.stringify(ME));
-    startApp();
-    // Show welcome message on register
-    if(r.welcome_message){
-      setTimeout(()=>{
-        document.getElementById('m-title').textContent='👋 Bienvenue sur AffiHub !';
-        document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:16px">🎉</div><div style="font-size:14px;line-height:1.8;color:var(--muted);white-space:pre-wrap">'+r.welcome_message+'</div><button class="btn btn-grad" onclick="closeMo()" style="margin-top:20px;width:100%;justify-content:center">C\'est parti ! 🚀</button></div>';
-        document.getElementById('mo').classList.add('open');
-      },800);
-    } else {
-      toast('Bienvenue !','s');
-    }
-  }
+  try{const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
+  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();toast('Bienvenue !','s');}
   catch(e){toast(e.message,'e');}
 }
 
@@ -372,7 +336,7 @@ function startApp(){
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
     {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'🎨',label:'Liens perso',page:'admin-custom'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
+    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
   const affNav=[
     {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},{icon:'⏳',label:'Liens temporaires',page:'aff-temp'}]},
@@ -383,31 +347,12 @@ function startApp(){
   ];
   if(ME.role==='admin'){
     document.getElementById('role-badge').textContent='👑 Admin';
-    document.getElementById('notif-bell-btn').style.display='none';
     buildNav(adminNav);buildMobileNav(adminNav);goPage('admin-dash');
-    setTimeout(refreshNotifs,500);
   }else{
     document.getElementById('role-badge').textContent='⚡ Affilié';
-    document.getElementById('notif-bell-btn').style.display='block';
-    api('GET','/api/settings/all').then(s=>{
-      const accueilItems=[{icon:'🏠',label:T('dashboard'),page:'aff-dash'},{icon:'🔗',label:T('my_links'),page:'aff-links'}];
-      if(s.temp_links_enabled)accueilItems.push({icon:'⏳',label:T('temp_links'),page:'aff-temp'});
-      const nav=[
-        {section:'ACCUEIL',items:accueilItems},
-        {section:'STATISTIQUES',items:[{icon:'📈',label:T('stats'),page:'aff-stats'},{icon:'🔁',label:T('conversions'),page:'aff-conv'}]},
-        {section:'GAINS',items:[{icon:'💸',label:T('payments'),page:'aff-pay'},{icon:'👥',label:T('referral'),page:'aff-ref'}]},
-        {section:'CLASSEMENT',items:[{icon:'🏆',label:T('top_affiliates'),page:'aff-top'}]},
-        {section:'SUPPORT',items:[{icon:'👨‍💼',label:T('manager'),page:'aff-support'},{icon:'🎫',label:T('tickets'),page:'aff-tickets'},{icon:'⚙️',label:T('settings'),page:'aff-settings'}]}
-      ];
-      buildNav(nav);buildMobileNav(nav);
-      goPage('aff-dash');
-      setTimeout(refreshNotifs,500);
-    }).catch(()=>{
-      buildNav(affNav);buildMobileNav(affNav);
-      goPage('aff-dash');
-      setTimeout(refreshNotifs,500);
-    });
+    buildNav(affNav);buildMobileNav(affNav);goPage('aff-dash');
   }
+  setTimeout(refreshNotifs,500);
 }
 
 function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
@@ -427,40 +372,6 @@ function buildNav(sections){
   });
 }
 
-async function loadNotifs(){
-  if(!ME||ME.role==='admin')return;
-  try{
-    const notifs=await api('GET','/api/notifications');
-    const unread=notifs.filter(n=>!n.read).length;
-    const count=document.getElementById('notif-count');
-    if(count){if(unread>0){count.textContent=unread;count.style.display='block';}else{count.style.display='none';}}
-    const list=document.getElementById('notif-list');
-    if(list){
-      if(notifs.length===0){list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';return;}
-      const icons={'conversion':'✅','conversion_rejected':'❌','withdrawal_paid':'💸','withdrawal_rejected':'❌','commission':'💰'};
-      list.innerHTML=notifs.map(n=>'<div style="padding:12px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-start;gap:10px;background:'+(n.read?'transparent':'rgba(245,200,66,.04)')+';cursor:pointer" onclick="deleteNotif('+n.id+',this)"><div style="font-size:18px;flex-shrink:0">'+(icons[n.type]||'📌')+'</div><div style="flex:1"><div style="font-size:12px;line-height:1.5">'+(n.message||'')+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+fmtLocal(n.created_at)+'</div></div>'+(n.read?'':'<div style="width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:4px"></div>')+'</div>').join('');
-    }
-  }catch(e){}
-}
-function fmtLocal(d){if(!d)return '—';const dt=new Date(new Date(d).getTime()+2*60*60*1000);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});}
-function toggleNotifPanel(){
-  const panel=document.getElementById('notif-panel');
-  if(!panel)return;
-  const open=panel.style.display==='none';
-  panel.style.display=open?'block':'none';
-  if(open)loadNotifs();
-}
-document.addEventListener('click',function(e){
-  const panel=document.getElementById('notif-panel');
-  const btn=document.getElementById('notif-bell-btn');
-  if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)){panel.style.display='none';}
-});
-async function markNotifsRead(){
-  try{await api('PATCH','/api/notifications/read');loadNotifs();}catch(e){}
-}
-async function deleteNotif(id,el){
-  try{await api('DELETE','/api/notifications/'+id);if(el)el.remove();loadNotifs();}catch(e){}
-}
 async function refreshNotifs(){
   if(!ME||!TOKEN)return;
   try{
@@ -483,7 +394,6 @@ async function refreshNotifs(){
       const tickets=await api('GET','/api/tickets');
       const unread=tickets.filter(t=>t.unread>0).length;
       setNotif('aff-tickets',unread);
-      loadNotifs();
     }
   }catch(e){}
 }
@@ -524,7 +434,7 @@ const TITLES={
   'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés',
-  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
+  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires'
 };
 
 async function goPage(page){
@@ -552,130 +462,6 @@ const CATS=[
   {key:'autre',label:'📦 Autre',color:'#888',bg:'rgba(136,136,136,.08)',border:'rgba(136,136,136,.25)'}
 ];
 
-// ── TRANSLATIONS ──
-const LANGS = {
-  fr: {
-    // Nav
-    dashboard:'Dashboard', my_links:'Mes liens', temp_links:'Liens temporaires',
-    stats:'Statistiques', conversions:'Conversions', payments:'Paiements',
-    referral:'Parrainage', top_affiliates:'🏆 TOP Affiliés', manager:'Mon Manager',
-    tickets:'🎫 Ticket / Aide', settings:'Paramètres',
-    // Dashboard
-    available_balance:'Solde disponible', withdraw:'💸 Retirer', min_withdraw:'Retrait minimum : $25',
-    total_clicks:'Clics total', on:'sur', links:'lien(s)', total_conversions:'Conversions',
-    approved:'approuvées', pending:'en attente', pending_gains:'Gains en attente',
-    total_gains:'Gains totaux', last_conversions:'Dernières conversions', see_all:'Voir tout →',
-    no_conversion:'Aucune conversion', gains_30:'📈 Gains des 30 derniers jours',
-    date:'Date', offer:'Offre', amount:'Montant', status:'Statut',
-    // Links
-    offers_available:'offre(s) disponibles', generate_link:'🔗 Générer mon lien',
-    clicks:'CLICS', active:'✓ Actif', disabled:'🚫 Désactivé', soon:'🔒 Bientôt disponible',
-    locked:'🔒 Désactivé', per_sale:'/ vente', offer_unavailable:'🔒 Offre temporairement indisponible',
-    customize:'🎨 Personnaliser & Demander', link_received:'✅ Lien reçu',
-    request_pending:'⏳ Demande en cours', modify:'✏️ Modifier',
-    // Stats
-    total_clicks_s:'Clics totaux', total_conv:'Conversions', total_gains_s:'Gains totaux',
-    // Conversions
-    my_conversions:'Mes conversions', all:'Toutes', approved_s:'✅ Approuvées',
-    pending_s:'⏳ En attente', rejected_s:'❌ Rejetées', link:'Lien',
-    // Payments
-    withdraw_available:'✓ Retrait disponible', min_25:'⚠ Minimum $25',
-    check_address:'Vérifiez votre adresse crypto.', no_refund:'Aucun remboursement en cas d\'adresse incorrecte.',
-    amount_s:'Montant ($)', payment_method:'Moyen de paiement', address:'Adresse / Coordonnées',
-    submit:'💸 Soumettre', fees:'💰 Frais de retrait', all_methods:'Tous les moyens de paiement',
-    history:'📋 Historique', no_withdrawal:'Aucun retrait', address_s:'Adresse',
-    // Referral
-    your_ref_link:'Votre lien de parrainage', earn_5:'Gagnez 5% sur chaque vente',
-    total_earned:'Total gagné', referrals:'Filleuls', commissions:'Commissions',
-    rate:'Taux', my_referrals:'👥 Mes filleuls', no_referral:'Aucun filleul',
-    registered:'Inscrit le', gains_generated:'Gains générés', my_commissions:'💸 Commissions',
-    no_commission:'Aucune commission', sale:'💵 Vente', commission:'💸 Commission',
-    // Support
-    founder:'✦ FONDATEUR ✦', available_discord:'Disponible sur Discord', copy:'📋 Copier',
-    // Tickets
-    new_ticket:'+ Nouveau ticket', no_ticket:'Aucun ticket', reason:'🏷️ Raison',
-    messages:'💬 Messages', open:'🟡 Ouvert', closed:'🔴 Fermé', resolved:'🟢 Résolu',
-    see:'👁 Voir', create_ticket:'Nouveau ticket', your_reply:'Votre réponse',
-    write_message:'Écrivez votre message...', image_optional:'Image (optionnel)',
-    click_image:'Cliquer pour ajouter une image', send:'📨 Envoyer', back:'← Retour',
-    close_ticket:'🔴 Fermer', ticket_resolved:'Ticket résolu', ticket_closed:'Ticket fermé',
-    created:'Créé le',
-    // Settings
-    information:'👤 Informations', name:'Nom', email:'Email', arrival:'Date d\'arrivée',
-    ref_code:'Code parrainage', ranking:'🏆 Classement', appear_top:'Apparaître dans le TOP',
-    stats_visible:'Vos stats seront visibles', visible:'✅ Visible', hidden:'🚫 Masqué',
-    hide:'Masquer', show:'Afficher', password:'🔑 Mot de passe', current:'Actuel',
-    new_pass:'Nouveau', confirm:'Confirmer', change_pass:'🔑 Modifier',
-    postback_title:'🔌 Postback vers mon système', postback_desc:'Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici.',
-    available_vars:'Variables disponibles', save:'💾 Sauvegarder', lang_title:'🌍 Langue',
-    lang_desc:'Choisir la langue de l\'interface.',
-    // Language
-    language:'Langue',
-  },
-  en: {
-    // Nav
-    dashboard:'Dashboard', my_links:'My links', temp_links:'Temporary links',
-    stats:'Statistics', conversions:'Conversions', payments:'Payments',
-    referral:'Referral', top_affiliates:'🏆 TOP Affiliates', manager:'My Manager',
-    tickets:'🎫 Ticket / Help', settings:'Settings',
-    // Dashboard
-    available_balance:'Available balance', withdraw:'💸 Withdraw', min_withdraw:'Minimum withdrawal: $25',
-    total_clicks:'Total clicks', on:'on', links:'link(s)', total_conversions:'Conversions',
-    approved:'approved', pending:'pending', pending_gains:'Pending earnings',
-    total_gains:'Total earnings', last_conversions:'Latest conversions', see_all:'See all →',
-    no_conversion:'No conversions', gains_30:'📈 Earnings over the last 30 days',
-    date:'Date', offer:'Offer', amount:'Amount', status:'Status',
-    // Links
-    offers_available:'offer(s) available', generate_link:'🔗 Generate my link',
-    clicks:'CLICKS', active:'✓ Active', disabled:'🚫 Disabled', soon:'🔒 Coming soon',
-    locked:'🔒 Disabled', per_sale:'/ sale', offer_unavailable:'🔒 Offer temporarily unavailable',
-    customize:'🎨 Customize & Request', link_received:'✅ Link received',
-    request_pending:'⏳ Request pending', modify:'✏️ Edit',
-    // Stats
-    total_clicks_s:'Total clicks', total_conv:'Conversions', total_gains_s:'Total earnings',
-    // Conversions
-    my_conversions:'My conversions', all:'All', approved_s:'✅ Approved',
-    pending_s:'⏳ Pending', rejected_s:'❌ Rejected', link:'Link',
-    // Payments
-    withdraw_available:'✓ Withdrawal available', min_25:'⚠ Minimum $25',
-    check_address:'Check your crypto address.', no_refund:'No refund in case of incorrect address.',
-    amount_s:'Amount ($)', payment_method:'Payment method', address:'Address / Details',
-    submit:'💸 Submit', fees:'💰 Withdrawal fees', all_methods:'All payment methods',
-    history:'📋 History', no_withdrawal:'No withdrawals', address_s:'Address',
-    // Referral
-    your_ref_link:'Your referral link', earn_5:'Earn 5% on every sale',
-    total_earned:'Total earned', referrals:'Referrals', commissions:'Commissions',
-    rate:'Rate', my_referrals:'👥 My referrals', no_referral:'No referrals',
-    registered:'Registered on', gains_generated:'Generated earnings', my_commissions:'💸 Commissions',
-    no_commission:'No commissions', sale:'💵 Sale', commission:'💸 Commission',
-    // Support
-    founder:'✦ FOUNDER ✦', available_discord:'Available on Discord', copy:'📋 Copy',
-    // Tickets
-    new_ticket:'+ New ticket', no_ticket:'No tickets', reason:'🏷️ Reason',
-    messages:'💬 Messages', open:'🟡 Open', closed:'🔴 Closed', resolved:'🟢 Resolved',
-    see:'👁 View', create_ticket:'New ticket', your_reply:'Your reply',
-    write_message:'Write your message...', image_optional:'Image (optional)',
-    click_image:'Click to add an image', send:'📨 Send', back:'← Back',
-    close_ticket:'🔴 Close', ticket_resolved:'Ticket resolved', ticket_closed:'Ticket closed',
-    created:'Created on',
-    // Settings
-    information:'👤 Information', name:'Name', email:'Email', arrival:'Joined on',
-    ref_code:'Referral code', ranking:'🏆 Ranking', appear_top:'Appear in the TOP',
-    stats_visible:'Your stats will be visible', visible:'✅ Visible', hidden:'🚫 Hidden',
-    hide:'Hide', show:'Show', password:'🔑 Password', current:'Current',
-    new_pass:'New', confirm:'Confirm', change_pass:'🔑 Update',
-    postback_title:'🔌 Postback to my system', postback_desc:'If you manage your own affiliate platform, configure your postback URL here.',
-    available_vars:'Available variables', save:'💾 Save', lang_title:'🌍 Language',
-    lang_desc:'Choose the interface language.',
-    language:'Language',
-  }
-};
-
-var LANG = localStorage.getItem('affihub_lang') || 'fr';
-function T(key){ return (LANGS[LANG]||LANGS.fr)[key] || (LANGS.fr)[key] || key; }
-function setLang(l){ LANG=l; localStorage.setItem('affihub_lang',l); goPage(curPage); }
-
-
 async function uploadImg(file,bucket){
   bucket=bucket||'offers';
   const fileName=Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
@@ -692,25 +478,23 @@ async function renderPage(page){
     const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
     const convGains=approved.reduce((s,c)=>s+c.amount,0);const refGains=ref.totalEarned||0;
     const rows=convs.slice(0,5).map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td style="color:var(--yellow);font-weight:700">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
-    const days30=[],gains30=[];
-    for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];days30.push(i%5===0||i===0?d.toLocaleDateString(LANG==='en'?'en-GB':'fr-FR',{day:'numeric',month:'short'}):'');gains30.push(approved.filter(c=>c.created_at?.startsWith(ds)).reduce((s,c)=>s+c.amount,0));}
-    setTimeout(()=>{const ctx=document.getElementById('aff-gains-chart');if(ctx){new Chart(ctx,{type:'line',data:{labels:days30,datasets:[{label:'Gains ($)',data:gains30,borderColor:'rgba(245,200,66,.8)',backgroundColor:'rgba(245,200,66,.08)',borderWidth:2,pointRadius:2,fill:true,tension:.4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#555',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#555',font:{size:10},callback:v=>'$'+v}}}}});}},100);
-    return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">'+T('available_balance')+'</div><div class="bal-amount">$'+(ME.balance||0)+'</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">'+T('min_withdraw')+'</div></div><button class="btn" onclick="goPage(\'aff-pay\')" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);font-size:13px;padding:11px 22px">'+T('withdraw')+'</button></div>'
-    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">'+T('total_clicks')+'</div><div class="stat-val gy">'+totalClicks+'</div><div class="stat-sub">'+T('on')+' '+links.length+' '+T('links')+'</div></div><div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">'+T('total_conversions')+'</div><div class="stat-val gy">'+convs.length+'</div><div class="stat-sub">'+approved.length+' '+T('approved')+' · '+pending.length+' '+T('pending')+'</div></div><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">'+T('pending_gains')+'</div><div class="stat-val" style="color:var(--yellow)">$'+pending.reduce((s,c)=>s+c.amount,0)+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">'+T('total_gains')+'</div><div class="stat-val gg">$'+(convGains+refGains).toFixed(2)+'</div></div></div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('gains_30')+'</div><canvas id="aff-gains-chart" height="80"></canvas></div>'
-    +'<div class="card"><div class="card-header"><div class="card-title">'+T('last_conversions')+'</div><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-conv\')">'+T('see_all')+'</button></div>'+(convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>'+T('no_conversion')+'</p></div>':'<div class="tw"><table><thead><tr><th>'+T('date')+'</th><th>'+T('offer')+'</th><th>'+T('amount')+'</th><th>'+T('status')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
+    return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$'+(ME.balance||0)+'</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Retrait minimum : $25</div></div><button class="btn" onclick="goPage(\'aff-pay\')" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);font-size:13px;padding:11px 22px">💸 Retirer</button></div>'
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics total</div><div class="stat-val gy">'+totalClicks+'</div><div class="stat-sub">sur '+links.length+' lien(s)</div></div><div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">'+convs.length+'</div><div class="stat-sub">'+approved.length+' approuvées · '+pending.length+' en attente</div></div><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Gains en attente</div><div class="stat-val" style="color:var(--yellow)">$'+pending.reduce((s,c)=>s+c.amount,0)+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gg">$'+(convGains+refGains).toFixed(2)+'</div></div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">Dernières conversions</div><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-conv\')">Voir tout →</button></div>'+(convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
   }
 
   if(page==='aff-links'){
     const [offers,links,customReqs,allSettings]=await Promise.all([api('GET','/api/offers'),api('GET','/api/links'),api('GET','/api/custom-requests'),api('GET','/api/settings/all')]);
-    if(offers.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible.</p></div></div>';
+    const active=offers.filter(o=>o.active);
+    if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible.</p></div></div>';
+    const affLinksEnabled=allSettings.aff_links_enabled;
     const origin=window.location.origin;
-    let html='<div style="margin-bottom:20px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+offers.length+' offre(s) disponibles</div></div>';
+    let html='<div style="margin-bottom:20px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+active.length+' offre(s) disponibles</div></div>';
     CATS.forEach(cat=>{
-      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
+      const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
       const catEnabled=allSettings['cat_'+cat.key+'_enabled'];
       if(!catEnabled){
-        const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé';
+        const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé — Voir Liens temporaires';
         const badgeColor=cat.key==='influenceuse'?'background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)':'background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3)';
         html+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;opacity:.6"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="'+badgeColor+';font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">'+msg+'</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div></div></div>';
         return;
@@ -720,15 +504,7 @@ async function renderPage(page){
       catOffers.forEach(o=>{
         const el=links.find(l=>l.offer_id===o.id);
         let bottomHtml='';
-        if(!o.active){
-          // Offre désactivée — visible mais pas de génération possible
-          if(el){
-            const linkUrl=origin+'/go/'+el.id;
-            bottomHtml='<div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-family:monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+linkUrl+'</code><button class="copy-btn" onclick="cpLink(\''+el.id+'\',this)">📋</button></div><span class="badge br2">🔒 Offre temporairement indisponible</span>';
-          } else {
-            bottomHtml='<span class="badge br2" style="width:100%;justify-content:center">🔒 Offre temporairement indisponible</span>';
-          }
-        } else if(o.id===54||o.id===55){
+        if(o.id===54||o.id===55){
           const cr=customReqs.find(r=>r.offer_id===o.id);
           if(cr&&cr.custom_link){
             bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2">✅ Lien reçu</span>';
@@ -746,8 +522,7 @@ async function renderPage(page){
           bottomHtml='<button class="btn btn-grad" onclick="genLink('+o.id+')" style="width:100%;justify-content:center">🔗 Générer mon lien</button>';
         }
         const imgHtml=o.image_url?'<div style="width:100%;height:155px;overflow:hidden"><img src="'+o.image_url+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"></div>':'';
-        const borderColor=o.active?cat.border:'rgba(255,71,87,.2)';
-        html+='<div style="background:#111;border:1px solid '+borderColor+';border-radius:14px;overflow:hidden;position:relative'+(o.active?'':';opacity:.7')+'"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+(o.active?cat.color:'var(--red)')+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
+        html+='<div style="background:#111;border:1px solid '+cat.border+';border-radius:14px;overflow:hidden;position:relative"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+cat.color+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
       });
       html+='</div></div></div>';
     });
@@ -756,7 +531,7 @@ async function renderPage(page){
 
   if(page==='aff-stats'){
     const [links,convs,offers]=await Promise.all([api('GET','/api/links'),api('GET','/api/conversions'),api('GET','/api/offers')]);
-    if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>'+(LANG==='en'?'No links generated.':'Aucun lien généré.')+'</p></div></div>';
+    if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>Aucun lien généré.</p></div></div>';
     const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
     const totalGains=convs.filter(c=>c.status==='approved').reduce((s,c)=>s+c.amount,0);
     const totalApproved=convs.filter(c=>c.status==='approved').length;
@@ -773,45 +548,45 @@ async function renderPage(page){
       +'</tr>';
     }).join('');
     return '<div class="stats-grid" style="margin-bottom:24px">'
-      +'<div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">'+T('total_clicks_s')+'</div><div class="stat-val gy">'+totalClicks+'</div></div>'
-      +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">'+T('total_conv')+'</div><div class="stat-val gg">'+totalApproved+'</div></div>'
-      +'<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">'+T('total_gains_s')+'</div><div class="stat-val gy">$'+totalGains+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">'+totalClicks+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Conversions</div><div class="stat-val gg">'+totalApproved+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gy">$'+totalGains+'</div></div>'
       +'</div>'
       +'<div class="card"><div class="tw"><table><thead><tr>'
-      +'<th>🎯 '+T('offer')+'</th><th style="text-align:center">🖱️ '+T('clicks')+'</th><th style="text-align:center">✅ Conv.</th><th style="text-align:center">💰 '+T('total_gains_s')+'</th><th style="text-align:center">📌</th>'
+      +'<th>🎯 Offre</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">✅ Conv.</th><th style="text-align:center">💰 Gains</th><th style="text-align:center">📌</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   if(page==='aff-conv'){
     const convs=await api('GET','/api/conversions');
     const mkRows=list=>list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
-    const tabs=[['all',T('all'),convs.length],['approved',T('approved_s'),convs.filter(c=>c.status==='approved').length],['pending',T('pending_s'),convs.filter(c=>c.status==='pending').length],['rejected',T('rejected_s'),convs.filter(c=>c.status==='rejected').length]];
+    const tabs=[['all','Toutes',convs.length],['approved','✅ Approuvées',convs.filter(c=>c.status==='approved').length],['pending','⏳ En attente',convs.filter(c=>c.status==='pending').length],['rejected','❌ Rejetées',convs.filter(c=>c.status==='rejected').length]];
     const tabHtml=tabs.map(([f,l,n])=>'<button class="tab'+(f==='all'?' active':'\"')+'" onclick="filterConv(this,\''+f+'\','+JSON.stringify(convs).replace(/'/g,"\\'")+')">'+l+' ('+n+')</button>').join('');
-    return '<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('my_conversions')+'</div><div class="tabs">'+tabHtml+'</div><div id="ctable"><div class="tw"><table><thead><tr><th>📅 '+T('date')+'</th><th>🎯 '+T('offer')+'</th><th>🔗 '+T('link')+'</th><th>💰 '+T('amount')+'</th><th>📌 '+T('status')+'</th></tr></thead><tbody>'+(mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">'+T('no_conversion')+'</td></tr>')+'</tbody></table></div></div></div>';
+    return '<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs">'+tabHtml+'</div><div id="ctable"><div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div></div></div>';
   }
 
   if(page==='aff-pay'){
     const wds=await api('GET','/api/withdrawals');const bal=ME.balance||0;
     const wrows=wds.map(w=>'<tr><td style="color:var(--muted)">'+fmt(w.created_at)+'</td><td style="color:var(--yellow);font-weight:800">$'+w.amount+'</td><td><span class="badge bp2">'+w.crypto+'</span></td><td><code style="font-size:11px;color:var(--muted)">'+w.address.substring(0,22)+'...</code></td><td>'+sbadge(w.status)+(w.status==='rejected'&&w.reason?'<div style="font-size:11px;color:var(--red)">↳ '+w.reason+'</div>':'')+'</td></tr>').join('');
     return '<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;margin-bottom:20px">'
-    +'<div class="card" style="margin-bottom:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+T('available_balance')+'</div><div style="font-size:32px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+bal+'</div></div>'+(bal>=25?'<span class="badge bg2">'+T('withdraw_available')+'</span>':'<span class="badge by2">'+T('min_25')+'</span>')+'</div>'
-    +'<div class="warning-box"><div style="font-size:16px;flex-shrink:0">⚠️</div><p style="font-size:12px;color:var(--yellow);line-height:1.7"><strong>'+T('check_address')+'</strong><br>'+T('no_refund')+'</p></div>'
+    +'<div class="card" style="margin-bottom:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-size:32px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+bal+'</div></div>'+(bal>=25?'<span class="badge bg2">✓ Retrait disponible</span>':'<span class="badge by2">⚠ Minimum $25</span>')+'</div>'
+    +'<div class="warning-box"><div style="font-size:16px;flex-shrink:0">⚠️</div><p style="font-size:12px;color:var(--yellow);line-height:1.7"><strong>Vérifiez votre adresse crypto.</strong><br>Aucun remboursement en cas d\'adresse incorrecte.</p></div>'
     +'<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,200,66,.2),transparent);margin:20px 0"></div>'
-    +'<div class="fi"><label>'+T('amount_s')+'</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+'">MAX $'+bal+'</button></div></div>'
-    +'<div class="fi"><label>'+T('payment_method')+'</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">'
+    +'<div class="fi"><label>Montant ($)</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+'">MAX $'+bal+'</button></div></div>'
+    +'<div class="fi"><label>Moyen de paiement</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">'
     +'<div class="crypto-opt" onclick="pickCrypto(\'BTC\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg>Bitcoin</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'SOL\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="url(#solGrad)"/><defs><linearGradient id="solGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#9945FF"/><stop offset="100%" style="stop-color:#14F195"/></linearGradient></defs><path d="M10 21.5h12.5l-2 1.8H8L10 21.5zm0-6h12.5l-2 1.8H8L10 15.5zm2-6h12.5l-2 1.8H10L12 9.5z" fill="white"/></svg>Solana</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'LTC\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="#BFBBBB"/><text x="16" y="23" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Ł</text></svg>Litecoin</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'REVOLUT\',this)"><div style="width:28px;height:28px;background:#191C20;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M14.5 2H6v20h3.5v-7H13l3.5 7H20l-3.8-7.4C18.3 13.5 19 11.8 19 9.5 19 5.4 17.1 2 14.5 2zm-.3 8.5H9.5V5.5h4.7c1.2 0 2.3.9 2.3 2.5s-1.1 2.5-2.3 2.5z"/></svg></div>Revolut</div>'
-    +'<div class="crypto-opt" onclick="pickCrypto(\'VIREMENT\',this)"><div style="font-size:22px;margin-bottom:6px">🏦</div>'+(LANG==='en'?'Bank transfer':'Virement')+'</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'VIREMENT\',this)"><div style="font-size:22px;margin-bottom:6px">🏦</div>Virement</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'PAYPAL\',this)"><div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.99l-.094.596a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788l.038-.196.735-4.653.047-.256a.932.932 0 0 1 .92-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.44-4.536z" fill="#009cde"/><path d="M6.723 21.337H2.118a.641.641 0 0 1-.633-.74L4.592.901C4.675.382 5.123 0 5.647 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797H8.895c-.524 0-.968.382-1.05.9l-1.122 7.106z" fill="#012169"/></svg></div>PayPal<span style="font-size:9px;display:block;color:var(--muted)">min. $50</span></div>'
-    +'<div class="crypto-opt" onclick="pickCrypto(\'CADEAU\',this)"><div style="font-size:22px;margin-bottom:6px">🎁</div>'+(LANG==='en'?'Gift card':'Carte cadeau')+'</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'CADEAU\',this)"><div style="font-size:22px;margin-bottom:6px">🎁</div>Carte cadeau</div>'
     +'</div></div>'
-    +'<div class="fi" id="addr-field"><label id="addr-label">'+T('address')+'</label><input type="text" id="wd-addr" placeholder="'+T('address')+'"></div>'
-    +'<div class="fi" id="virement-name-field" style="display:none"><label>'+(LANG==='en'?'Full name (account holder)':'Nom & Prénom (titulaire du compte)')+'</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
-    +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">'+T('submit')+'</button></div>'
-    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">'+T('fees')+'</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+T('all_methods')+'</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement — dès $25</div><div>✅ Carte cadeau — dès $25</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('history')+'</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>'+T('no_withdrawal')+'</p></div>':'<div class="tw"><table><thead><tr><th>📅 '+T('date')+'</th><th>💰 '+T('amount')+'</th><th>💳 '+T('payment_method')+'</th><th>📬 '+T('address_s')+'</th><th>📌 '+T('status')+'</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
+    +'<div class="fi" id="addr-field"><label id="addr-label">Adresse / Coordonnées</label><input type="text" id="wd-addr" placeholder="Selon le moyen choisi"></div>'
+    +'<div class="fi" id="virement-name-field" style="display:none"><label>Nom & Prénom (titulaire du compte)</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
+    +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre</button></div>'
+    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement — dès $25</div><div>✅ Carte cadeau — dès $25</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Historique</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
   }
 
   if(page==='aff-ref'){
@@ -819,10 +594,10 @@ async function renderPage(page){
     const refLink=origin+'/?ref='+(ME.referral_code||'');
     const fRows=ref.filleules.map(f=>{const earned=ref.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);return '<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+f.name[0]+'</div><b>'+f.name+'</b></div></td><td style="color:var(--muted)">'+fmt(f.created_at)+'</td><td style="color:var(--green)">$'+earned.toFixed(2)+'</td></tr>';}).join('');
     const cRows=ref.commissions.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td><b>'+(c.users?.name||'?')+'</b></td><td style="color:var(--yellow)">$'+(c.conversions?.amount||0)+'</td><td style="color:var(--green)">$'+c.amount.toFixed(2)+'</td></tr>').join('');
-    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+T('your_ref_link')+'</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">'+T('earn_5')+'</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">'+T('total_earned')+'</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\''+( LANG==='en'?'Link copied!':'Lien copié !')+'\',\'s\')">📋</button></div></div>'
-    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">'+T('referrals')+'</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">'+T('commissions')+'</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">'+T('rate')+'</div><div class="stat-val gy">5%</div></div></div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('my_referrals')+'</div>'+(ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>'+T('no_referral')+'</p></div>':'<div class="tw"><table><thead><tr><th>👤</th><th>📅 '+T('registered')+'</th><th>💰 '+T('gains_generated')+'</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('my_commissions')+'</div>'+(ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>'+T('no_commission')+'</p></div>':'<div class="tw"><table><thead><tr><th>📅 '+T('date')+'</th><th>👤</th><th>'+T('sale')+'</th><th>'+T('commission')+'</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
+    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Gagnez <strong>5%</strong> sur chaque vente</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">Total gagné</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div>'
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux</div><div class="stat-val gy">5%</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">👥 Mes filleuls</div>'+(ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Gains générés</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">💸 Commissions</div>'+(ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
   }
 
   if(page==='aff-top'){
@@ -837,36 +612,35 @@ async function renderPage(page){
   }
 
   if(page==='aff-support'){
-    return '<div class="support-hero"><div style="font-size:80px;margin-bottom:12px">🍍</div><div style="font-size:26px;font-weight:800;color:#000;margin-bottom:4px">ananas</div><div style="font-size:12px;color:rgba(0,0,0,.6);font-weight:800;letter-spacing:1px;text-transform:uppercase">'+T('founder')+'</div><p style="font-size:13px;color:rgba(255,255,255,.7);margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6">'+(LANG==='en'?'For any questions, contact me on Discord. I respond within 24h.':'Pour toute question, contacte-moi sur Discord. Je réponds dans les 24h.')+'</p></div>'
-    +'<div class="discord-card"><div style="display:flex;align-items:center;gap:14px"><div style="width:46px;height:46px;border-radius:12px;background:rgba(88,101,242,.15);border:1px solid rgba(88,101,242,.25);display:flex;align-items:center;justify-content:center;font-size:22px">💬</div><div><div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:600">ananous.</div><div style="font-size:12px;color:var(--muted)">'+T('available_discord')+'</div></div></div><button class="btn btn-grad" onclick="navigator.clipboard?.writeText(\'ananous.\');toast(\''+(LANG==='en'?'Username copied!':'Pseudo copié !')+'\',\'s\')">'+T('copy')+'</button></div>';
+    return '<div class="support-hero"><div style="font-size:80px;margin-bottom:12px">🍍</div><div style="font-size:26px;font-weight:800;color:#000;margin-bottom:4px">ananas</div><div style="font-size:12px;color:rgba(0,0,0,.6);font-weight:800;letter-spacing:1px;text-transform:uppercase">✦ FONDATEUR ✦</div><p style="font-size:13px;color:rgba(255,255,255,.7);margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6">Pour toute question, contacte-moi sur Discord. Je réponds dans les 24h.</p></div>'
+    +'<div class="discord-card"><div style="display:flex;align-items:center;gap:14px"><div style="width:46px;height:46px;border-radius:12px;background:rgba(88,101,242,.15);border:1px solid rgba(88,101,242,.25);display:flex;align-items:center;justify-content:center;font-size:22px">💬</div><div><div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:600">ananous.</div><div style="font-size:12px;color:var(--muted)">Disponible sur Discord</div></div></div><button class="btn btn-grad" onclick="navigator.clipboard?.writeText(\'ananous.\');toast(\'Pseudo copié !\',\'s\')">📋 Copier</button></div>';
   }
 
   if(page==='aff-settings'){
     const showRanking=ME.show_ranking!==false;
-    return '<div class="settings-section"><div class="settings-section-title">'+T('information')+'</div><div class="info-row"><div class="info-label">'+T('name')+'</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">'+T('email')+'</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">'+T('arrival')+'</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">'+T('ref_code')+'</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\''+(LANG==='en'?'Code copied!':'Code copié !')+'\',\'s\')">📋</button></div></div></div>'
-    +'<div class="settings-section"><div class="settings-section-title">'+T('ranking')+'</div><div class="info-row"><div><div class="info-label" style="margin-bottom:4px">'+T('appear_top')+'</div><div style="font-size:12px;color:var(--muted)">'+T('stats_visible')+'</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(showRanking?'var(--green)':'var(--muted)')+'">'+(showRanking?T('visible'):T('hidden'))+'</span><button class="btn '+(showRanking?'btn-red':'btn-grn')+' btn-sm" onclick="toggleRanking('+(showRanking?'false':'true')+')">'+(showRanking?T('hide'):T('show'))+'</button></div></div></div>'
-    +'<div class="settings-section"><div class="settings-section-title">'+T('password')+'</div><div class="fi"><label>'+T('current')+'</label><input type="password" id="cp-cur" placeholder="••••••••"></div><div class="fi"><label>'+T('new_pass')+'</label><input type="password" id="cp-new" placeholder="••••••••"></div><div class="fi"><label>'+T('confirm')+'</label><input type="password" id="cp-conf" placeholder="••••••••"></div><button class="btn btn-grad" onclick="changePass()">'+T('change_pass')+'</button></div>'
-    +'<div class="settings-section"><div class="settings-section-title">'+T('postback_title')+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">'+T('postback_desc')+'<br><br>'+T('available_vars')+' : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL</label><input type="text" id="pb-url" placeholder="https://..." value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">'+T('save')+'</button></div>'
-    +'<div class="settings-section"><div class="settings-section-title">'+T('lang_title')+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+T('lang_desc')+'</div><div style="display:flex;gap:10px"><button class="btn '+(LANG==='fr'?'btn-grad':'btn-gst')+'" onclick="setLang(\'fr\')" style="flex:1;justify-content:center">🇫🇷 Français</button><button class="btn '+(LANG==='en'?'btn-grad':'btn-gst')+'" onclick="setLang(\'en\')" style="flex:1;justify-content:center">🇬🇧 English</button></div></div>';
+    return '<div class="settings-section"><div class="settings-section-title">👤 Informations</div><div class="info-row"><div class="info-label">Nom</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">Email</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">Date d\'arrivée</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">Code parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\'Code copié !\',\'s\')">📋</button></div></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🏆 Classement</div><div class="info-row"><div><div class="info-label" style="margin-bottom:4px">Apparaître dans le TOP</div><div style="font-size:12px;color:var(--muted)">Vos stats seront visibles</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(showRanking?'var(--green)':'var(--muted)')+'">'+(showRanking?'✅ Visible':'🚫 Masqué')+'</span><button class="btn '+(showRanking?'btn-red':'btn-grn')+' btn-sm" onclick="toggleRanking('+(showRanking?'false':'true')+')">'+(showRanking?'Masquer':'Afficher')+'</button></div></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🔑 Mot de passe</div><div class="fi"><label>Actuel</label><input type="password" id="cp-cur" placeholder="••••••••"></div><div class="fi"><label>Nouveau</label><input type="password" id="cp-new" placeholder="••••••••"></div><div class="fi"><label>Confirmer</label><input type="password" id="cp-conf" placeholder="••••••••"></div><button class="btn btn-grad" onclick="changePass()">🔑 Modifier</button></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🔌 Postback vers mon système</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici. Quand une conversion est approuvée, AffiHub enverra automatiquement les infos à ton système.<br><br>Variables disponibles : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL de postback</label><input type="text" id="pb-url" placeholder="https://ta-plateforme.com/postback?sub1={LINK_ID}&amount={AMOUNT}" value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">💾 Sauvegarder</button></div>';
   }
 
   if(page==='aff-tickets'){
     const tickets=await api('GET','/api/tickets');
-    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 '+(LANG==='en'?'Payment':'Paiement'),'compte':'👤 '+(LANG==='en'?'Account':'Compte'),'offre':'🎯 '+(LANG==='en'?'Offer':'Offre'),'mes-liens':'🔗 '+(LANG==='en'?'My links':'Mes liens'),'suggestion':'💡 Suggestion'};
-    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 '+(LANG==='en'?'Open':'Ouvert')+'</span>':s==='closed'?'<span class="badge br2">🔴 '+(LANG==='en'?'Closed':'Fermé')+'</span>':'<span class="badge bg2">🟢 '+(LANG==='en'?'Resolved':'Résolu')+'</span>';
-    const rows=tickets.map(t=>'<tr><td><b>#'+t.id+'</b></td><td>'+(reasons[t.reason]||t.reason)+'</td><td style="color:var(--muted)">'+fmt(t.created_at)+'</td><td>'+statusBadge(t.status)+'</td><td>'+(t.unread>0?'<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px">'+t.unread+'</span>':'<span style="color:var(--muted)">'+(t.ticket_messages||[]).length+' msg(s)</span>')+'</td><td><button class="btn '+(t.unread>0?'btn-grad':'btn-gst')+' btn-sm" onclick="goPage(\'aff-ticket-'+t.id+'\')">'+T('see')+'</button></td></tr>').join('');
-    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"><div style="font-size:13px;color:var(--muted)">'+tickets.length+' ticket(s)</div><button class="btn btn-grad" onclick="openCreateTicket()">'+T('new_ticket')+'</button></div>'
-    +'<div class="card">'+(tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>'+T('no_ticket')+'</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>'+T('reason')+'</th><th>📅 '+T('date')+'</th><th>📌 '+T('status')+'</th><th>'+T('messages')+'</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
+    const rows=tickets.map(t=>'<tr><td><b>#'+t.id+'</b></td><td>'+(reasons[t.reason]||t.reason)+'</td><td style="color:var(--muted)">'+fmt(t.created_at)+'</td><td>'+statusBadge(t.status)+'</td><td>'+(t.unread>0?'<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px">'+t.unread+'</span>':'<span style="color:var(--muted)">'+(t.ticket_messages||[]).length+' msg(s)</span>')+'</td><td><button class="btn '+(t.unread>0?'btn-grad':'btn-gst')+' btn-sm" onclick="goPage(\'aff-ticket-'+t.id+'\')">👁 Voir</button></td></tr>').join('');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"><div style="font-size:13px;color:var(--muted)">'+tickets.length+' ticket(s)</div><button class="btn btn-grad" onclick="openCreateTicket()">+ Nouveau ticket</button></div>'
+    +'<div class="card">'+(tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>Aucun ticket</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>🏷️ Raison</th><th>📅 Date</th><th>📌 Statut</th><th>💬 Messages</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
   }
 
   if(page.startsWith('aff-ticket-')){
     const tid=page.replace('aff-ticket-','');const ticket=await api('GET','/api/tickets/'+tid);
-    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 '+(LANG==='en'?'Payment':'Paiement'),'compte':'👤 '+(LANG==='en'?'Account':'Compte'),'offre':'🎯 '+(LANG==='en'?'Offer':'Offre'),'mes-liens':'🔗 '+(LANG==='en'?'My links':'Mes liens'),'suggestion':'💡 Suggestion'};
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
     const msgs=ticket.messages.map(m=>{const isMe=m.user_id===ME.id;const isAdmin=m.users?.role==='admin';return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+(isAdmin?'👑 Admin':'👤 '+m.users?.name)+' • '+fmt(m.created_at)+'</div><div style="background:'+(isMe?'var(--grad)':'var(--bg3)')+';color:'+(isMe?'#000':'var(--text)')+';border-radius:'+(isMe?'14px 14px 4px 14px':'14px 14px 14px 4px')+';padding:12px 16px;max-width:70%">'+(m.content?'<div style="font-size:13px;line-height:1.6">'+m.content+'</div>':'')+(m.image_url?'<img src="'+m.image_url+'" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:'+(m.content?'8px':'0')+';object-fit:cover;cursor:pointer" onclick="window.open(\''+m.image_url+'\',\'_blank\')">':'')+'</div></div>';}).join('');
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px"><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-tickets\')">'+T('back')+'</button>'+(ticket.status==='open'?'<button class="btn btn-red btn-sm" onclick="closeMyTicket('+ticket.id+')">'+T('close_ticket')+'</button>':'')+'</div>'
-    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:16px;font-weight:800">Ticket #'+ticket.id+' — '+(reasons[ticket.reason]||ticket.reason)+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">'+T('created')+' '+fmt(ticket.created_at)+'</div></div>'+(ticket.status==='open'?'<span class="badge by2">🟡 '+(LANG==='en'?'Open':'Ouvert')+'</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 '+(LANG==='en'?'Resolved':'Résolu')+'</span>':'<span class="badge br2">🔴 '+(LANG==='en'?'Closed':'Fermé')+'</span>')+'</div></div>'
-    +'<div class="card" style="min-height:300px;margin-bottom:16px">'+(msgs||'<div class="empty"><p>'+(LANG==='en'?'No messages':'Aucun message')+'</p></div>')+'</div>'
-    +(ticket.status==='open'?'<div class="card"><div class="fi"><label>'+T('your_reply')+'</label><textarea id="reply-msg" placeholder="'+T('write_message')+'" style="resize:vertical;min-height:80px"></textarea></div><div class="fi"><label>'+T('image_optional')+'</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'reply-img-file\').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">'+T('click_image')+'</div></div></div></div><button class="btn btn-grad" onclick="sendReply('+ticket.id+')" style="width:100%;justify-content:center">'+T('send')+'</button></div>':'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==='resolved'?'✅':'🔴')+'</div><div style="font-weight:700">'+(ticket.status==='resolved'?T('ticket_resolved'):T('ticket_closed'))+'</div></div>');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px"><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-tickets\')">← Retour</button>'+(ticket.status==='open'?'<button class="btn btn-red btn-sm" onclick="closeMyTicket('+ticket.id+')">🔴 Fermer</button>':'')+'</div>'
+    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:16px;font-weight:800">Ticket #'+ticket.id+' — '+(reasons[ticket.reason]||ticket.reason)+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Créé le '+fmt(ticket.created_at)+'</div></div>'+(ticket.status==='open'?'<span class="badge by2">🟡 Ouvert</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 Résolu</span>':'<span class="badge br2">🔴 Fermé</span>')+'</div></div>'
+    +'<div class="card" style="min-height:300px;margin-bottom:16px">'+(msgs||'<div class="empty"><p>Aucun message</p></div>')+'</div>'
+    +(ticket.status==='open'?'<div class="card"><div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Écrivez votre message..." style="resize:vertical;min-height:80px"></textarea></div><div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'reply-img-file\').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div><button class="btn btn-grad" onclick="sendReply('+ticket.id+')" style="width:100%;justify-content:center">📨 Envoyer</button></div>':'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==='resolved'?'✅':'🔴')+'</div><div style="font-weight:700">'+(ticket.status==='resolved'?'Ticket résolu':'Ticket fermé')+'</div></div>');
   }
 
   if(page==='admin-dash'){
@@ -906,22 +680,22 @@ async function renderPage(page){
   if(page==='admin-aff'){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px"><button class="btn btn-gst btn-sm" onclick="openNoteAff(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\',' +JSON.stringify(u.admin_note||'').replace(/'/g,"\\'")+')">📝</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
-    return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><div style="display:flex;gap:8px;align-items:center"><span class="badge bp2">'+users.length+' affilié(s)</span><button class="btn btn-gst btn-sm" onclick="exportCSV(\'affiliates\')">📥 CSV</button></div></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑 Supprimer</button></td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' affilié(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   if(page==='admin-conv'){
     const [convs,users,offers]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/users'),api('GET','/api/offers')]);
     const pending=convs.filter(c=>c.status==='pending');
     const rows=convs.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.users?.name||'?')+'</td><td>'+(c.offers?.name||'?')+'</td><td style="font-weight:900;color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td><td><div style="display:flex;gap:4px">'+(c.status==='pending'?'<button class="btn btn-grn btn-sm" onclick="apprC('+c.id+')">✔</button><button class="btn btn-red btn-sm" onclick="rejtC('+c.id+')">✕</button>':'')+'<button class="btn btn-gst btn-sm" onclick="confirmDeleteConv('+c.id+','+c.amount+',\''+((c.users?.name||'?').replace(/'/g,"\\'"))+'\')">🗑</button></div></td></tr>').join('');
-    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">Conversions</div><div style="display:flex;gap:8px;align-items:center">'+(pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>')+'<button class="btn btn-gst btn-sm" onclick="exportCSV(\'conversions\')">📥 CSV</button><button class="btn btn-grad btn-sm" onclick="openAddConv()">+ Ajouter</button></div></div>'
+    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">Conversions</div><div style="display:flex;gap:8px;align-items:center">'+(pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>')+'<button class="btn btn-grad btn-sm" onclick="openAddConv()">+ Ajouter</button></div></div>'
     +'<div class="card">'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>🎯 Offre</th><th>💰 Montant</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>')+'</div>';
   }
 
   if(page==='admin-wd'){
     const wds=await api('GET','/api/withdrawals');
     const rows=wds.map(w=>'<tr><td style="color:var(--muted)">'+fmt(w.created_at)+'</td><td>'+(w.users?.name||'?')+'</td><td style="font-weight:900;color:var(--yellow)">$'+w.amount+'</td><td><span class="badge bp2">'+w.crypto+'</span></td><td><code style="font-size:11px;color:var(--muted)">'+w.address.substring(0,20)+'</code></td><td>'+sbadge(w.status)+(w.status==='rejected'&&w.reason?'<div style="font-size:11px;color:var(--red)">↳ '+w.reason+'</div>':'')+'</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">'+(w.status==='pending'?'<button class="btn btn-grn btn-sm" onclick="apprW('+w.id+')">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW('+w.id+')">✕</button>':'<span style="color:var(--muted)">—</span>')+'<button class="btn btn-gst btn-sm" onclick="confirmDeleteWd('+w.id+')">🗑</button></div></td></tr>').join('');
-    return '<div class="card"><div class="card-header"><div class="card-title">Retraits</div><button class="btn btn-gst btn-sm" onclick="exportCSV(\'withdrawals\')">📥 CSV</button></div>'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>')+'</div>';
+    return '<div class="card"><div class="card-title" style="margin-bottom:16px">Retraits</div>'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>')+'</div>';
   }
 
   if(page==='admin-ref'){
@@ -1003,7 +777,7 @@ async function renderPage(page){
       html+='<div id="adm-cat-'+cat.key+'" style="display:none;padding-top:10px">';
       catOffers.forEach(o=>{
         const n=o.name.replace(/'/g,"\\'");const d=(o.description||'').replace(/'/g,"\\'");const u=o.url.replace(/'/g,"\\'");const img=(o.image_url||'').replace(/'/g,"\\'");
-        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class="btn '+(o.active?'btn-red':'btn-grn')+' btn-sm" onclick="toggleOffer('+o.id+','+(o.active?'false':'true')+')">'+(o.active?'🚫':'✅')+'</button><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
+        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
       });
       html+='</div></div>';
     });
@@ -1112,55 +886,23 @@ async function renderPage(page){
     return html;
   }
 
-  if(page==='admin-logs'){
-    const logs=await api('GET','/api/logs');
-    if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
-    const actionIcon={'login':'🔐','inscription':'🆕','logout':'👋'};
-    const fmtLocal=d=>{if(!d)return '—';const dt=new Date(new Date(d).getTime()+2*60*60*1000);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
-    const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap;font-size:12px">'+fmtLocal(l.created_at)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td><td><button class="btn btn-red btn-sm" onclick="deleteLog('+l.id+')">🗑</button></td></tr>').join('');
-    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><button class="btn btn-red btn-sm" onclick="clearAllLogs()">🗑 Tout effacer</button></div><div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
-  }
-
   if(page==='admin-settings'){
     const currentLogo=localStorage.getItem('affihub_logo')||'';
     const settings=await api('GET','/api/settings/all');
     const tempEnabled=settings.temp_links_enabled;
-    const maintenance=settings.maintenance_mode;
-    const welcomeMsg=settings.welcome_message||'';
     const catRows=CATS.map(cat=>{
       const enabled=settings['cat_'+cat.key+'_enabled'];
       return '<div class="info-row"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:16px">'+cat.label.split(' ')[0]+'</span><span style="font-weight:700;font-size:13px">'+cat.label.split(' ').slice(1).join(' ')+'</span></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(enabled?'var(--green)':'var(--red)')+'">'+(enabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(enabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleCategorySetting(\''+cat.key+'\','+(enabled?'false':'true')+')">'+(enabled?'Désactiver':'Activer')+'</button></div></div>';
     }).join('');
     return '<div class="settings-section"><div class="settings-section-title">🖼️ Logo du site</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px"><div style="width:80px;height:80px;border-radius:14px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+(currentLogo?'<img src="'+currentLogo+'" style="width:100%;height:100%;object-fit:contain">':'<span style="font-size:36px">🔗</span>')+'</div><div><div style="font-weight:700;margin-bottom:4px">Logo actuel</div><div style="font-size:12px;color:var(--muted)">Sidebar et page de connexion</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'logo-file\').click()"><input type="file" id="logo-file" accept="image/*" style="display:none" onchange="previewLogo(this)"><div id="logo-prev" style="display:none;margin-bottom:10px"><img id="logo-prev-img" style="max-width:120px;max-height:120px;border-radius:10px;object-fit:contain"></div><div id="logo-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer</div></div></div><button class="btn btn-grad" onclick="saveLogo()" style="width:100%;justify-content:center;margin-top:14px">💾 Sauvegarder</button></div>'
-    +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
-    +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première connexion</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉&#10;&#10;Pour commencer, rends-toi sur Liens temporaires et demande ton premier lien.&#10;&#10;Si tu as des questions, contacte-moi sur Discord : ananous." style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
-    +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock. Désactive cette page une fois le postback actif.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
+    +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock (11 juillet). Désactive cette page pour les affiliés une fois le postback automatique en place, ou réactive-la en cas de problème.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div><div style="font-size:12px;color:var(--muted)">"⏳ Liens temporaires" dans leur menu</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
   }
 
   return '';
 }
 
 // ── ACTION FUNCTIONS ──
-function exportCSV(type){
-  const names={affiliates:'affilies',conversions:'conversions',withdrawals:'retraits'};
-  const a=document.createElement('a');
-  a.href='/api/export/'+type;
-  a.setAttribute('Authorization','Bearer '+TOKEN);
-  // Use fetch to get CSV with auth header
-  fetch('/api/export/'+type,{headers:{'Authorization':'Bearer '+TOKEN}})
-    .then(r=>r.blob())
-    .then(blob=>{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=names[type]+'.csv';a.click();URL.revokeObjectURL(url);});
-}
-function openNoteAff(userId,userName,currentNote){
-  document.getElementById('m-title').textContent='📝 Note — '+userName;
-  document.getElementById('m-body').innerHTML='<div class="fi"><label>Note privée (visible uniquement par vous)</label><textarea id="note-txt" placeholder="Ex: VIP, à surveiller, bon affilié..." style="resize:vertical;min-height:100px">'+currentNote+'</textarea></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveNote(\''+userId+'\')" style="flex:1;justify-content:center">💾 Sauvegarder</button></div>';
-  document.getElementById('mo').classList.add('open');
-}
-async function saveNote(userId){
-  const note=document.getElementById('note-txt').value.trim();
-  try{await api('PATCH','/api/users/'+userId+'/note',{note});closeMo();toast('Note sauvegardée ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
-}
 async function genLink(offerId){try{await api('POST','/api/links',{offer_id:offerId});toast('Lien généré !','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
 async function regenLink(linkId,offerId){document.getElementById('m-title').textContent='Regénérer le lien';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔄</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous regénérer ce lien ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doRegenLink(\''+linkId+'\','+offerId+')" style="flex:1">Regénérer</button></div></div>';document.getElementById('mo').classList.add('open');}
 async function doRegenLink(linkId,offerId){try{await api('DELETE','/api/links/'+linkId);await api('POST','/api/links',{offer_id:offerId});closeMo();toast('Lien regénéré ✓','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
@@ -1222,9 +964,6 @@ async function doEditOffer(id,existingImg){
   try{let imgUrl=existingImg||null;const f=document.getElementById('img-file-edit').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
   await api('PATCH','/api/offers/'+id,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value,image_url:imgUrl});closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}
 }
-async function toggleOffer(id,active){
-  try{await api('PATCH','/api/offers/'+id,{active});toast(active?'Offre activée ✅':'Offre désactivée 🚫',active?'s':'i');goPage('admin-offers');}catch(e){toast(e.message,'e');}
-}
 function openAddOffer(){
   document.getElementById('m-title').textContent='Nouvelle offre';
   document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VIP Leak"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Description..."></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://...?ml_sub1="></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-add\').click()"><input type="file" id="img-file-add" accept="image/*" style="display:none" onchange="previewImg(this,\'add\')"><div id="img-prev-add" style="display:none;margin-bottom:10px"><img id="img-prev-img-add" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-add"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Importer une image</div></div></div></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><div class="fi"><label>Catégorie</label><select id="ocat"><option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="influenceuse">👑 Influenceuse</option><option value="ia">🤖 IA</option><option value="autre" selected>📦 Autre</option></select></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
@@ -1265,40 +1004,11 @@ function filterConv(btn,f,convs){
   const rows=list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
   document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';
 }
-async function deleteLog(id){
-  try{await api('DELETE','/api/logs/'+id);goPage('admin-logs');}catch(e){toast(e.message,'e');}
-}
-async function clearAllLogs(){
-  document.getElementById('m-title').textContent='Effacer tous les logs';
-  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Effacer tous les logs d\'activité ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doClrLogs()" style="flex:1">Tout effacer</button></div></div>';
-  document.getElementById('mo').classList.add('open');
-}
-async function doClrLogs(){
-  try{await api('DELETE','/api/logs');closeMo();toast('Logs effacés','s');goPage('admin-logs');}catch(e){toast(e.message,'e');}
-}
-async function toggleMaintenance(enable){
-  try{await api('PATCH','/api/settings/maintenance',{enabled:enable});toast(enable?'🔧 Maintenance activée':'✅ Site remis en ligne',enable?'i':'s');goPage('admin-settings');}catch(e){toast(e.message,'e');}
-}
-async function saveWelcomeMsg(){
-  const msg=document.getElementById('welcome-msg')?.value.trim();
-  try{await api('PATCH','/api/settings/welcome',{message:msg});toast('Message sauvegardé ✓','s');}catch(e){toast(e.message,'e');}
-}
 async function toggleCategorySetting(category,enable){
   try{await api('PATCH','/api/settings/category',{category,enabled:enable});toast(enable?'Activé ✅':'Désactivé 🔒',enable?'s':'i');goPage('admin-settings');}catch(e){toast(e.message,'e');}
 }
 async function toggleTempLinks(enable){
   try{await api('PATCH','/api/settings/temp-links',{enabled:enable});toast(enable?'Activé ✅':'Désactivé 🔒',enable?'s':'i');goPage('admin-settings');}catch(e){toast(e.message,'e');}
-}
-async function changeRefCode(){
-  const code=document.getElementById('new-ref-code')?.value.trim();
-  if(!code){toast('Entre un code','e');return;}
-  try{
-    const r=await api('PATCH','/api/me/referral-code',{code});
-    ME.referral_code=r.code;
-    localStorage.setItem('affihub_user',JSON.stringify(ME));
-    toast('Code mis à jour ✓','s');
-    goPage('aff-settings');
-  }catch(e){toast(e.message,'e');}
 }
 async function savePostback(){
   const url=document.getElementById('pb-url').value.trim();
@@ -1505,9 +1215,6 @@ window.addEventListener('popstate',function(e){
 
 // Ripple effect
 document.addEventListener('click',function(e){const btn=e.target.closest('.btn-grad');if(!btn)return;const r=document.createElement('span');r.className='ripple';const rect=btn.getBoundingClientRect();const size=Math.max(rect.width,rect.height)*2;r.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(e.clientX-rect.left-size/2)+'px;top:'+(e.clientY-rect.top-size/2)+'px';btn.appendChild(r);setTimeout(()=>r.remove(),600);});
-
-// PWA Service Worker
-if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 
 // Particles
 (function(){const canvas=document.getElementById('particles-canvas');if(!canvas)return;const ctx=canvas.getContext('2d');let particles=[];function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}resize();window.addEventListener('resize',resize);function cp(){return{x:Math.random()*canvas.width,y:canvas.height+10,size:Math.random()*2.5+.5,speedY:Math.random()*1.2+.4,speedX:(Math.random()-.5)*.6,opacity:Math.random()*.4+.1,color:Math.random()>.5?'245,200,66':'240,66,122'};}for(let i=0;i<35;i++){const p=cp();p.y=Math.random()*canvas.height;particles.push(p);}function animate(){ctx.clearRect(0,0,canvas.width,canvas.height);if(particles.length<50&&Math.random()<.04)particles.push(cp());particles=particles.filter(p=>{p.y-=p.speedY;p.x+=p.speedX;ctx.save();ctx.globalAlpha=p.opacity;ctx.fillStyle='rgba('+p.color+',1)';ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();return p.y>-20;});requestAnimationFrame(animate);}animate();})();
