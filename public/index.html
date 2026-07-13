@@ -390,14 +390,14 @@ function startApp(){
     document.getElementById('role-badge').textContent='⚡ Affilié';
     document.getElementById('notif-bell-btn').style.display='block';
     api('GET','/api/settings/all').then(s=>{
-      const accueilItems=[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}];
-      if(s.temp_links_enabled)accueilItems.push({icon:'⏳',label:'Liens temporaires',page:'aff-temp'});
+      const accueilItems=[{icon:'🏠',label:T('dashboard'),page:'aff-dash'},{icon:'🔗',label:T('my_links'),page:'aff-links'}];
+      if(s.temp_links_enabled)accueilItems.push({icon:'⏳',label:T('temp_links'),page:'aff-temp'});
       const nav=[
         {section:'ACCUEIL',items:accueilItems},
-        {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
-        {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
-        {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-        {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+        {section:'STATISTIQUES',items:[{icon:'📈',label:T('stats'),page:'aff-stats'},{icon:'🔁',label:T('conversions'),page:'aff-conv'}]},
+        {section:'GAINS',items:[{icon:'💸',label:T('payments'),page:'aff-pay'},{icon:'👥',label:T('referral'),page:'aff-ref'}]},
+        {section:'CLASSEMENT',items:[{icon:'🏆',label:T('top_affiliates'),page:'aff-top'}]},
+        {section:'SUPPORT',items:[{icon:'👨‍💼',label:T('manager'),page:'aff-support'},{icon:'🎫',label:T('tickets'),page:'aff-tickets'},{icon:'⚙️',label:T('settings'),page:'aff-settings'}]}
       ];
       buildNav(nav);buildMobileNav(nav);
       goPage('aff-dash');
@@ -552,6 +552,130 @@ const CATS=[
   {key:'autre',label:'📦 Autre',color:'#888',bg:'rgba(136,136,136,.08)',border:'rgba(136,136,136,.25)'}
 ];
 
+// ── TRANSLATIONS ──
+const LANGS = {
+  fr: {
+    // Nav
+    dashboard:'Dashboard', my_links:'Mes liens', temp_links:'Liens temporaires',
+    stats:'Statistiques', conversions:'Conversions', payments:'Paiements',
+    referral:'Parrainage', top_affiliates:'🏆 TOP Affiliés', manager:'Mon Manager',
+    tickets:'🎫 Ticket / Aide', settings:'Paramètres',
+    // Dashboard
+    available_balance:'Solde disponible', withdraw:'💸 Retirer', min_withdraw:'Retrait minimum : $25',
+    total_clicks:'Clics total', on:'sur', links:'lien(s)', total_conversions:'Conversions',
+    approved:'approuvées', pending:'en attente', pending_gains:'Gains en attente',
+    total_gains:'Gains totaux', last_conversions:'Dernières conversions', see_all:'Voir tout →',
+    no_conversion:'Aucune conversion', gains_30:'📈 Gains des 30 derniers jours',
+    date:'Date', offer:'Offre', amount:'Montant', status:'Statut',
+    // Links
+    offers_available:'offre(s) disponibles', generate_link:'🔗 Générer mon lien',
+    clicks:'CLICS', active:'✓ Actif', disabled:'🚫 Désactivé', soon:'🔒 Bientôt disponible',
+    locked:'🔒 Désactivé', per_sale:'/ vente', offer_unavailable:'🔒 Offre temporairement indisponible',
+    customize:'🎨 Personnaliser & Demander', link_received:'✅ Lien reçu',
+    request_pending:'⏳ Demande en cours', modify:'✏️ Modifier',
+    // Stats
+    total_clicks_s:'Clics totaux', total_conv:'Conversions', total_gains_s:'Gains totaux',
+    // Conversions
+    my_conversions:'Mes conversions', all:'Toutes', approved_s:'✅ Approuvées',
+    pending_s:'⏳ En attente', rejected_s:'❌ Rejetées', link:'Lien',
+    // Payments
+    withdraw_available:'✓ Retrait disponible', min_25:'⚠ Minimum $25',
+    check_address:'Vérifiez votre adresse crypto.', no_refund:'Aucun remboursement en cas d\'adresse incorrecte.',
+    amount_s:'Montant ($)', payment_method:'Moyen de paiement', address:'Adresse / Coordonnées',
+    submit:'💸 Soumettre', fees:'💰 Frais de retrait', all_methods:'Tous les moyens de paiement',
+    history:'📋 Historique', no_withdrawal:'Aucun retrait', address_s:'Adresse',
+    // Referral
+    your_ref_link:'Votre lien de parrainage', earn_5:'Gagnez 5% sur chaque vente',
+    total_earned:'Total gagné', referrals:'Filleuls', commissions:'Commissions',
+    rate:'Taux', my_referrals:'👥 Mes filleuls', no_referral:'Aucun filleul',
+    registered:'Inscrit le', gains_generated:'Gains générés', my_commissions:'💸 Commissions',
+    no_commission:'Aucune commission', sale:'💵 Vente', commission:'💸 Commission',
+    // Support
+    founder:'✦ FONDATEUR ✦', available_discord:'Disponible sur Discord', copy:'📋 Copier',
+    // Tickets
+    new_ticket:'+ Nouveau ticket', no_ticket:'Aucun ticket', reason:'🏷️ Raison',
+    messages:'💬 Messages', open:'🟡 Ouvert', closed:'🔴 Fermé', resolved:'🟢 Résolu',
+    see:'👁 Voir', create_ticket:'Nouveau ticket', your_reply:'Votre réponse',
+    write_message:'Écrivez votre message...', image_optional:'Image (optionnel)',
+    click_image:'Cliquer pour ajouter une image', send:'📨 Envoyer', back:'← Retour',
+    close_ticket:'🔴 Fermer', ticket_resolved:'Ticket résolu', ticket_closed:'Ticket fermé',
+    created:'Créé le',
+    // Settings
+    information:'👤 Informations', name:'Nom', email:'Email', arrival:'Date d\'arrivée',
+    ref_code:'Code parrainage', ranking:'🏆 Classement', appear_top:'Apparaître dans le TOP',
+    stats_visible:'Vos stats seront visibles', visible:'✅ Visible', hidden:'🚫 Masqué',
+    hide:'Masquer', show:'Afficher', password:'🔑 Mot de passe', current:'Actuel',
+    new_pass:'Nouveau', confirm:'Confirmer', change_pass:'🔑 Modifier',
+    postback_title:'🔌 Postback vers mon système', postback_desc:'Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici.',
+    available_vars:'Variables disponibles', save:'💾 Sauvegarder', lang_title:'🌍 Langue',
+    lang_desc:'Choisir la langue de l\'interface.',
+    // Language
+    language:'Langue',
+  },
+  en: {
+    // Nav
+    dashboard:'Dashboard', my_links:'My links', temp_links:'Temporary links',
+    stats:'Statistics', conversions:'Conversions', payments:'Payments',
+    referral:'Referral', top_affiliates:'🏆 TOP Affiliates', manager:'My Manager',
+    tickets:'🎫 Ticket / Help', settings:'Settings',
+    // Dashboard
+    available_balance:'Available balance', withdraw:'💸 Withdraw', min_withdraw:'Minimum withdrawal: $25',
+    total_clicks:'Total clicks', on:'on', links:'link(s)', total_conversions:'Conversions',
+    approved:'approved', pending:'pending', pending_gains:'Pending earnings',
+    total_gains:'Total earnings', last_conversions:'Latest conversions', see_all:'See all →',
+    no_conversion:'No conversions', gains_30:'📈 Earnings over the last 30 days',
+    date:'Date', offer:'Offer', amount:'Amount', status:'Status',
+    // Links
+    offers_available:'offer(s) available', generate_link:'🔗 Generate my link',
+    clicks:'CLICKS', active:'✓ Active', disabled:'🚫 Disabled', soon:'🔒 Coming soon',
+    locked:'🔒 Disabled', per_sale:'/ sale', offer_unavailable:'🔒 Offer temporarily unavailable',
+    customize:'🎨 Customize & Request', link_received:'✅ Link received',
+    request_pending:'⏳ Request pending', modify:'✏️ Edit',
+    // Stats
+    total_clicks_s:'Total clicks', total_conv:'Conversions', total_gains_s:'Total earnings',
+    // Conversions
+    my_conversions:'My conversions', all:'All', approved_s:'✅ Approved',
+    pending_s:'⏳ Pending', rejected_s:'❌ Rejected', link:'Link',
+    // Payments
+    withdraw_available:'✓ Withdrawal available', min_25:'⚠ Minimum $25',
+    check_address:'Check your crypto address.', no_refund:'No refund in case of incorrect address.',
+    amount_s:'Amount ($)', payment_method:'Payment method', address:'Address / Details',
+    submit:'💸 Submit', fees:'💰 Withdrawal fees', all_methods:'All payment methods',
+    history:'📋 History', no_withdrawal:'No withdrawals', address_s:'Address',
+    // Referral
+    your_ref_link:'Your referral link', earn_5:'Earn 5% on every sale',
+    total_earned:'Total earned', referrals:'Referrals', commissions:'Commissions',
+    rate:'Rate', my_referrals:'👥 My referrals', no_referral:'No referrals',
+    registered:'Registered on', gains_generated:'Generated earnings', my_commissions:'💸 Commissions',
+    no_commission:'No commissions', sale:'💵 Sale', commission:'💸 Commission',
+    // Support
+    founder:'✦ FOUNDER ✦', available_discord:'Available on Discord', copy:'📋 Copy',
+    // Tickets
+    new_ticket:'+ New ticket', no_ticket:'No tickets', reason:'🏷️ Reason',
+    messages:'💬 Messages', open:'🟡 Open', closed:'🔴 Closed', resolved:'🟢 Resolved',
+    see:'👁 View', create_ticket:'New ticket', your_reply:'Your reply',
+    write_message:'Write your message...', image_optional:'Image (optional)',
+    click_image:'Click to add an image', send:'📨 Send', back:'← Back',
+    close_ticket:'🔴 Close', ticket_resolved:'Ticket resolved', ticket_closed:'Ticket closed',
+    created:'Created on',
+    // Settings
+    information:'👤 Information', name:'Name', email:'Email', arrival:'Joined on',
+    ref_code:'Referral code', ranking:'🏆 Ranking', appear_top:'Appear in the TOP',
+    stats_visible:'Your stats will be visible', visible:'✅ Visible', hidden:'🚫 Hidden',
+    hide:'Hide', show:'Show', password:'🔑 Password', current:'Current',
+    new_pass:'New', confirm:'Confirm', change_pass:'🔑 Update',
+    postback_title:'🔌 Postback to my system', postback_desc:'If you manage your own affiliate platform, configure your postback URL here.',
+    available_vars:'Available variables', save:'💾 Save', lang_title:'🌍 Language',
+    lang_desc:'Choose the interface language.',
+    language:'Language',
+  }
+};
+
+var LANG = localStorage.getItem('affihub_lang') || 'fr';
+function T(key){ return (LANGS[LANG]||LANGS.fr)[key] || (LANGS.fr)[key] || key; }
+function setLang(l){ LANG=l; localStorage.setItem('affihub_lang',l); goPage(curPage); }
+
+
 async function uploadImg(file,bucket){
   bucket=bucket||'offers';
   const fileName=Date.now()+'-'+file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
@@ -568,14 +692,13 @@ async function renderPage(page){
     const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
     const convGains=approved.reduce((s,c)=>s+c.amount,0);const refGains=ref.totalEarned||0;
     const rows=convs.slice(0,5).map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td style="color:var(--yellow);font-weight:700">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
-    // 30 days chart
     const days30=[],gains30=[];
-    for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];days30.push(i%5===0||i===0?d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'');gains30.push(approved.filter(c=>c.created_at?.startsWith(ds)).reduce((s,c)=>s+c.amount,0));}
+    for(let i=29;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const ds=d.toISOString().split('T')[0];days30.push(i%5===0||i===0?d.toLocaleDateString(LANG==='en'?'en-GB':'fr-FR',{day:'numeric',month:'short'}):'');gains30.push(approved.filter(c=>c.created_at?.startsWith(ds)).reduce((s,c)=>s+c.amount,0));}
     setTimeout(()=>{const ctx=document.getElementById('aff-gains-chart');if(ctx){new Chart(ctx,{type:'line',data:{labels:days30,datasets:[{label:'Gains ($)',data:gains30,borderColor:'rgba(245,200,66,.8)',backgroundColor:'rgba(245,200,66,.08)',borderWidth:2,pointRadius:2,fill:true,tension:.4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#555',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#555',font:{size:10},callback:v=>'$'+v}}}}});}},100);
-    return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$'+(ME.balance||0)+'</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Retrait minimum : $25</div></div><button class="btn" onclick="goPage(\'aff-pay\')" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);font-size:13px;padding:11px 22px">💸 Retirer</button></div>'
-    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics total</div><div class="stat-val gy">'+totalClicks+'</div><div class="stat-sub">sur '+links.length+' lien(s)</div></div><div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">'+convs.length+'</div><div class="stat-sub">'+approved.length+' approuvées · '+pending.length+' en attente</div></div><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Gains en attente</div><div class="stat-val" style="color:var(--yellow)">$'+pending.reduce((s,c)=>s+c.amount,0)+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gg">$'+(convGains+refGains).toFixed(2)+'</div></div></div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📈 Gains des 30 derniers jours</div><canvas id="aff-gains-chart" height="80"></canvas></div>'
-    +'<div class="card"><div class="card-header"><div class="card-title">Dernières conversions</div><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-conv\')">Voir tout →</button></div>'+(convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
+    return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">'+T('available_balance')+'</div><div class="bal-amount">$'+(ME.balance||0)+'</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">'+T('min_withdraw')+'</div></div><button class="btn" onclick="goPage(\'aff-pay\')" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);font-size:13px;padding:11px 22px">'+T('withdraw')+'</button></div>'
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">'+T('total_clicks')+'</div><div class="stat-val gy">'+totalClicks+'</div><div class="stat-sub">'+T('on')+' '+links.length+' '+T('links')+'</div></div><div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">'+T('total_conversions')+'</div><div class="stat-val gy">'+convs.length+'</div><div class="stat-sub">'+approved.length+' '+T('approved')+' · '+pending.length+' '+T('pending')+'</div></div><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">'+T('pending_gains')+'</div><div class="stat-val" style="color:var(--yellow)">$'+pending.reduce((s,c)=>s+c.amount,0)+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">'+T('total_gains')+'</div><div class="stat-val gg">$'+(convGains+refGains).toFixed(2)+'</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('gains_30')+'</div><canvas id="aff-gains-chart" height="80"></canvas></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">'+T('last_conversions')+'</div><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-conv\')">'+T('see_all')+'</button></div>'+(convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>'+T('no_conversion')+'</p></div>':'<div class="tw"><table><thead><tr><th>'+T('date')+'</th><th>'+T('offer')+'</th><th>'+T('amount')+'</th><th>'+T('status')+'</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
   }
 
   if(page==='aff-links'){
@@ -633,7 +756,7 @@ async function renderPage(page){
 
   if(page==='aff-stats'){
     const [links,convs,offers]=await Promise.all([api('GET','/api/links'),api('GET','/api/conversions'),api('GET','/api/offers')]);
-    if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>Aucun lien généré.</p></div></div>';
+    if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>'+(LANG==='en'?'No links generated.':'Aucun lien généré.')+'</p></div></div>';
     const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
     const totalGains=convs.filter(c=>c.status==='approved').reduce((s,c)=>s+c.amount,0);
     const totalApproved=convs.filter(c=>c.status==='approved').length;
@@ -650,45 +773,45 @@ async function renderPage(page){
       +'</tr>';
     }).join('');
     return '<div class="stats-grid" style="margin-bottom:24px">'
-      +'<div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">'+totalClicks+'</div></div>'
-      +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Conversions</div><div class="stat-val gg">'+totalApproved+'</div></div>'
-      +'<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gy">$'+totalGains+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">'+T('total_clicks_s')+'</div><div class="stat-val gy">'+totalClicks+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">'+T('total_conv')+'</div><div class="stat-val gg">'+totalApproved+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">'+T('total_gains_s')+'</div><div class="stat-val gy">$'+totalGains+'</div></div>'
       +'</div>'
       +'<div class="card"><div class="tw"><table><thead><tr>'
-      +'<th>🎯 Offre</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">✅ Conv.</th><th style="text-align:center">💰 Gains</th><th style="text-align:center">📌</th>'
+      +'<th>🎯 '+T('offer')+'</th><th style="text-align:center">🖱️ '+T('clicks')+'</th><th style="text-align:center">✅ Conv.</th><th style="text-align:center">💰 '+T('total_gains_s')+'</th><th style="text-align:center">📌</th>'
       +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   if(page==='aff-conv'){
     const convs=await api('GET','/api/conversions');
     const mkRows=list=>list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
-    const tabs=[['all','Toutes',convs.length],['approved','✅ Approuvées',convs.filter(c=>c.status==='approved').length],['pending','⏳ En attente',convs.filter(c=>c.status==='pending').length],['rejected','❌ Rejetées',convs.filter(c=>c.status==='rejected').length]];
+    const tabs=[['all',T('all'),convs.length],['approved',T('approved_s'),convs.filter(c=>c.status==='approved').length],['pending',T('pending_s'),convs.filter(c=>c.status==='pending').length],['rejected',T('rejected_s'),convs.filter(c=>c.status==='rejected').length]];
     const tabHtml=tabs.map(([f,l,n])=>'<button class="tab'+(f==='all'?' active':'\"')+'" onclick="filterConv(this,\''+f+'\','+JSON.stringify(convs).replace(/'/g,"\\'")+')">'+l+' ('+n+')</button>').join('');
-    return '<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs">'+tabHtml+'</div><div id="ctable"><div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div></div></div>';
+    return '<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('my_conversions')+'</div><div class="tabs">'+tabHtml+'</div><div id="ctable"><div class="tw"><table><thead><tr><th>📅 '+T('date')+'</th><th>🎯 '+T('offer')+'</th><th>🔗 '+T('link')+'</th><th>💰 '+T('amount')+'</th><th>📌 '+T('status')+'</th></tr></thead><tbody>'+(mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">'+T('no_conversion')+'</td></tr>')+'</tbody></table></div></div></div>';
   }
 
   if(page==='aff-pay'){
     const wds=await api('GET','/api/withdrawals');const bal=ME.balance||0;
     const wrows=wds.map(w=>'<tr><td style="color:var(--muted)">'+fmt(w.created_at)+'</td><td style="color:var(--yellow);font-weight:800">$'+w.amount+'</td><td><span class="badge bp2">'+w.crypto+'</span></td><td><code style="font-size:11px;color:var(--muted)">'+w.address.substring(0,22)+'...</code></td><td>'+sbadge(w.status)+(w.status==='rejected'&&w.reason?'<div style="font-size:11px;color:var(--red)">↳ '+w.reason+'</div>':'')+'</td></tr>').join('');
     return '<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;margin-bottom:20px">'
-    +'<div class="card" style="margin-bottom:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-size:32px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+bal+'</div></div>'+(bal>=25?'<span class="badge bg2">✓ Retrait disponible</span>':'<span class="badge by2">⚠ Minimum $25</span>')+'</div>'
-    +'<div class="warning-box"><div style="font-size:16px;flex-shrink:0">⚠️</div><p style="font-size:12px;color:var(--yellow);line-height:1.7"><strong>Vérifiez votre adresse crypto.</strong><br>Aucun remboursement en cas d\'adresse incorrecte.</p></div>'
+    +'<div class="card" style="margin-bottom:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+T('available_balance')+'</div><div style="font-size:32px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+bal+'</div></div>'+(bal>=25?'<span class="badge bg2">'+T('withdraw_available')+'</span>':'<span class="badge by2">'+T('min_25')+'</span>')+'</div>'
+    +'<div class="warning-box"><div style="font-size:16px;flex-shrink:0">⚠️</div><p style="font-size:12px;color:var(--yellow);line-height:1.7"><strong>'+T('check_address')+'</strong><br>'+T('no_refund')+'</p></div>'
     +'<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,200,66,.2),transparent);margin:20px 0"></div>'
-    +'<div class="fi"><label>Montant ($)</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+'">MAX $'+bal+'</button></div></div>'
-    +'<div class="fi"><label>Moyen de paiement</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">'
+    +'<div class="fi"><label>'+T('amount_s')+'</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+'">MAX $'+bal+'</button></div></div>'
+    +'<div class="fi"><label>'+T('payment_method')+'</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">'
     +'<div class="crypto-opt" onclick="pickCrypto(\'BTC\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg>Bitcoin</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'SOL\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="url(#solGrad)"/><defs><linearGradient id="solGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#9945FF"/><stop offset="100%" style="stop-color:#14F195"/></linearGradient></defs><path d="M10 21.5h12.5l-2 1.8H8L10 21.5zm0-6h12.5l-2 1.8H8L10 15.5zm2-6h12.5l-2 1.8H10L12 9.5z" fill="white"/></svg>Solana</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'LTC\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="#BFBBBB"/><text x="16" y="23" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Ł</text></svg>Litecoin</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'REVOLUT\',this)"><div style="width:28px;height:28px;background:#191C20;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M14.5 2H6v20h3.5v-7H13l3.5 7H20l-3.8-7.4C18.3 13.5 19 11.8 19 9.5 19 5.4 17.1 2 14.5 2zm-.3 8.5H9.5V5.5h4.7c1.2 0 2.3.9 2.3 2.5s-1.1 2.5-2.3 2.5z"/></svg></div>Revolut</div>'
-    +'<div class="crypto-opt" onclick="pickCrypto(\'VIREMENT\',this)"><div style="font-size:22px;margin-bottom:6px">🏦</div>Virement</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'VIREMENT\',this)"><div style="font-size:22px;margin-bottom:6px">🏦</div>'+(LANG==='en'?'Bank transfer':'Virement')+'</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'PAYPAL\',this)"><div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.99l-.094.596a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788l.038-.196.735-4.653.047-.256a.932.932 0 0 1 .92-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.44-4.536z" fill="#009cde"/><path d="M6.723 21.337H2.118a.641.641 0 0 1-.633-.74L4.592.901C4.675.382 5.123 0 5.647 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797H8.895c-.524 0-.968.382-1.05.9l-1.122 7.106z" fill="#012169"/></svg></div>PayPal<span style="font-size:9px;display:block;color:var(--muted)">min. $50</span></div>'
-    +'<div class="crypto-opt" onclick="pickCrypto(\'CADEAU\',this)"><div style="font-size:22px;margin-bottom:6px">🎁</div>Carte cadeau</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'CADEAU\',this)"><div style="font-size:22px;margin-bottom:6px">🎁</div>'+(LANG==='en'?'Gift card':'Carte cadeau')+'</div>'
     +'</div></div>'
-    +'<div class="fi" id="addr-field"><label id="addr-label">Adresse / Coordonnées</label><input type="text" id="wd-addr" placeholder="Selon le moyen choisi"></div>'
-    +'<div class="fi" id="virement-name-field" style="display:none"><label>Nom & Prénom (titulaire du compte)</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
-    +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre</button></div>'
-    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement — dès $25</div><div>✅ Carte cadeau — dès $25</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Historique</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
+    +'<div class="fi" id="addr-field"><label id="addr-label">'+T('address')+'</label><input type="text" id="wd-addr" placeholder="'+T('address')+'"></div>'
+    +'<div class="fi" id="virement-name-field" style="display:none"><label>'+(LANG==='en'?'Full name (account holder)':'Nom & Prénom (titulaire du compte)')+'</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
+    +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">'+T('submit')+'</button></div>'
+    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">'+T('fees')+'</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+T('all_methods')+'</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement — dès $25</div><div>✅ Carte cadeau — dès $25</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('history')+'</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>'+T('no_withdrawal')+'</p></div>':'<div class="tw"><table><thead><tr><th>📅 '+T('date')+'</th><th>💰 '+T('amount')+'</th><th>💳 '+T('payment_method')+'</th><th>📬 '+T('address_s')+'</th><th>📌 '+T('status')+'</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
   }
 
   if(page==='aff-ref'){
@@ -696,10 +819,10 @@ async function renderPage(page){
     const refLink=origin+'/?ref='+(ME.referral_code||'');
     const fRows=ref.filleules.map(f=>{const earned=ref.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);return '<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+f.name[0]+'</div><b>'+f.name+'</b></div></td><td style="color:var(--muted)">'+fmt(f.created_at)+'</td><td style="color:var(--green)">$'+earned.toFixed(2)+'</td></tr>';}).join('');
     const cRows=ref.commissions.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td><b>'+(c.users?.name||'?')+'</b></td><td style="color:var(--yellow)">$'+(c.conversions?.amount||0)+'</td><td style="color:var(--green)">$'+c.amount.toFixed(2)+'</td></tr>').join('');
-    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Gagnez <strong>5%</strong> sur chaque vente</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">Total gagné</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div>'
-    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux</div><div class="stat-val gy">5%</div></div></div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">👥 Mes filleuls</div>'+(ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Gains générés</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
-    +'<div class="card"><div class="card-title" style="margin-bottom:16px">💸 Commissions</div>'+(ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
+    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">'+T('your_ref_link')+'</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">'+T('earn_5')+'</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">'+T('total_earned')+'</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\''+( LANG==='en'?'Link copied!':'Lien copié !')+'\',\'s\')">📋</button></div></div>'
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">'+T('referrals')+'</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">'+T('commissions')+'</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">'+T('rate')+'</div><div class="stat-val gy">5%</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('my_referrals')+'</div>'+(ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>'+T('no_referral')+'</p></div>':'<div class="tw"><table><thead><tr><th>👤</th><th>📅 '+T('registered')+'</th><th>💰 '+T('gains_generated')+'</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">'+T('my_commissions')+'</div>'+(ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>'+T('no_commission')+'</p></div>':'<div class="tw"><table><thead><tr><th>📅 '+T('date')+'</th><th>👤</th><th>'+T('sale')+'</th><th>'+T('commission')+'</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
   }
 
   if(page==='aff-top'){
@@ -714,35 +837,36 @@ async function renderPage(page){
   }
 
   if(page==='aff-support'){
-    return '<div class="support-hero"><div style="font-size:80px;margin-bottom:12px">🍍</div><div style="font-size:26px;font-weight:800;color:#000;margin-bottom:4px">ananas</div><div style="font-size:12px;color:rgba(0,0,0,.6);font-weight:800;letter-spacing:1px;text-transform:uppercase">✦ FONDATEUR ✦</div><p style="font-size:13px;color:rgba(255,255,255,.7);margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6">Pour toute question, contacte-moi sur Discord. Je réponds dans les 24h.</p></div>'
-    +'<div class="discord-card"><div style="display:flex;align-items:center;gap:14px"><div style="width:46px;height:46px;border-radius:12px;background:rgba(88,101,242,.15);border:1px solid rgba(88,101,242,.25);display:flex;align-items:center;justify-content:center;font-size:22px">💬</div><div><div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:600">ananous.</div><div style="font-size:12px;color:var(--muted)">Disponible sur Discord</div></div></div><button class="btn btn-grad" onclick="navigator.clipboard?.writeText(\'ananous.\');toast(\'Pseudo copié !\',\'s\')">📋 Copier</button></div>';
+    return '<div class="support-hero"><div style="font-size:80px;margin-bottom:12px">🍍</div><div style="font-size:26px;font-weight:800;color:#000;margin-bottom:4px">ananas</div><div style="font-size:12px;color:rgba(0,0,0,.6);font-weight:800;letter-spacing:1px;text-transform:uppercase">'+T('founder')+'</div><p style="font-size:13px;color:rgba(255,255,255,.7);margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6">'+(LANG==='en'?'For any questions, contact me on Discord. I respond within 24h.':'Pour toute question, contacte-moi sur Discord. Je réponds dans les 24h.')+'</p></div>'
+    +'<div class="discord-card"><div style="display:flex;align-items:center;gap:14px"><div style="width:46px;height:46px;border-radius:12px;background:rgba(88,101,242,.15);border:1px solid rgba(88,101,242,.25);display:flex;align-items:center;justify-content:center;font-size:22px">💬</div><div><div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:600">ananous.</div><div style="font-size:12px;color:var(--muted)">'+T('available_discord')+'</div></div></div><button class="btn btn-grad" onclick="navigator.clipboard?.writeText(\'ananous.\');toast(\''+(LANG==='en'?'Username copied!':'Pseudo copié !')+'\',\'s\')">'+T('copy')+'</button></div>';
   }
 
   if(page==='aff-settings'){
     const showRanking=ME.show_ranking!==false;
-    return '<div class="settings-section"><div class="settings-section-title">👤 Informations</div><div class="info-row"><div class="info-label">Nom</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">Email</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">Date d\'arrivée</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">Code parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\'Code copié !\',\'s\')">📋</button></div></div></div>'
-    +'<div class="settings-section"><div class="settings-section-title">🏆 Classement</div><div class="info-row"><div><div class="info-label" style="margin-bottom:4px">Apparaître dans le TOP</div><div style="font-size:12px;color:var(--muted)">Vos stats seront visibles</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(showRanking?'var(--green)':'var(--muted)')+'">'+(showRanking?'✅ Visible':'🚫 Masqué')+'</span><button class="btn '+(showRanking?'btn-red':'btn-grn')+' btn-sm" onclick="toggleRanking('+(showRanking?'false':'true')+')">'+(showRanking?'Masquer':'Afficher')+'</button></div></div></div>'
-    +'<div class="settings-section"><div class="settings-section-title">🔑 Mot de passe</div><div class="fi"><label>Actuel</label><input type="password" id="cp-cur" placeholder="••••••••"></div><div class="fi"><label>Nouveau</label><input type="password" id="cp-new" placeholder="••••••••"></div><div class="fi"><label>Confirmer</label><input type="password" id="cp-conf" placeholder="••••••••"></div><button class="btn btn-grad" onclick="changePass()">🔑 Modifier</button></div>'
-    +'<div class="settings-section"><div class="settings-section-title">🔌 Postback vers mon système</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici. Quand une conversion est approuvée, AffiHub enverra automatiquement les infos à ton système.<br><br>Variables disponibles : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL de postback</label><input type="text" id="pb-url" placeholder="https://ta-plateforme.com/postback?sub1={LINK_ID}&amount={AMOUNT}" value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">💾 Sauvegarder</button></div>';
+    return '<div class="settings-section"><div class="settings-section-title">'+T('information')+'</div><div class="info-row"><div class="info-label">'+T('name')+'</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">'+T('email')+'</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">'+T('arrival')+'</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">'+T('ref_code')+'</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\''+(LANG==='en'?'Code copied!':'Code copié !')+'\',\'s\')">📋</button></div></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">'+T('ranking')+'</div><div class="info-row"><div><div class="info-label" style="margin-bottom:4px">'+T('appear_top')+'</div><div style="font-size:12px;color:var(--muted)">'+T('stats_visible')+'</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(showRanking?'var(--green)':'var(--muted)')+'">'+(showRanking?T('visible'):T('hidden'))+'</span><button class="btn '+(showRanking?'btn-red':'btn-grn')+' btn-sm" onclick="toggleRanking('+(showRanking?'false':'true')+')">'+(showRanking?T('hide'):T('show'))+'</button></div></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">'+T('password')+'</div><div class="fi"><label>'+T('current')+'</label><input type="password" id="cp-cur" placeholder="••••••••"></div><div class="fi"><label>'+T('new_pass')+'</label><input type="password" id="cp-new" placeholder="••••••••"></div><div class="fi"><label>'+T('confirm')+'</label><input type="password" id="cp-conf" placeholder="••••••••"></div><button class="btn btn-grad" onclick="changePass()">'+T('change_pass')+'</button></div>'
+    +'<div class="settings-section"><div class="settings-section-title">'+T('postback_title')+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">'+T('postback_desc')+'<br><br>'+T('available_vars')+' : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL</label><input type="text" id="pb-url" placeholder="https://..." value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">'+T('save')+'</button></div>'
+    +'<div class="settings-section"><div class="settings-section-title">'+T('lang_title')+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+T('lang_desc')+'</div><div style="display:flex;gap:10px"><button class="btn '+(LANG==='fr'?'btn-grad':'btn-gst')+'" onclick="setLang(\'fr\')" style="flex:1;justify-content:center">🇫🇷 Français</button><button class="btn '+(LANG==='en'?'btn-grad':'btn-gst')+'" onclick="setLang(\'en\')" style="flex:1;justify-content:center">🇬🇧 English</button></div></div>';
   }
 
   if(page==='aff-tickets'){
     const tickets=await api('GET','/api/tickets');
-    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
-    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
-    const rows=tickets.map(t=>'<tr><td><b>#'+t.id+'</b></td><td>'+(reasons[t.reason]||t.reason)+'</td><td style="color:var(--muted)">'+fmt(t.created_at)+'</td><td>'+statusBadge(t.status)+'</td><td>'+(t.unread>0?'<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px">'+t.unread+'</span>':'<span style="color:var(--muted)">'+(t.ticket_messages||[]).length+' msg(s)</span>')+'</td><td><button class="btn '+(t.unread>0?'btn-grad':'btn-gst')+' btn-sm" onclick="goPage(\'aff-ticket-'+t.id+'\')">👁 Voir</button></td></tr>').join('');
-    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"><div style="font-size:13px;color:var(--muted)">'+tickets.length+' ticket(s)</div><button class="btn btn-grad" onclick="openCreateTicket()">+ Nouveau ticket</button></div>'
-    +'<div class="card">'+(tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>Aucun ticket</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>🏷️ Raison</th><th>📅 Date</th><th>📌 Statut</th><th>💬 Messages</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 '+(LANG==='en'?'Payment':'Paiement'),'compte':'👤 '+(LANG==='en'?'Account':'Compte'),'offre':'🎯 '+(LANG==='en'?'Offer':'Offre'),'mes-liens':'🔗 '+(LANG==='en'?'My links':'Mes liens'),'suggestion':'💡 Suggestion'};
+    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 '+(LANG==='en'?'Open':'Ouvert')+'</span>':s==='closed'?'<span class="badge br2">🔴 '+(LANG==='en'?'Closed':'Fermé')+'</span>':'<span class="badge bg2">🟢 '+(LANG==='en'?'Resolved':'Résolu')+'</span>';
+    const rows=tickets.map(t=>'<tr><td><b>#'+t.id+'</b></td><td>'+(reasons[t.reason]||t.reason)+'</td><td style="color:var(--muted)">'+fmt(t.created_at)+'</td><td>'+statusBadge(t.status)+'</td><td>'+(t.unread>0?'<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px">'+t.unread+'</span>':'<span style="color:var(--muted)">'+(t.ticket_messages||[]).length+' msg(s)</span>')+'</td><td><button class="btn '+(t.unread>0?'btn-grad':'btn-gst')+' btn-sm" onclick="goPage(\'aff-ticket-'+t.id+'\')">'+T('see')+'</button></td></tr>').join('');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"><div style="font-size:13px;color:var(--muted)">'+tickets.length+' ticket(s)</div><button class="btn btn-grad" onclick="openCreateTicket()">'+T('new_ticket')+'</button></div>'
+    +'<div class="card">'+(tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>'+T('no_ticket')+'</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>'+T('reason')+'</th><th>📅 '+T('date')+'</th><th>📌 '+T('status')+'</th><th>'+T('messages')+'</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
   }
 
   if(page.startsWith('aff-ticket-')){
     const tid=page.replace('aff-ticket-','');const ticket=await api('GET','/api/tickets/'+tid);
-    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 '+(LANG==='en'?'Payment':'Paiement'),'compte':'👤 '+(LANG==='en'?'Account':'Compte'),'offre':'🎯 '+(LANG==='en'?'Offer':'Offre'),'mes-liens':'🔗 '+(LANG==='en'?'My links':'Mes liens'),'suggestion':'💡 Suggestion'};
     const msgs=ticket.messages.map(m=>{const isMe=m.user_id===ME.id;const isAdmin=m.users?.role==='admin';return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+(isAdmin?'👑 Admin':'👤 '+m.users?.name)+' • '+fmt(m.created_at)+'</div><div style="background:'+(isMe?'var(--grad)':'var(--bg3)')+';color:'+(isMe?'#000':'var(--text)')+';border-radius:'+(isMe?'14px 14px 4px 14px':'14px 14px 14px 4px')+';padding:12px 16px;max-width:70%">'+(m.content?'<div style="font-size:13px;line-height:1.6">'+m.content+'</div>':'')+(m.image_url?'<img src="'+m.image_url+'" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:'+(m.content?'8px':'0')+';object-fit:cover;cursor:pointer" onclick="window.open(\''+m.image_url+'\',\'_blank\')">':'')+'</div></div>';}).join('');
-    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px"><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-tickets\')">← Retour</button>'+(ticket.status==='open'?'<button class="btn btn-red btn-sm" onclick="closeMyTicket('+ticket.id+')">🔴 Fermer</button>':'')+'</div>'
-    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:16px;font-weight:800">Ticket #'+ticket.id+' — '+(reasons[ticket.reason]||ticket.reason)+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Créé le '+fmt(ticket.created_at)+'</div></div>'+(ticket.status==='open'?'<span class="badge by2">🟡 Ouvert</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 Résolu</span>':'<span class="badge br2">🔴 Fermé</span>')+'</div></div>'
-    +'<div class="card" style="min-height:300px;margin-bottom:16px">'+(msgs||'<div class="empty"><p>Aucun message</p></div>')+'</div>'
-    +(ticket.status==='open'?'<div class="card"><div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Écrivez votre message..." style="resize:vertical;min-height:80px"></textarea></div><div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'reply-img-file\').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div><button class="btn btn-grad" onclick="sendReply('+ticket.id+')" style="width:100%;justify-content:center">📨 Envoyer</button></div>':'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==='resolved'?'✅':'🔴')+'</div><div style="font-weight:700">'+(ticket.status==='resolved'?'Ticket résolu':'Ticket fermé')+'</div></div>');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px"><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-tickets\')">'+T('back')+'</button>'+(ticket.status==='open'?'<button class="btn btn-red btn-sm" onclick="closeMyTicket('+ticket.id+')">'+T('close_ticket')+'</button>':'')+'</div>'
+    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:16px;font-weight:800">Ticket #'+ticket.id+' — '+(reasons[ticket.reason]||ticket.reason)+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">'+T('created')+' '+fmt(ticket.created_at)+'</div></div>'+(ticket.status==='open'?'<span class="badge by2">🟡 '+(LANG==='en'?'Open':'Ouvert')+'</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 '+(LANG==='en'?'Resolved':'Résolu')+'</span>':'<span class="badge br2">🔴 '+(LANG==='en'?'Closed':'Fermé')+'</span>')+'</div></div>'
+    +'<div class="card" style="min-height:300px;margin-bottom:16px">'+(msgs||'<div class="empty"><p>'+(LANG==='en'?'No messages':'Aucun message')+'</p></div>')+'</div>'
+    +(ticket.status==='open'?'<div class="card"><div class="fi"><label>'+T('your_reply')+'</label><textarea id="reply-msg" placeholder="'+T('write_message')+'" style="resize:vertical;min-height:80px"></textarea></div><div class="fi"><label>'+T('image_optional')+'</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'reply-img-file\').click()"><input type="file" id="reply-img-file" accept="image/*" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">'+T('click_image')+'</div></div></div></div><button class="btn btn-grad" onclick="sendReply('+ticket.id+')" style="width:100%;justify-content:center">'+T('send')+'</button></div>':'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==='resolved'?'✅':'🔴')+'</div><div style="font-weight:700">'+(ticket.status==='resolved'?T('ticket_resolved'):T('ticket_closed'))+'</div></div>');
   }
 
   if(page==='admin-dash'){
