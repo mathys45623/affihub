@@ -320,26 +320,28 @@ async function doLogin(){
     localStorage.setItem('affihub_token',TOKEN);
     localStorage.setItem('affihub_user',JSON.stringify(ME));
     startApp();
-    // Show welcome message on first login
-    if(r.first_login&&ME.role!=='admin'){
-      setTimeout(async()=>{
-        try{
-          const s=await api('GET','/api/settings/all');
-          if(s.welcome_message){
-            document.getElementById('m-title').textContent='👋 Bienvenue sur AffiHub !';
-            document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:16px">🎉</div><div style="font-size:14px;line-height:1.8;color:var(--muted);white-space:pre-wrap">'+s.welcome_message+'</div><button class="btn btn-grad" onclick="closeMo()" style="margin-top:20px;width:100%;justify-content:center">C\'est parti ! 🚀</button></div>';
-            document.getElementById('mo').classList.add('open');
-          }
-        }catch(e){}
-      },800);
-    }
   }
   catch(e){toast(e.message,'e');}
 }
 
 async function doRegister(){
-  try{const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
-  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();toast('Bienvenue !','s');}
+  try{
+    const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
+    TOKEN=r.token;ME=r.user;
+    localStorage.setItem('affihub_token',TOKEN);
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
+    startApp();
+    // Show welcome message on register
+    if(r.welcome_message){
+      setTimeout(()=>{
+        document.getElementById('m-title').textContent='👋 Bienvenue sur AffiHub !';
+        document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:16px">🎉</div><div style="font-size:14px;line-height:1.8;color:var(--muted);white-space:pre-wrap">'+r.welcome_message+'</div><button class="btn btn-grad" onclick="closeMo()" style="margin-top:20px;width:100%;justify-content:center">C\'est parti ! 🚀</button></div>';
+        document.getElementById('mo').classList.add('open');
+      },800);
+    } else {
+      toast('Bienvenue !','s');
+    }
+  }
   catch(e){toast(e.message,'e');}
 }
 
@@ -918,9 +920,10 @@ async function renderPage(page){
   if(page==='admin-logs'){
     const logs=await api('GET','/api/logs');
     if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
-    const actionIcon={'login':'🔐','logout':'👋'};
-    const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap">'+fmt(l.created_at)+' <span style="font-size:10px">'+((l.created_at||'').split('T')[1]||'').substring(0,5)+'</span></td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td></tr>').join('');
-    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><span style="font-size:12px;color:var(--muted)">200 derniers événements</span></div><div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    const actionIcon={'login':'🔐','inscription':'🆕','logout':'👋'};
+    const fmtLocal=d=>{if(!d)return '—';const dt=new Date(d);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
+    const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap;font-size:12px">'+fmtLocal(l.created_at)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td><td><button class="btn btn-red btn-sm" onclick="deleteLog('+l.id+')">🗑</button></td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><button class="btn btn-red btn-sm" onclick="clearAllLogs()">🗑 Tout effacer</button></div><div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   if(page==='admin-settings'){
@@ -1063,6 +1066,17 @@ function filterConv(btn,f,convs){
   const list=f==='all'?convs:convs.filter(c=>c.status===f);
   const rows=list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
   document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';
+}
+async function deleteLog(id){
+  try{await api('DELETE','/api/logs/'+id);goPage('admin-logs');}catch(e){toast(e.message,'e');}
+}
+async function clearAllLogs(){
+  document.getElementById('m-title').textContent='Effacer tous les logs';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Effacer tous les logs d\'activité ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doClrLogs()" style="flex:1">Tout effacer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doClrLogs(){
+  try{await api('DELETE','/api/logs');closeMo();toast('Logs effacés','s');goPage('admin-logs');}catch(e){toast(e.message,'e');}
 }
 async function toggleMaintenance(enable){
   try{await api('PATCH','/api/settings/maintenance',{enabled:enable});toast(enable?'🔧 Maintenance activée':'✅ Site remis en ligne',enable?'i':'s');goPage('admin-settings');}catch(e){toast(e.message,'e');}
