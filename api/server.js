@@ -51,8 +51,12 @@ app.post('/api/register', async (req, res) => {
   }
   const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, show_ranking: true }).select().single();
   if (error) return res.status(400).json({ error: 'Email déjà utilisé' });
+  // Log inscription
+  supabase.from('activity_logs').insert({ user_id: data.id, action: 'inscription', details: 'Nouvel affilié : '+name, ip: '' }).then(()=>{});
+  // Get welcome message
+  const { data: wmsg } = await supabase.from('settings').select('value').eq('key', 'welcome_message').single();
   const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET);
-  res.json({ token, user: { id: data.id, name: data.name, email: data.email, role: data.role, balance: data.balance, referral_code: data.referral_code } });
+  res.json({ token, user: { id: data.id, name: data.name, email: data.email, role: data.role, balance: data.balance, referral_code: data.referral_code }, welcome_message: wmsg?.value || '' });
 });
 
 // ── LOGIN ──
@@ -69,11 +73,9 @@ app.post('/api/login', async (req, res) => {
   }
   // Log activity
   const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || '';
-  supabase.from('activity_logs').insert({ user_id: user.id, action: 'login', details: 'Connexion depuis '+ip, ip }).then(()=>{});
-  const isFirstLogin = user.first_login !== false;
-  if (isFirstLogin) await supabase.from('users').update({ first_login: false }).eq('id', user.id);
+  supabase.from('activity_logs').insert({ user_id: user.id, action: 'login', details: 'Connexion de '+user.name, ip }).then(()=>{});
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, postback_url: user.postback_url, show_ranking: user.show_ranking }, first_login: isFirstLogin });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, postback_url: user.postback_url, show_ranking: user.show_ranking } });
 });
 
 // ── ME ──
@@ -393,6 +395,7 @@ app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
     await supabase.from('users').update({ referred_by: null }).eq('referred_by', uid);
     await supabase.from('custom_link_requests').delete().eq('user_id', uid);
     await supabase.from('temp_links').delete().eq('user_id', uid);
+    await supabase.from('activity_logs').delete().eq('user_id', uid);
     const { data: tickets } = await supabase.from('tickets').select('id').eq('user_id', uid);
     if (tickets && tickets.length > 0) {
       const ticketIds = tickets.map(t => t.id);
@@ -647,8 +650,18 @@ app.patch('/api/settings/welcome', auth, adminOnly, async (req, res) => {
 });
 
 app.get('/api/logs', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(200);
+  const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(500);
   res.json(data || []);
+});
+
+app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('activity_logs').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
+
+app.delete('/api/logs', auth, adminOnly, async (req, res) => {
+  await supabase.from('activity_logs').delete().neq('id', 0);
+  res.json({ success: true });
 });
 
 app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
