@@ -251,9 +251,15 @@ app.post('/api/offers', auth, adminOnly, async (req, res) => {
   res.json(data);
 });
 app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
-  const { name, description, url, commission, category, image_url } = req.body;
+  const { name, description, url, commission, category, image_url, active } = req.body;
+  // Toggle actif seulement
+  if (active !== undefined && !name) {
+    const { data, error } = await supabase.from('offers').update({ active }).eq('id', req.params.id).select().single();
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json(data);
+  }
   if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
-  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre', image_url: image_url || null }).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre', image_url: image_url || null, active: active !== undefined ? active : true }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
