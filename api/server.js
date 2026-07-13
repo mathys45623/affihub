@@ -5,6 +5,18 @@ const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
+// ── EMAIL ──
+async function sendEmail(to, subject, html) {
+  try {
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from: 'AffiHub <onboarding@resend.dev>', to, subject, html })
+    });
+    if (!res.ok) console.error('Email error:', await res.text());
+  } catch(e) { console.error('Email error:', e.message); }
+}
+
 const app = express();
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
@@ -257,26 +269,75 @@ app.get('/api/withdrawals', auth, async (req, res) => {
 });
 app.post('/api/withdrawals', auth, async (req, res) => {
   const { amount, crypto, address } = req.body;
-  const { data: user } = await supabase.from('users').select('balance').eq('id', req.user.id).single();
+  const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
   if (!user || user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
   if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
   await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
+  // Send confirmation email
+  if (user.email) {
+    sendEmail(user.email, '⏳ Demande de retrait reçue — AffiHub', `
+      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
+        <h2 style="color:#F5C842;margin-bottom:8px">⏳ Demande reçue !</h2>
+        <p style="color:#aaa;margin-bottom:24px">Bonjour <b style="color:#fff">${user.name}</b>,</p>
+        <p style="color:#aaa;margin-bottom:20px">Nous avons bien reçu ta demande de retrait. Elle sera traitée dans les plus brefs délais.</p>
+        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Montant</span><span style="color:#F5C842;font-weight:800;font-size:18px">$${amount}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Moyen</span><span style="color:#fff">${crypto}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#777">Adresse</span><span style="color:#aaa;font-size:12px">${address.substring(0,30)}...</span></div>
+        </div>
+        <p style="color:#aaa;font-size:13px">Tu recevras un email dès que ton paiement est effectué. Des questions ? Contacte-nous sur Discord.</p>
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
+      </div>
+    `);
+  }
   res.json(data);
 });
 app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
-  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
+  const { data: wd } = await supabase.from('withdrawals').select('*, users(name,email)').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
+  // Send email
+  if (wd.users?.email) {
+    sendEmail(wd.users.email, '✅ Ton paiement a été effectué — AffiHub', `
+      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
+        <h2 style="color:#F5C842;margin-bottom:8px">✅ Paiement effectué !</h2>
+        <p style="color:#aaa;margin-bottom:24px">Bonjour <b style="color:#fff">${wd.users.name}</b>,</p>
+        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Montant</span><span style="color:#F5C842;font-weight:800;font-size:18px">$${wd.amount}</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Moyen</span><span style="color:#fff">${wd.crypto}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#777">Adresse</span><span style="color:#aaa;font-size:12px">${wd.address.substring(0,30)}...</span></div>
+        </div>
+        <p style="color:#aaa;font-size:13px">Ton paiement a été traité avec succès. Si tu as des questions, contacte-nous sur Discord.</p>
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
+      </div>
+    `);
+  }
   res.json({ success: true });
 });
 app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   const { reason } = req.body;
-  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
+  const { data: wd } = await supabase.from('withdrawals').select('*, users(name,email,balance)').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'rejected', reason }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
+  // Send email
+  if (wd.users?.email) {
+    sendEmail(wd.users.email, '❌ Demande de retrait rejetée — AffiHub', `
+      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
+        <h2 style="color:#FF4757;margin-bottom:8px">❌ Retrait rejeté</h2>
+        <p style="color:#aaa;margin-bottom:24px">Bonjour <b style="color:#fff">${wd.users.name}</b>,</p>
+        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Montant</span><span style="color:#fff;font-weight:800">$${wd.amount}</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:#777">Raison</span><span style="color:#FF4757">${reason||'Non précisée'}</span></div>
+        </div>
+        <p style="color:#aaa;font-size:13px">Les <b style="color:#fff">$${wd.amount}</b> ont été recrédités sur ton solde AffiHub. Tu peux soumettre une nouvelle demande.</p>
+        <p style="color:#aaa;font-size:13px;margin-top:12px">Des questions ? Contacte-nous sur Discord.</p>
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
+      </div>
+    `);
+  }
   res.json({ success: true });
 });
 app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
