@@ -389,19 +389,24 @@ function startApp(){
   }else{
     document.getElementById('role-badge').textContent='⚡ Affilié';
     document.getElementById('notif-bell-btn').style.display='block';
-    // Check settings before building nav
     api('GET','/api/settings/all').then(s=>{
+      const accueilItems=[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}];
+      if(s.temp_links_enabled)accueilItems.push({icon:'⏳',label:'Liens temporaires',page:'aff-temp'});
       const nav=[
-        {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},...(s.temp_links_enabled?[{icon:'⏳',label:'Liens temporaires',page:'aff-temp'}]:[]) ]},
+        {section:'ACCUEIL',items:accueilItems},
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
         {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
         {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
         {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
       ];
       buildNav(nav);buildMobileNav(nav);
-    }).catch(()=>{buildNav(affNav);buildMobileNav(affNav);});
-    goPage('aff-dash');
-    setTimeout(refreshNotifs,500);
+      goPage('aff-dash');
+      setTimeout(refreshNotifs,500);
+    }).catch(()=>{
+      buildNav(affNav);buildMobileNav(affNav);
+      goPage('aff-dash');
+      setTimeout(refreshNotifs,500);
+    });
   }
 }
 
