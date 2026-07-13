@@ -126,12 +126,35 @@ app.get('/go/:linkId', async (req, res) => {
 app.get('/api/postback', async (req, res) => {
   const { ref, amount } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
-  const { data: link } = await supabase.from('links').select('*, offers(commission)').eq('id', ref).single();
+  const { data: link } = await supabase.from('links').select('*, offers(commission,name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
-  // Utilise la commission de l'offre (ce que l'affilié gagne)
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
-  const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'pending' }).select().single();
+  const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
+  // Créditer solde affilié
+  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', link.user_id).single();
+  if (user) {
+    await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
+    // Commission parrainage
+    if (user.referred_by) {
+      const { data: referee } = await supabase.from('users').select('referral_active').eq('id', link.user_id).single();
+      if (referee && referee.referral_active !== false) {
+        const commission = parseFloat((convAmount * 0.05).toFixed(2));
+        const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+        if (referrer) {
+          await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
+          await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
+        }
+      }
+    }
+    // Postback vers système affilié si configuré
+    if (user.postback_url) {
+      try {
+        const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
+        fetch(postbackUrl).catch(()=>{});
+      } catch(e) {}
+    }
+  }
   res.json({ success: true, conversion_id: conv.id });
 });
 
@@ -191,13 +214,9 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
       }
     }
   }
-  // Send postback to affiliate's own system if configured
   if (user.postback_url) {
     try {
-      const postbackUrl = user.postback_url
-        .replace('{LINK_ID}', conv.link_id || '')
-        .replace('{AMOUNT}', conv.amount)
-        .replace('{STATUS}', 'approved');
+      const postbackUrl = user.postback_url.replace('{LINK_ID}', conv.link_id || '').replace('{AMOUNT}', conv.amount).replace('{STATUS}', 'approved');
       fetch(postbackUrl).catch(err => console.error('Postback affilié échoué:', err.message));
     } catch (e) { console.error('Postback affilié erreur:', e.message); }
   }
@@ -336,6 +355,8 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
       </div>
     `);
   }
+  // Notification
+  supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_paid', message: '💸 Ton retrait de $'+wd.amount+' ('+wd.crypto+') a été payé !' }).then(()=>{});
   res.json({ success: true });
 });
 app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
@@ -345,6 +366,8 @@ app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   await supabase.from('withdrawals').update({ status: 'rejected', reason }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
+  // Notification
+  supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_rejected', message: '❌ Ton retrait de $'+wd.amount+' a été rejeté'+(reason?' — '+reason:'')+'.' }).then(()=>{});
   // Send email
   if (wd.users?.email) {
     sendEmail(wd.users.email, '❌ Demande de retrait rejetée — AffiHub', `
@@ -717,4 +740,20 @@ app.get('/api/export/withdrawals', auth, adminOnly, async (req, res) => {
   res.setHeader('Content-Type', 'text/csv');
   res.setHeader('Content-Disposition', 'attachment; filename="retraits.csv"');
   res.send(csv);
+});
+
+// ── NOTIFICATIONS ──
+app.get('/api/notifications', auth, async (req, res) => {
+  const { data } = await supabase.from('notifications').select('*').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(20);
+  res.json(data || []);
+});
+
+app.patch('/api/notifications/read', auth, async (req, res) => {
+  await supabase.from('notifications').update({ read: true }).eq('user_id', req.user.id);
+  res.json({ success: true });
+});
+
+app.delete('/api/notifications/:id', auth, async (req, res) => {
+  await supabase.from('notifications').delete().eq('id', req.params.id).eq('user_id', req.user.id);
+  res.json({ success: true });
 });
