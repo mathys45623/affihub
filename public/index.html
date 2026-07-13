@@ -589,7 +589,7 @@ async function renderPage(page){
       const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
       const catEnabled=allSettings['cat_'+cat.key+'_enabled'];
       if(!catEnabled){
-        const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé — Voir Liens temporaires';
+        const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé';
         const badgeColor=cat.key==='influenceuse'?'background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)':'background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3)';
         html+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;opacity:.6"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="'+badgeColor+';font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">'+msg+'</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div></div></div>';
         return;
