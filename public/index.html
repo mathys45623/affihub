@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AffiHub</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#F5C842">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AffiHub">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -1034,6 +1040,17 @@ async function toggleCategorySetting(category,enable){
 async function toggleTempLinks(enable){
   try{await api('PATCH','/api/settings/temp-links',{enabled:enable});toast(enable?'Activé ✅':'Désactivé 🔒',enable?'s':'i');goPage('admin-settings');}catch(e){toast(e.message,'e');}
 }
+async function changeRefCode(){
+  const code=document.getElementById('new-ref-code')?.value.trim();
+  if(!code){toast('Entre un code','e');return;}
+  try{
+    const r=await api('PATCH','/api/me/referral-code',{code});
+    ME.referral_code=r.code;
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
+    toast('Code mis à jour ✓','s');
+    goPage('aff-settings');
+  }catch(e){toast(e.message,'e');}
+}
 async function savePostback(){
   const url=document.getElementById('pb-url').value.trim();
   try{await api('PATCH','/api/me/postback',{postback_url:url});ME.postback_url=url;localStorage.setItem('affihub_user',JSON.stringify(ME));toast('Postback enregistré ✓','s');}catch(e){toast(e.message,'e');}
@@ -1239,6 +1256,9 @@ window.addEventListener('popstate',function(e){
 
 // Ripple effect
 document.addEventListener('click',function(e){const btn=e.target.closest('.btn-grad');if(!btn)return;const r=document.createElement('span');r.className='ripple';const rect=btn.getBoundingClientRect();const size=Math.max(rect.width,rect.height)*2;r.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(e.clientX-rect.left-size/2)+'px;top:'+(e.clientY-rect.top-size/2)+'px';btn.appendChild(r);setTimeout(()=>r.remove(),600);});
+
+// PWA Service Worker
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 
 // Particles
 (function(){const canvas=document.getElementById('particles-canvas');if(!canvas)return;const ctx=canvas.getContext('2d');let particles=[];function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}resize();window.addEventListener('resize',resize);function cp(){return{x:Math.random()*canvas.width,y:canvas.height+10,size:Math.random()*2.5+.5,speedY:Math.random()*1.2+.4,speedX:(Math.random()-.5)*.6,opacity:Math.random()*.4+.1,color:Math.random()>.5?'245,200,66':'240,66,122'};}for(let i=0;i<35;i++){const p=cp();p.y=Math.random()*canvas.height;particles.push(p);}function animate(){ctx.clearRect(0,0,canvas.width,canvas.height);if(particles.length<50&&Math.random()<.04)particles.push(cp());particles=particles.filter(p=>{p.y-=p.speedY;p.x+=p.speedX;ctx.save();ctx.globalAlpha=p.opacity;ctx.fillStyle='rgba('+p.color+',1)';ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();return p.y>-20;});requestAnimationFrame(animate);}animate();})();
