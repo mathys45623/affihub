@@ -12,6 +12,30 @@ const JWT_SECRET = process.env.JWT_SECRET || 'affihub_secret_2024';
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── EMAIL ──
+const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1526526889756332134/lCByUUSbUigvyW0TfTarZ14LxziWL6k_5iLbq_jwG8ecC9qHpFTOLFPbE9gKdqnbD_hX';
+
+async function notifyDiscord(affiliateName, offerName, amount) {
+  try {
+    await fetch(DISCORD_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: '💰 Nouvelle conversion !',
+          color: 0xF5C842,
+          fields: [
+            { name: '👤 Affilié', value: affiliateName, inline: true },
+            { name: '🎯 Offre', value: offerName, inline: true },
+            { name: '💵 Montant', value: '$' + amount, inline: true }
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: 'AffiHub' }
+        }]
+      })
+    });
+  } catch(e) { console.error('Discord webhook error:', e.message); }
+}
+
 async function sendEmail(to, subject, html) {
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -138,29 +162,6 @@ app.get('/api/postback', async (req, res) => {
   res.json({ success: true, conversion_id: conv.id });
 });
 
-const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1526526889756332134/lCByUUSbUigvyW0TfTarZ14LxziWL6k_5iLbq_jwG8ecC9qHpFTOLFPbE9gKdqnbD_hX';
-
-async function notifyDiscord(affiliateName, offerName, amount) {
-  try {
-    await fetch(DISCORD_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        embeds: [{
-          title: '💰 Nouvelle conversion !',
-          color: 0xF5C842,
-          fields: [
-            { name: '👤 Affilié', value: affiliateName, inline: true },
-            { name: '🎯 Offre', value: offerName, inline: true },
-            { name: '💵 Montant', value: '$' + amount, inline: true }
-          ],
-          timestamp: new Date().toISOString(),
-          footer: { text: 'AffiHub' }
-        }]
-      })
-    });
-  } catch(e) { console.error('Discord webhook error:', e.message); }
-}
 app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
   const { user_id, offer_id, amount, status } = req.body;
   if (!user_id || !offer_id || !amount) return res.status(400).json({ error: 'Champs requis' });
@@ -613,8 +614,22 @@ app.get('/api/settings/all', auth, async (req, res) => {
     cat_dating_enabled: obj.cat_dating_enabled !== 'false',
     cat_ia_enabled: obj.cat_ia_enabled !== 'false',
     cat_autre_enabled: obj.cat_autre_enabled !== 'false',
-    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true'
+    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true',
+    maintenance_mode: obj.maintenance_mode === 'true',
+    welcome_message: obj.welcome_message || ''
   });
+});
+
+app.patch('/api/settings/maintenance', auth, adminOnly, async (req, res) => {
+  const { enabled } = req.body;
+  await supabase.from('settings').upsert({ key: 'maintenance_mode', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  res.json({ success: true });
+});
+
+app.patch('/api/settings/welcome', auth, adminOnly, async (req, res) => {
+  const { message } = req.body;
+  await supabase.from('settings').upsert({ key: 'welcome_message', value: message || '' }, { onConflict: 'key' });
+  res.json({ success: true });
 });
 
 app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
@@ -629,4 +644,70 @@ app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
   if (!valid.includes(category)) return res.status(400).json({ error: 'Catégorie invalide' });
   await supabase.from('settings').upsert({ key: 'cat_' + category + '_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
   res.json({ success: true });
+});
+
+// ── LOGS ──
+app.get('/api/logs', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(500);
+  res.json(data || []);
+});
+app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('activity_logs').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
+app.delete('/api/logs', auth, adminOnly, async (req, res) => {
+  await supabase.from('activity_logs').delete().neq('id', 0);
+  res.json({ success: true });
+});
+
+// ── NOTIFICATIONS ──
+app.get('/api/notifications', auth, async (req, res) => {
+  const { data } = await supabase.from('notifications').select('*').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(20);
+  res.json(data || []);
+});
+app.patch('/api/notifications/read', auth, async (req, res) => {
+  await supabase.from('notifications').update({ read: true }).eq('user_id', req.user.id);
+  res.json({ success: true });
+});
+app.delete('/api/notifications/:id', auth, async (req, res) => {
+  await supabase.from('notifications').delete().eq('id', req.params.id).eq('user_id', req.user.id);
+  res.json({ success: true });
+});
+
+// ── NOTES AFFILIÉS ──
+app.patch('/api/users/:id/note', auth, adminOnly, async (req, res) => {
+  const { note } = req.body;
+  await supabase.from('users').update({ admin_note: note }).eq('id', req.params.id);
+  res.json({ success: true });
+});
+
+// ── EXPORT CSV ──
+function toCSV(rows, headers) {
+  const escape = v => '"' + String(v || '').replace(/"/g, '""') + '"';
+  const lines = [headers.map(escape).join(',')];
+  rows.forEach(row => lines.push(headers.map(h => escape(row[h])).join(',')));
+  return lines.join('\n');
+}
+app.get('/api/export/affiliates', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('users').select('name,email,balance,referral_code,created_at,admin_note').neq('role', 'admin');
+  const csv = toCSV(data, ['name','email','balance','referral_code','created_at','admin_note']);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="affilies.csv"');
+  res.send(csv);
+});
+app.get('/api/export/conversions', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('conversions').select('*, users(name,email), offers(name)').order('created_at', { ascending: false });
+  const rows = (data || []).map(c => ({ date: c.created_at?.split('T')[0], affilié: c.users?.name, email: c.users?.email, offre: c.offers?.name, montant: c.amount, statut: c.status, lien: c.link_id }));
+  const csv = toCSV(rows, ['date','affilié','email','offre','montant','statut','lien']);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="conversions.csv"');
+  res.send(csv);
+});
+app.get('/api/export/withdrawals', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('withdrawals').select('*, users(name,email)').order('created_at', { ascending: false });
+  const rows = (data || []).map(w => ({ date: w.created_at?.split('T')[0], affilié: w.users?.name, email: w.users?.email, montant: w.amount, moyen: w.crypto, adresse: w.address, statut: w.status, raison: w.reason }));
+  const csv = toCSV(rows, ['date','affilié','email','montant','moyen','adresse','statut','raison']);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="retraits.csv"');
+  res.send(csv);
 });
