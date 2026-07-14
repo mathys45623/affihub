@@ -17,6 +17,7 @@ const DISCORD_REGISTER = 'https://discord.com/api/webhooks/1526534674317316106/D
 const DISCORD_WITHDRAWAL = 'https://discord.com/api/webhooks/1526535135003148411/T36o_LZh8U-GxnIJUEBPpagDCc52f5l00qX6va8fgj-lzUQacn3r1dtY5yh4FguLk3OX';
 const DISCORD_PAYMENT = 'https://discord.com/api/webhooks/1526535272437780600/RLIxROgmO64UPycLUJgbDN31kCuDIt7VpJmTgSSouYHolByFqZNeAB59k7ZjOm0u2qHa';
 const DISCORD_TICKET = 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
+const DISCORD_REFERRAL = 'https://discord.com/api/webhooks/1526536467168493658/SJ-Et9ONIpTC_YmCd7Ow_VZbOrO5FIGHB8MNaV9FcxolheQFmtf2pdou4za8UA8r73OD';
 
 async function notifyDiscord(affiliateName, offerName, amount) {
   try {
@@ -97,6 +98,17 @@ app.post('/api/register', async (req, res) => {
   }
   const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, show_ranking: true }).select().single();
   if (error) return res.status(400).json({ error: 'Email déjà utilisé' });
+  // Notify referrer on Discord if referred
+  if (referred_by) {
+    const { data: referrer } = await supabase.from('users').select('name').eq('id', referred_by).single();
+    if (referrer) {
+      notifyDiscord2(DISCORD_REFERRAL, '🤝 Nouveau parrainage !', 0xa855f7, [
+        { name: '👤 Parrain', value: referrer.name, inline: true },
+        { name: '🆕 Filleul', value: name, inline: true },
+        { name: '💰 Commission', value: '5% sur chaque vente', inline: true }
+      ]);
+    }
+  }
   // Get welcome message
   const { data: wmsg } = await supabase.from('settings').select('value').eq('key', 'welcome_message').single();
   // Send welcome email
