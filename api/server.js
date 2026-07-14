@@ -128,16 +128,39 @@ app.get('/go/:linkId', async (req, res) => {
 app.get('/api/postback', async (req, res) => {
   const { ref, amount } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
-  const { data: link } = await supabase.from('links').select('*, offers(commission)').eq('id', ref).single();
+  const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
-  // Utilise la commission de l'offre (ce que l'affilié gagne)
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'pending' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
+  // Notify Discord
+  notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
   res.json({ success: true, conversion_id: conv.id });
 });
 
-// ── MANUAL CONVERSION ──
+const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1526526889756332134/lCByUUSbUigvyW0TfTarZ14LxziWL6k_5iLbq_jwG8ecC9qHpFTOLFPbE9gKdqnbD_hX';
+
+async function notifyDiscord(affiliateName, offerName, amount) {
+  try {
+    await fetch(DISCORD_WEBHOOK, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title: '💰 Nouvelle conversion !',
+          color: 0xF5C842,
+          fields: [
+            { name: '👤 Affilié', value: affiliateName, inline: true },
+            { name: '🎯 Offre', value: offerName, inline: true },
+            { name: '💵 Montant', value: '$' + amount, inline: true }
+          ],
+          timestamp: new Date().toISOString(),
+          footer: { text: 'AffiHub' }
+        }]
+      })
+    });
+  } catch(e) { console.error('Discord webhook error:', e.message); }
+}
 app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
   const { user_id, offer_id, amount, status } = req.body;
   if (!user_id || !offer_id || !amount) return res.status(400).json({ error: 'Champs requis' });
@@ -177,11 +200,13 @@ app.delete('/api/conversions/:id', auth, adminOnly, async (req, res) => {
 
 // ── APPROVE CONVERSION + PARRAINAGE ──
 app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
-  const { data: conv } = await supabase.from('conversions').select('*').eq('id', req.params.id).single();
+  const { data: conv } = await supabase.from('conversions').select('*, users(name), offers(name)').eq('id', req.params.id).single();
   if (!conv || conv.status !== 'pending') return res.status(400).json({ error: 'Conversion invalide' });
   await supabase.from('conversions').update({ status: 'approved' }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
+  // Notify Discord
+  notifyDiscord(conv.users?.name || '?', conv.offers?.name || '?', conv.amount);
   if (user.referred_by) {
     const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
     if (referee && referee.referral_active !== false) {
