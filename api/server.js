@@ -5,6 +5,12 @@ const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
+const app = express();
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+const JWT_SECRET = process.env.JWT_SECRET || 'affihub_secret_2024';
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+
 // ── EMAIL ──
 async function sendEmail(to, subject, html) {
   try {
@@ -16,12 +22,6 @@ async function sendEmail(to, subject, html) {
     if (!res.ok) console.error('Email error:', await res.text());
   } catch(e) { console.error('Email error:', e.message); }
 }
-
-const app = express();
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const JWT_SECRET = process.env.JWT_SECRET || 'affihub_secret_2024';
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 app.use(cors());
 app.use(express.json());
@@ -51,10 +51,31 @@ app.post('/api/register', async (req, res) => {
   }
   const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, show_ranking: true }).select().single();
   if (error) return res.status(400).json({ error: 'Email déjà utilisé' });
-  // Log inscription
-  supabase.from('activity_logs').insert({ user_id: data.id, action: 'inscription', details: 'Nouvel affilié : '+name, ip: '' }).then(()=>{});
   // Get welcome message
   const { data: wmsg } = await supabase.from('settings').select('value').eq('key', 'welcome_message').single();
+  // Send welcome email
+  sendEmail(email, '🎉 Bienvenue sur AffiHub !', `
+    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
+      <div style="text-align:center;margin-bottom:24px">
+        <div style="font-size:48px;margin-bottom:8px">🎉</div>
+        <h2 style="color:#F5C842;margin-bottom:4px">Bienvenue sur AffiHub !</h2>
+        <p style="color:#aaa;font-size:14px">Bonjour <b style="color:#fff">${name}</b>, ton compte est prêt.</p>
+      </div>
+      <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
+        <div style="margin-bottom:12px;display:flex;justify-content:space-between"><span style="color:#777">Nom</span><span style="color:#fff;font-weight:700">${name}</span></div>
+        <div style="margin-bottom:12px;display:flex;justify-content:space-between"><span style="color:#777">Email</span><span style="color:#fff">${email}</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="color:#777">Code parrainage</span><span style="color:#F5C842;font-weight:800;font-family:monospace">${newCode}</span></div>
+      </div>
+      ${wmsg?.value ? `<div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:12px;padding:16px;margin-bottom:24px"><p style="color:#F5C842;font-size:13px;line-height:1.7;margin:0">${wmsg.value}</p></div>` : ''}
+      <div style="font-size:12px;color:#aaa;line-height:2">
+        <div>✅ Retrait minimum : <b style="color:#fff">$25</b></div>
+        <div>✅ Commission parrainage : <b style="color:#fff">5%</b></div>
+        <div>✅ 7 moyens de paiement disponibles</div>
+        <div>💬 Support Discord : <b style="color:#fff">ananous.</b></div>
+      </div>
+      <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
+    </div>
+  `);
   const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET);
   res.json({ token, user: { id: data.id, name: data.name, email: data.email, role: data.role, balance: data.balance, referral_code: data.referral_code }, welcome_message: wmsg?.value || '' });
 });
@@ -66,16 +87,8 @@ app.post('/api/login', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
   const valid = user.password === password || await bcrypt.compare(password, user.password);
   if (!valid) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-  // Check maintenance mode for non-admin
-  if (user.role !== 'admin') {
-    const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
-    if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
-  }
-  // Log activity
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || '';
-  supabase.from('activity_logs').insert({ user_id: user.id, action: 'login', details: 'Connexion de '+user.name, ip }).then(()=>{});
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, postback_url: user.postback_url, show_ranking: user.show_ranking } });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at } });
 });
 
 // ── ME ──
@@ -101,17 +114,6 @@ app.patch('/api/me/postback', auth, async (req, res) => {
   res.json({ success: true });
 });
 
-app.patch('/api/me/referral-code', auth, async (req, res) => {
-  const { code } = req.body;
-  if (!code) return res.status(400).json({ error: 'Code requis' });
-  const clean = code.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-  if (clean.length < 3 || clean.length > 20) return res.status(400).json({ error: 'Le code doit faire entre 3 et 20 caractères (lettres, chiffres, - et _)' });
-  const { data: existing } = await supabase.from('users').select('id').eq('referral_code', clean).neq('id', req.user.id).single();
-  if (existing) return res.status(400).json({ error: 'Ce code est déjà utilisé par un autre affilié' });
-  await supabase.from('users').update({ referral_code: clean }).eq('id', req.user.id);
-  res.json({ success: true, code: clean });
-});
-
 // ── TRACKING CLIC ──
 app.get('/go/:linkId', async (req, res) => {
   const { linkId } = req.params;
@@ -126,35 +128,12 @@ app.get('/go/:linkId', async (req, res) => {
 app.get('/api/postback', async (req, res) => {
   const { ref, amount } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
-  const { data: link } = await supabase.from('links').select('*, offers(commission,name)').eq('id', ref).single();
+  const { data: link } = await supabase.from('links').select('*, offers(commission)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
+  // Utilise la commission de l'offre (ce que l'affilié gagne)
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
-  const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
+  const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'pending' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
-  // Créditer solde affilié
-  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', link.user_id).single();
-  if (user) {
-    await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
-    // Commission parrainage
-    if (user.referred_by) {
-      const { data: referee } = await supabase.from('users').select('referral_active').eq('id', link.user_id).single();
-      if (referee && referee.referral_active !== false) {
-        const commission = parseFloat((convAmount * 0.05).toFixed(2));
-        const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
-        if (referrer) {
-          await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-          await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
-        }
-      }
-    }
-    // Postback vers système affilié si configuré
-    if (user.postback_url) {
-      try {
-        const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
-        fetch(postbackUrl).catch(()=>{});
-      } catch(e) {}
-    }
-  }
   res.json({ success: true, conversion_id: conv.id });
 });
 
@@ -214,9 +193,13 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
       }
     }
   }
+  // Send postback to affiliate's own system if configured
   if (user.postback_url) {
     try {
-      const postbackUrl = user.postback_url.replace('{LINK_ID}', conv.link_id || '').replace('{AMOUNT}', conv.amount).replace('{STATUS}', 'approved');
+      const postbackUrl = user.postback_url
+        .replace('{LINK_ID}', conv.link_id || '')
+        .replace('{AMOUNT}', conv.amount)
+        .replace('{STATUS}', 'approved');
       fetch(postbackUrl).catch(err => console.error('Postback affilié échoué:', err.message));
     } catch (e) { console.error('Postback affilié erreur:', e.message); }
   }
@@ -251,15 +234,9 @@ app.post('/api/offers', auth, adminOnly, async (req, res) => {
   res.json(data);
 });
 app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
-  const { name, description, url, commission, category, image_url, active } = req.body;
-  // Toggle actif seulement
-  if (active !== undefined && !name) {
-    const { data, error } = await supabase.from('offers').update({ active }).eq('id', req.params.id).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    return res.json(data);
-  }
+  const { name, description, url, commission, category, image_url } = req.body;
   if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
-  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre', image_url: image_url || null, active: active !== undefined ? active : true }).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre', image_url: image_url || null }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -317,79 +294,26 @@ app.get('/api/withdrawals', auth, async (req, res) => {
 });
 app.post('/api/withdrawals', auth, async (req, res) => {
   const { amount, crypto, address } = req.body;
-  const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
+  const { data: user } = await supabase.from('users').select('balance').eq('id', req.user.id).single();
   if (!user || user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
   if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
   await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
-  // Send confirmation email
-  if (user.email) {
-    sendEmail(user.email, '⏳ Demande de retrait reçue — AffiHub', `
-      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
-        <h2 style="color:#F5C842;margin-bottom:8px">⏳ Demande reçue !</h2>
-        <p style="color:#aaa;margin-bottom:24px">Bonjour <b style="color:#fff">${user.name}</b>,</p>
-        <p style="color:#aaa;margin-bottom:20px">Nous avons bien reçu ta demande de retrait. Elle sera traitée dans les plus brefs délais.</p>
-        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Montant</span><span style="color:#F5C842;font-weight:800;font-size:18px">$${amount}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Moyen</span><span style="color:#fff">${crypto}</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:#777">Adresse</span><span style="color:#aaa;font-size:12px">${address.substring(0,30)}...</span></div>
-        </div>
-        <p style="color:#aaa;font-size:13px">Tu recevras un email dès que ton paiement est effectué. Des questions ? Contacte-nous sur Discord.</p>
-        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
-      </div>
-    `);
-  }
   res.json(data);
 });
 app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
-  const { data: wd } = await supabase.from('withdrawals').select('*, users(name,email)').eq('id', req.params.id).single();
+  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
-  // Send email
-  if (wd.users?.email) {
-    sendEmail(wd.users.email, '✅ Ton paiement a été effectué — AffiHub', `
-      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
-        <h2 style="color:#F5C842;margin-bottom:8px">✅ Paiement effectué !</h2>
-        <p style="color:#aaa;margin-bottom:24px">Bonjour <b style="color:#fff">${wd.users.name}</b>,</p>
-        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Montant</span><span style="color:#F5C842;font-weight:800;font-size:18px">$${wd.amount}</span></div>
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Moyen</span><span style="color:#fff">${wd.crypto}</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:#777">Adresse</span><span style="color:#aaa;font-size:12px">${wd.address.substring(0,30)}...</span></div>
-        </div>
-        <p style="color:#aaa;font-size:13px">Ton paiement a été traité avec succès. Si tu as des questions, contacte-nous sur Discord.</p>
-        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
-      </div>
-    `);
-  }
-  // Notification
-  supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_paid', message: '💸 Ton retrait de $'+wd.amount+' ('+wd.crypto+') a été payé !' }).then(()=>{});
   res.json({ success: true });
 });
 app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   const { reason } = req.body;
-  const { data: wd } = await supabase.from('withdrawals').select('*, users(name,email,balance)').eq('id', req.params.id).single();
+  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'rejected', reason }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
-  // Notification
-  supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_rejected', message: '❌ Ton retrait de $'+wd.amount+' a été rejeté'+(reason?' — '+reason:'')+'.' }).then(()=>{});
-  // Send email
-  if (wd.users?.email) {
-    sendEmail(wd.users.email, '❌ Demande de retrait rejetée — AffiHub', `
-      <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
-        <h2 style="color:#FF4757;margin-bottom:8px">❌ Retrait rejeté</h2>
-        <p style="color:#aaa;margin-bottom:24px">Bonjour <b style="color:#fff">${wd.users.name}</b>,</p>
-        <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
-          <div style="display:flex;justify-content:space-between;margin-bottom:12px"><span style="color:#777">Montant</span><span style="color:#fff;font-weight:800">$${wd.amount}</span></div>
-          <div style="display:flex;justify-content:space-between"><span style="color:#777">Raison</span><span style="color:#FF4757">${reason||'Non précisée'}</span></div>
-        </div>
-        <p style="color:#aaa;font-size:13px">Les <b style="color:#fff">$${wd.amount}</b> ont été recrédités sur ton solde AffiHub. Tu peux soumettre une nouvelle demande.</p>
-        <p style="color:#aaa;font-size:13px;margin-top:12px">Des questions ? Contacte-nous sur Discord.</p>
-        <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
-      </div>
-    `);
-  }
   res.json({ success: true });
 });
 app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
@@ -424,7 +348,6 @@ app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
     await supabase.from('users').update({ referred_by: null }).eq('referred_by', uid);
     await supabase.from('custom_link_requests').delete().eq('user_id', uid);
     await supabase.from('temp_links').delete().eq('user_id', uid);
-    await supabase.from('activity_logs').delete().eq('user_id', uid);
     const { data: tickets } = await supabase.from('tickets').select('id').eq('user_id', uid);
     if (tickets && tickets.length > 0) {
       const ticketIds = tickets.map(t => t.id);
@@ -660,37 +583,8 @@ app.get('/api/settings/all', auth, async (req, res) => {
     cat_dating_enabled: obj.cat_dating_enabled !== 'false',
     cat_ia_enabled: obj.cat_ia_enabled !== 'false',
     cat_autre_enabled: obj.cat_autre_enabled !== 'false',
-    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true',
-    maintenance_mode: obj.maintenance_mode === 'true',
-    welcome_message: obj.welcome_message || ''
+    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true'
   });
-});
-
-app.patch('/api/settings/maintenance', auth, adminOnly, async (req, res) => {
-  const { enabled } = req.body;
-  await supabase.from('settings').upsert({ key: 'maintenance_mode', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
-  res.json({ success: true });
-});
-
-app.patch('/api/settings/welcome', auth, adminOnly, async (req, res) => {
-  const { message } = req.body;
-  await supabase.from('settings').upsert({ key: 'welcome_message', value: message || '' }, { onConflict: 'key' });
-  res.json({ success: true });
-});
-
-app.get('/api/logs', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(500);
-  res.json(data || []);
-});
-
-app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
-  await supabase.from('activity_logs').delete().eq('id', req.params.id);
-  res.json({ success: true });
-});
-
-app.delete('/api/logs', auth, adminOnly, async (req, res) => {
-  await supabase.from('activity_logs').delete().neq('id', 0);
-  res.json({ success: true });
 });
 
 app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
@@ -704,62 +598,5 @@ app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
   const valid = ['casino', 'dating', 'ia', 'autre', 'influenceuse'];
   if (!valid.includes(category)) return res.status(400).json({ error: 'Catégorie invalide' });
   await supabase.from('settings').upsert({ key: 'cat_' + category + '_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
-  res.json({ success: true });
-});
-
-// ── NOTES AFFILIÉS ──
-app.patch('/api/users/:id/note', auth, adminOnly, async (req, res) => {
-  const { note } = req.body;
-  await supabase.from('users').update({ admin_note: note }).eq('id', req.params.id);
-  res.json({ success: true });
-});
-
-// ── EXPORT CSV ──
-function toCSV(rows, headers) {
-  const escape = v => '"' + String(v || '').replace(/"/g, '""') + '"';
-  const lines = [headers.map(escape).join(',')];
-  rows.forEach(row => lines.push(headers.map(h => escape(row[h])).join(',')));
-  return lines.join('\n');
-}
-
-app.get('/api/export/affiliates', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('users').select('name,email,balance,referral_code,created_at,admin_note').neq('role', 'admin');
-  const csv = toCSV(data, ['name','email','balance','referral_code','created_at','admin_note']);
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="affilies.csv"');
-  res.send(csv);
-});
-
-app.get('/api/export/conversions', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('conversions').select('*, users(name,email), offers(name)').order('created_at', { ascending: false });
-  const rows = (data || []).map(c => ({ date: c.created_at?.split('T')[0], affilié: c.users?.name, email: c.users?.email, offre: c.offers?.name, montant: c.amount, statut: c.status, lien: c.link_id }));
-  const csv = toCSV(rows, ['date','affilié','email','offre','montant','statut','lien']);
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="conversions.csv"');
-  res.send(csv);
-});
-
-app.get('/api/export/withdrawals', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('withdrawals').select('*, users(name,email)').order('created_at', { ascending: false });
-  const rows = (data || []).map(w => ({ date: w.created_at?.split('T')[0], affilié: w.users?.name, email: w.users?.email, montant: w.amount, moyen: w.crypto, adresse: w.address, statut: w.status, raison: w.reason }));
-  const csv = toCSV(rows, ['date','affilié','email','montant','moyen','adresse','statut','raison']);
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="retraits.csv"');
-  res.send(csv);
-});
-
-// ── NOTIFICATIONS ──
-app.get('/api/notifications', auth, async (req, res) => {
-  const { data } = await supabase.from('notifications').select('*').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(20);
-  res.json(data || []);
-});
-
-app.patch('/api/notifications/read', auth, async (req, res) => {
-  await supabase.from('notifications').update({ read: true }).eq('user_id', req.user.id);
-  res.json({ success: true });
-});
-
-app.delete('/api/notifications/:id', auth, async (req, res) => {
-  await supabase.from('notifications').delete().eq('id', req.params.id).eq('user_id', req.user.id);
   res.json({ success: true });
 });
