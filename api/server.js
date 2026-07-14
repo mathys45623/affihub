@@ -13,6 +13,10 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── EMAIL ──
 const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1526526889756332134/lCByUUSbUigvyW0TfTarZ14LxziWL6k_5iLbq_jwG8ecC9qHpFTOLFPbE9gKdqnbD_hX';
+const DISCORD_REGISTER = 'https://discord.com/api/webhooks/1526534674317316106/DVjEe1IQmTYt7Xnyy37gyiJcABJoks4hpc5Z2v6dUSF3LYqXN0XJsfVRD7TnvwBKYvVo';
+const DISCORD_WITHDRAWAL = 'https://discord.com/api/webhooks/1526535135003148411/T36o_LZh8U-GxnIJUEBPpagDCc52f5l00qX6va8fgj-lzUQacn3r1dtY5yh4FguLk3OX';
+const DISCORD_PAYMENT = 'https://discord.com/api/webhooks/1526535272437780600/RLIxROgmO64UPycLUJgbDN31kCuDIt7VpJmTgSSouYHolByFqZNeAB59k7ZjOm0u2qHa';
+const DISCORD_TICKET = 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
 
 async function notifyDiscord(affiliateName, offerName, amount) {
   try {
@@ -28,6 +32,24 @@ async function notifyDiscord(affiliateName, offerName, amount) {
             { name: '🎯 Offre', value: offerName, inline: true },
             { name: '💵 Montant', value: '$' + amount, inline: true }
           ],
+          timestamp: new Date().toISOString(),
+          footer: { text: 'AffiHub' }
+        }]
+      })
+    });
+  } catch(e) { console.error('Discord webhook error:', e.message); }
+}
+
+async function notifyDiscord2(webhook, title, color, fields) {
+  try {
+    await fetch(webhook, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        embeds: [{
+          title,
+          color,
+          fields,
           timestamp: new Date().toISOString(),
           footer: { text: 'AffiHub' }
         }]
@@ -101,6 +123,12 @@ app.post('/api/register', async (req, res) => {
     </div>
   `);
   const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET);
+  // Discord notification
+  notifyDiscord2(DISCORD_REGISTER, '👤 Nouvel affilié !', 0x00D68F, [
+    { name: '👤 Nom', value: name, inline: true },
+    { name: '📧 Email', value: email, inline: true },
+    { name: '🔗 Code parrainage', value: newCode, inline: true }
+  ]);
   res.json({ token, user: { id: data.id, name: data.name, email: data.email, role: data.role, balance: data.balance, referral_code: data.referral_code }, welcome_message: wmsg?.value || '' });
 });
 
@@ -346,26 +374,44 @@ app.get('/api/withdrawals', auth, async (req, res) => {
 });
 app.post('/api/withdrawals', auth, async (req, res) => {
   const { amount, crypto, address } = req.body;
-  const { data: user } = await supabase.from('users').select('balance').eq('id', req.user.id).single();
+  const { data: user } = await supabase.from('users').select('balance,name').eq('id', req.user.id).single();
   if (!user || user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
   if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
   await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
+  // Discord notification
+  notifyDiscord2(DISCORD_WITHDRAWAL, '💸 Demande de retrait !', 0xF0427A, [
+    { name: '👤 Affilié', value: user.name, inline: true },
+    { name: '💰 Montant', value: '$' + amount, inline: true },
+    { name: '💳 Moyen', value: crypto, inline: true }
+  ]);
   res.json(data);
 });
 app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
-  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
+  const { data: wd } = await supabase.from('withdrawals').select('*, users(name)').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
+  // Discord notification
+  notifyDiscord2(DISCORD_PAYMENT, '✅ Retrait payé !', 0x00D68F, [
+    { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
+    { name: '💰 Montant', value: '$' + wd.amount, inline: true },
+    { name: '💳 Moyen', value: wd.crypto, inline: true }
+  ]);
   res.json({ success: true });
 });
 app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   const { reason } = req.body;
-  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
+  const { data: wd } = await supabase.from('withdrawals').select('*, users(name)').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'rejected', reason }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
+  // Discord notification
+  notifyDiscord2(DISCORD_PAYMENT, '❌ Retrait rejeté', 0xFF4757, [
+    { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
+    { name: '💰 Montant', value: '$' + wd.amount, inline: true },
+    { name: '❓ Raison', value: reason || 'Non précisée', inline: true }
+  ]);
   res.json({ success: true });
 });
 app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
@@ -494,6 +540,13 @@ app.post('/api/tickets', auth, async (req, res) => {
   const { data: ticket, error } = await supabase.from('tickets').insert({ user_id: req.user.id, reason, status: 'open' }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   await supabase.from('ticket_messages').insert({ ticket_id: ticket.id, user_id: req.user.id, content, image_url: image_url || null });
+  // Discord notification
+  const reasons = {'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+  notifyDiscord2(DISCORD_TICKET, '🎫 Nouveau ticket support !', 0x4D9EFF, [
+    { name: '👤 Affilié', value: req.user.name, inline: true },
+    { name: '🏷️ Raison', value: reasons[reason] || reason, inline: true },
+    { name: '💬 Message', value: content.substring(0, 100) + (content.length > 100 ? '...' : ''), inline: false }
+  ]);
   res.json(ticket);
 });
 
