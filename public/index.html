@@ -4,6 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AffiHub</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#F5C842">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AffiHub">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -271,6 +277,16 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
           <button id="mobile-menu-btn" onclick="toggleMobileMenu()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:6px 10px;border-radius:8px">☰</button>
           <div class="page-title" id="page-title">Dashboard</div>
         </div>
+        <div style="margin-left:auto;position:relative">
+          <button id="notif-bell-btn" onclick="toggleNotifPanel()" style="background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:var(--muted);font-size:20px;position:relative;transition:color .2s" onmouseover="this.style.color='var(--yellow)'" onmouseout="this.style.color='var(--muted)'">
+            🔔
+            <span id="notif-count" style="display:none;position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:20px;min-width:16px;text-align:center"></span>
+          </button>
+          <div id="notif-panel" style="display:none;position:absolute;right:0;top:44px;width:320px;background:#111;border:1px solid #2a2a2a;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.6);z-index:999;overflow:hidden">
+            <div style="padding:14px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;font-size:13px">🔔 Notifications</span><button onclick="markNotifsRead()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit">Tout lire</button></div>
+            <div id="notif-list" style="max-height:320px;overflow-y:auto"></div>
+          </div>
+        </div>
       </div>
       <div class="content" id="content"></div>
     </div>
@@ -314,8 +330,22 @@ async function doLogin(){
 }
 
 async function doRegister(){
-  try{const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
-  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();toast('Bienvenue !','s');}
+  try{
+    const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
+    TOKEN=r.token;ME=r.user;
+    localStorage.setItem('affihub_token',TOKEN);
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
+    startApp();
+    if(r.welcome_message){
+      setTimeout(()=>{
+        document.getElementById('m-title').textContent='👋 Bienvenue sur AffiHub !';
+        document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:16px">🎉</div><div style="font-size:14px;line-height:1.8;color:var(--muted);white-space:pre-wrap">'+r.welcome_message+'</div><button class="btn btn-grad" onclick="closeMo()" style="margin-top:20px;width:100%;justify-content:center">C\'est parti ! 🚀</button></div>';
+        document.getElementById('mo').classList.add('open');
+      },800);
+    } else {
+      toast('Bienvenue !','s');
+    }
+  }
   catch(e){toast(e.message,'e');}
 }
 
@@ -336,7 +366,7 @@ function startApp(){
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
     {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'🎨',label:'Liens perso',page:'admin-custom'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
+    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
   const affNav=[
     {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},{icon:'⏳',label:'Liens temporaires',page:'aff-temp'}]},
@@ -347,12 +377,31 @@ function startApp(){
   ];
   if(ME.role==='admin'){
     document.getElementById('role-badge').textContent='👑 Admin';
+    document.getElementById('notif-bell-btn').style.display='none';
     buildNav(adminNav);buildMobileNav(adminNav);goPage('admin-dash');
+    setTimeout(refreshNotifs,500);
   }else{
     document.getElementById('role-badge').textContent='⚡ Affilié';
-    buildNav(affNav);buildMobileNav(affNav);goPage('aff-dash');
+    document.getElementById('notif-bell-btn').style.display='block';
+    api('GET','/api/settings/all').then(s=>{
+      const accueilItems=[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}];
+      if(s.temp_links_enabled)accueilItems.push({icon:'⏳',label:'Liens temporaires',page:'aff-temp'});
+      const nav=[
+        {section:'ACCUEIL',items:accueilItems},
+        {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
+        {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
+        {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+        {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+      ];
+      buildNav(nav);buildMobileNav(nav);
+      goPage('aff-dash');
+      setTimeout(refreshNotifs,500);
+    }).catch(()=>{
+      buildNav(affNav);buildMobileNav(affNav);
+      goPage('aff-dash');
+      setTimeout(refreshNotifs,500);
+    });
   }
-  setTimeout(refreshNotifs,500);
 }
 
 function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
@@ -394,6 +443,7 @@ async function refreshNotifs(){
       const tickets=await api('GET','/api/tickets');
       const unread=tickets.filter(t=>t.unread>0).length;
       setNotif('aff-tickets',unread);
+      loadNotifs();
     }
   }catch(e){}
 }
@@ -434,7 +484,7 @@ const TITLES={
   'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés',
-  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires'
+  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
 };
 
 async function goPage(page){
@@ -485,16 +535,14 @@ async function renderPage(page){
 
   if(page==='aff-links'){
     const [offers,links,customReqs,allSettings]=await Promise.all([api('GET','/api/offers'),api('GET','/api/links'),api('GET','/api/custom-requests'),api('GET','/api/settings/all')]);
-    const active=offers.filter(o=>o.active);
-    if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible.</p></div></div>';
-    const affLinksEnabled=allSettings.aff_links_enabled;
+    if(offers.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible.</p></div></div>';
     const origin=window.location.origin;
-    let html='<div style="margin-bottom:20px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+active.length+' offre(s) disponibles</div></div>';
+    let html='<div style="margin-bottom:20px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+offers.length+' offre(s) disponibles</div></div>';
     CATS.forEach(cat=>{
-      const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
+      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
       const catEnabled=allSettings['cat_'+cat.key+'_enabled'];
       if(!catEnabled){
-        const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé — Voir Liens temporaires';
+        const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé';
         const badgeColor=cat.key==='influenceuse'?'background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)':'background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3)';
         html+='<div style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;opacity:.6"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="'+badgeColor+';font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">'+msg+'</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div></div></div>';
         return;
@@ -504,7 +552,14 @@ async function renderPage(page){
       catOffers.forEach(o=>{
         const el=links.find(l=>l.offer_id===o.id);
         let bottomHtml='';
-        if(o.id===54||o.id===55){
+        if(!o.active){
+          if(el){
+            const linkUrl=origin+'/go/'+el.id;
+            bottomHtml='<div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-family:monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+linkUrl+'</code><button class="copy-btn" onclick="cpLink(\''+el.id+'\',this)">📋</button></div><span class="badge br2">🔒 Offre temporairement indisponible</span>';
+          } else {
+            bottomHtml='<span class="badge br2" style="width:100%;justify-content:center">🔒 Offre temporairement indisponible</span>';
+          }
+        } else if(o.id===54||o.id===55){
           const cr=customReqs.find(r=>r.offer_id===o.id);
           if(cr&&cr.custom_link){
             bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2">✅ Lien reçu</span>';
@@ -522,7 +577,8 @@ async function renderPage(page){
           bottomHtml='<button class="btn btn-grad" onclick="genLink('+o.id+')" style="width:100%;justify-content:center">🔗 Générer mon lien</button>';
         }
         const imgHtml=o.image_url?'<div style="width:100%;height:155px;overflow:hidden"><img src="'+o.image_url+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"></div>':'';
-        html+='<div style="background:#111;border:1px solid '+cat.border+';border-radius:14px;overflow:hidden;position:relative"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+cat.color+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
+        const borderColor=o.active?cat.border:'rgba(255,71,87,.2)';
+        html+='<div style="background:#111;border:1px solid '+borderColor+';border-radius:14px;overflow:hidden;position:relative'+(o.active?'':';opacity:.7')+'"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+(o.active?cat.color:'var(--red)')+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
       });
       html+='</div></div></div>';
     });
@@ -680,22 +736,22 @@ async function renderPage(page){
   if(page==='admin-aff'){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑 Supprimer</button></td></tr>').join('');
-    return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' affilié(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px"><button class="btn btn-gst btn-sm" onclick="openNoteAff(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\',' +JSON.stringify(u.admin_note||'').replace(/'/g,"\\'")+')">📝</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><div style="display:flex;gap:8px;align-items:center"><span class="badge bp2">'+users.length+' affilié(s)</span><button class="btn btn-gst btn-sm" onclick="exportCSV(\'affiliates\')">📥 CSV</button></div></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   if(page==='admin-conv'){
     const [convs,users,offers]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/users'),api('GET','/api/offers')]);
     const pending=convs.filter(c=>c.status==='pending');
     const rows=convs.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.users?.name||'?')+'</td><td>'+(c.offers?.name||'?')+'</td><td style="font-weight:900;color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td><td><div style="display:flex;gap:4px">'+(c.status==='pending'?'<button class="btn btn-grn btn-sm" onclick="apprC('+c.id+')">✔</button><button class="btn btn-red btn-sm" onclick="rejtC('+c.id+')">✕</button>':'')+'<button class="btn btn-gst btn-sm" onclick="confirmDeleteConv('+c.id+','+c.amount+',\''+((c.users?.name||'?').replace(/'/g,"\\'"))+'\')">🗑</button></div></td></tr>').join('');
-    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">Conversions</div><div style="display:flex;gap:8px;align-items:center">'+(pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>')+'<button class="btn btn-grad btn-sm" onclick="openAddConv()">+ Ajouter</button></div></div>'
+    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">Conversions</div><div style="display:flex;gap:8px;align-items:center">'+(pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>')+'<button class="btn btn-gst btn-sm" onclick="exportCSV(\'conversions\')">📥 CSV</button><button class="btn btn-grad btn-sm" onclick="openAddConv()">+ Ajouter</button></div></div>'
     +'<div class="card">'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>🎯 Offre</th><th>💰 Montant</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>')+'</div>';
   }
 
   if(page==='admin-wd'){
     const wds=await api('GET','/api/withdrawals');
     const rows=wds.map(w=>'<tr><td style="color:var(--muted)">'+fmt(w.created_at)+'</td><td>'+(w.users?.name||'?')+'</td><td style="font-weight:900;color:var(--yellow)">$'+w.amount+'</td><td><span class="badge bp2">'+w.crypto+'</span></td><td><code style="font-size:11px;color:var(--muted)">'+w.address.substring(0,20)+'</code></td><td>'+sbadge(w.status)+(w.status==='rejected'&&w.reason?'<div style="font-size:11px;color:var(--red)">↳ '+w.reason+'</div>':'')+'</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">'+(w.status==='pending'?'<button class="btn btn-grn btn-sm" onclick="apprW('+w.id+')">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW('+w.id+')">✕</button>':'<span style="color:var(--muted)">—</span>')+'<button class="btn btn-gst btn-sm" onclick="confirmDeleteWd('+w.id+')">🗑</button></div></td></tr>').join('');
-    return '<div class="card"><div class="card-title" style="margin-bottom:16px">Retraits</div>'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>')+'</div>';
+    return '<div class="card"><div class="card-header"><div class="card-title">Retraits</div><button class="btn btn-gst btn-sm" onclick="exportCSV(\'withdrawals\')">📥 CSV</button></div>'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>')+'</div>';
   }
 
   if(page==='admin-ref'){
@@ -777,7 +833,7 @@ async function renderPage(page){
       html+='<div id="adm-cat-'+cat.key+'" style="display:none;padding-top:10px">';
       catOffers.forEach(o=>{
         const n=o.name.replace(/'/g,"\\'");const d=(o.description||'').replace(/'/g,"\\'");const u=o.url.replace(/'/g,"\\'");const img=(o.image_url||'').replace(/'/g,"\\'");
-        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
+        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class="btn '+(o.active?'btn-red':'btn-grn')+' btn-sm" onclick="toggleOffer('+o.id+','+(o.active?'false':'true')+')">'+(o.active?'🚫':'✅')+'</button><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
       });
       html+='</div></div>';
     });
@@ -828,7 +884,7 @@ async function renderPage(page){
     if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">⏳</div><p>Aucune offre disponible.</p></div></div>';
     let html='<div class="warning-box" style="margin-bottom:20px"><div style="font-size:16px">⏳</div><p style="font-size:12px;color:var(--yellow);line-height:1.7">Système temporaire en attendant l\'activation du postback automatique. Demande ton lien personnalisé ci-dessous, l\'admin te l\'enverra manuellement.</p></div>';
     CATS.forEach(cat=>{
-      if(cat.key==='influenceuse')return;
+      if(cat.key==='influenceuse'||cat.key==='autre')return;
       const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
       html+='<div style="margin-bottom:16px"><div onclick="toggleCat(\'temp-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catOffers.length+' offre(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-temp-cat-'+cat.key+'">▸</span></div>';
       html+='<div id="temp-cat-'+cat.key+'" style="display:none;padding-top:12px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
@@ -886,17 +942,30 @@ async function renderPage(page){
     return html;
   }
 
+  if(page==='admin-logs'){
+    const logs=await api('GET','/api/logs');
+    if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
+    const actionIcon={'login':'🔐','inscription':'🆕','logout':'👋'};
+    const fmtLocal=d=>{if(!d)return '—';const dt=new Date(new Date(d).getTime()+2*60*60*1000);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
+    const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap;font-size:12px">'+fmtLocal(l.created_at)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td><td><button class="btn btn-red btn-sm" onclick="deleteLog('+l.id+')">🗑</button></td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><button class="btn btn-red btn-sm" onclick="clearAllLogs()">🗑 Tout effacer</button></div><div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+
   if(page==='admin-settings'){
     const currentLogo=localStorage.getItem('affihub_logo')||'';
     const settings=await api('GET','/api/settings/all');
     const tempEnabled=settings.temp_links_enabled;
+    const maintenance=settings.maintenance_mode;
+    const welcomeMsg=settings.welcome_message||'';
     const catRows=CATS.map(cat=>{
       const enabled=settings['cat_'+cat.key+'_enabled'];
       return '<div class="info-row"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:16px">'+cat.label.split(' ')[0]+'</span><span style="font-weight:700;font-size:13px">'+cat.label.split(' ').slice(1).join(' ')+'</span></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(enabled?'var(--green)':'var(--red)')+'">'+(enabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(enabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleCategorySetting(\''+cat.key+'\','+(enabled?'false':'true')+')">'+(enabled?'Désactiver':'Activer')+'</button></div></div>';
     }).join('');
     return '<div class="settings-section"><div class="settings-section-title">🖼️ Logo du site</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px"><div style="width:80px;height:80px;border-radius:14px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+(currentLogo?'<img src="'+currentLogo+'" style="width:100%;height:100%;object-fit:contain">':'<span style="font-size:36px">🔗</span>')+'</div><div><div style="font-weight:700;margin-bottom:4px">Logo actuel</div><div style="font-size:12px;color:var(--muted)">Sidebar et page de connexion</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'logo-file\').click()"><input type="file" id="logo-file" accept="image/*" style="display:none" onchange="previewLogo(this)"><div id="logo-prev" style="display:none;margin-bottom:10px"><img id="logo-prev-img" style="max-width:120px;max-height:120px;border-radius:10px;object-fit:contain"></div><div id="logo-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer</div></div></div><button class="btn btn-grad" onclick="saveLogo()" style="width:100%;justify-content:center;margin-top:14px">💾 Sauvegarder</button></div>'
+    +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première inscription</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉" style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
-    +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock (11 juillet). Désactive cette page pour les affiliés une fois le postback automatique en place, ou réactive-la en cas de problème.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div><div style="font-size:12px;color:var(--muted)">"⏳ Liens temporaires" dans leur menu</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
+    +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock. Désactive cette page une fois le postback actif.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
   }
 
   return '';
@@ -1177,6 +1246,84 @@ document.getElementById('mo').addEventListener('click',function(e){if(e.target==
 var toastTimer;
 function toast(msg,type){const el=document.getElementById('toast');const ic={s:'✅',e:'❌',i:'💡'};el.innerHTML=(ic[type]||'💡')+' '+msg;el.className='show t'+(type||'i');el.classList.add(type==='s'?'ts':type==='e'?'te':'ti');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.className='';},3200);}
 
+// ── NOTIFICATIONS ──
+async function loadNotifs(){
+  if(!ME||ME.role==='admin')return;
+  try{
+    const notifs=await api('GET','/api/notifications');
+    const unread=notifs.filter(n=>!n.read).length;
+    const count=document.getElementById('notif-count');
+    if(count){if(unread>0){count.textContent=unread;count.style.display='block';}else{count.style.display='none';}}
+    const list=document.getElementById('notif-list');
+    if(list){
+      if(notifs.length===0){list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';return;}
+      const icons={'withdrawal_paid':'💸','withdrawal_rejected':'❌','commission':'💰'};
+      list.innerHTML=notifs.map(n=>'<div style="padding:12px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-start;gap:10px;background:'+(n.read?'transparent':'rgba(245,200,66,.04)')+';cursor:pointer" onclick="deleteNotif('+n.id+',this)"><div style="font-size:18px;flex-shrink:0">'+(icons[n.type]||'📌')+'</div><div style="flex:1"><div style="font-size:12px;line-height:1.5">'+(n.message||'')+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+fmt(n.created_at)+'</div></div>'+(n.read?'':'<div style="width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:4px"></div>')+'</div>').join('');
+    }
+  }catch(e){}
+}
+function toggleNotifPanel(){
+  const panel=document.getElementById('notif-panel');
+  if(!panel)return;
+  const open=panel.style.display==='none';
+  panel.style.display=open?'block':'none';
+  if(open)loadNotifs();
+}
+document.addEventListener('click',function(e){
+  const panel=document.getElementById('notif-panel');
+  const btn=document.getElementById('notif-bell-btn');
+  if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)){panel.style.display='none';}
+});
+async function markNotifsRead(){
+  try{await api('PATCH','/api/notifications/read');loadNotifs();}catch(e){}
+}
+async function deleteNotif(id,el){
+  try{await api('DELETE','/api/notifications/'+id);if(el)el.remove();loadNotifs();}catch(e){}
+}
+
+// ── NOTES AFFILIÉS ──
+function exportCSV(type){
+  fetch('/api/export/'+type,{headers:{'Authorization':'Bearer '+TOKEN}})
+    .then(r=>r.blob())
+    .then(blob=>{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=type+'.csv';a.click();URL.revokeObjectURL(url);});
+}
+function openNoteAff(userId,userName,currentNote){
+  document.getElementById('m-title').textContent='📝 Note — '+userName;
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Note privée (visible uniquement par vous)</label><textarea id="note-txt" placeholder="Ex: VIP, à surveiller, bon affilié..." style="resize:vertical;min-height:100px">'+currentNote+'</textarea></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveNote(\''+userId+'\')" style="flex:1;justify-content:center">💾 Sauvegarder</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function saveNote(userId){
+  const note=document.getElementById('note-txt').value.trim();
+  try{await api('PATCH','/api/users/'+userId+'/note',{note});closeMo();toast('Note sauvegardée ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
+}
+
+// ── OFFRES TOGGLE ──
+async function toggleOffer(id,active){
+  try{await api('PATCH','/api/offers/'+id,{active});toast(active?'Offre activée ✅':'Offre désactivée 🚫',active?'s':'i');goPage('admin-offers');}catch(e){toast(e.message,'e');}
+}
+
+// ── LOGS ──
+async function deleteLog(id){
+  try{await api('DELETE','/api/logs/'+id);goPage('admin-logs');}catch(e){toast(e.message,'e');}
+}
+async function clearAllLogs(){
+  document.getElementById('m-title').textContent='Effacer tous les logs';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Effacer tous les logs ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doClrLogs()" style="flex:1">Tout effacer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doClrLogs(){
+  try{await api('DELETE','/api/logs');closeMo();toast('Logs effacés','s');goPage('admin-logs');}catch(e){toast(e.message,'e');}
+}
+
+// ── MAINTENANCE & WELCOME ──
+async function toggleMaintenance(enable){
+  try{await api('PATCH','/api/settings/maintenance',{enabled:enable});toast(enable?'🔧 Maintenance activée':'✅ Site remis en ligne',enable?'i':'s');goPage('admin-settings');}catch(e){toast(e.message,'e');}
+}
+async function saveWelcomeMsg(){
+  const msg=document.getElementById('welcome-msg')?.value.trim();
+  try{await api('PATCH','/api/settings/welcome',{message:msg});toast('Message sauvegardé ✓','s');}catch(e){toast(e.message,'e');}
+}
+
 // ── INIT ──
 if(TOKEN&&ME){startApp();}else{showLanding();}
 const urlParams=new URLSearchParams(window.location.search);const refCode=urlParams.get('ref');
@@ -1215,6 +1362,9 @@ window.addEventListener('popstate',function(e){
 
 // Ripple effect
 document.addEventListener('click',function(e){const btn=e.target.closest('.btn-grad');if(!btn)return;const r=document.createElement('span');r.className='ripple';const rect=btn.getBoundingClientRect();const size=Math.max(rect.width,rect.height)*2;r.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(e.clientX-rect.left-size/2)+'px;top:'+(e.clientY-rect.top-size/2)+'px';btn.appendChild(r);setTimeout(()=>r.remove(),600);});
+
+// PWA Service Worker
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 
 // Particles
 (function(){const canvas=document.getElementById('particles-canvas');if(!canvas)return;const ctx=canvas.getContext('2d');let particles=[];function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}resize();window.addEventListener('resize',resize);function cp(){return{x:Math.random()*canvas.width,y:canvas.height+10,size:Math.random()*2.5+.5,speedY:Math.random()*1.2+.4,speedX:(Math.random()-.5)*.6,opacity:Math.random()*.4+.1,color:Math.random()>.5?'245,200,66':'240,66,122'};}for(let i=0;i<35;i++){const p=cp();p.y=Math.random()*canvas.height;particles.push(p);}function animate(){ctx.clearRect(0,0,canvas.width,canvas.height);if(particles.length<50&&Math.random()<.04)particles.push(cp());particles=particles.filter(p=>{p.y-=p.speedY;p.x+=p.speedX;ctx.save();ctx.globalAlpha=p.opacity;ctx.fillStyle='rgba('+p.color+',1)';ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();return p.y>-20;});requestAnimationFrame(animate);}animate();})();
