@@ -155,8 +155,29 @@ app.get('/api/postback', async (req, res) => {
   const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
-  const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'pending' }).select().single();
+  const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
+  // Créditer le solde
+  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', link.user_id).single();
+  if (user) {
+    await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
+    // Commission parrainage
+    if (user.referred_by) {
+      const commission = parseFloat((convAmount * 0.05).toFixed(2));
+      const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+      if (referrer) {
+        await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
+        await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
+      }
+    }
+    // Postback affilié
+    if (user.postback_url) {
+      try {
+        const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
+        fetch(postbackUrl).catch(()=>{});
+      } catch(e) {}
+    }
+  }
   // Notify Discord
   notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
   res.json({ success: true, conversion_id: conv.id });
