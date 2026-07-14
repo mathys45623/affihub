@@ -40,7 +40,7 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(-
 .nav-section-label{font-size:9px;font-weight:800;color:rgba(245,200,66,.5);text-transform:uppercase;letter-spacing:1.5px;padding:10px 12px 5px}
 .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;cursor:pointer;font-size:13px;font-weight:600;color:#666;transition:all .2s;margin-bottom:2px;border-left:3px solid transparent;-webkit-tap-highlight-color:rgba(245,200,66,.2);touch-action:manipulation;user-select:none;width:100%;text-align:left;background:none;border-top:none;border-right:none;border-bottom:none;font-family:inherit}
 .nav-item:hover{background:rgba(255,255,255,.05);color:#ccc}
-.nav-item.active{background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.08));color:var(--text);border-left:3px solid var(--yellow)}
+.nav-item.active{background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.08));color:var(--text);border-left:3px solid var(--yellow);animation:navActivate .2s ease}
 .notif-badge{background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;margin-left:auto;min-width:18px;text-align:center;animation:pulse-notif 2s ease-in-out infinite}
 @keyframes pulse-notif{0%,100%{opacity:1}50%{opacity:.6}}
 .sb-foot{padding:14px 16px;border-top:1px solid #1E1E1E;display:flex;align-items:center;gap:10px;flex-shrink:0}
@@ -137,13 +137,18 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 .support-hero{background:var(--grad);border-radius:18px;padding:40px 36px;text-align:center;margin-bottom:20px;background-size:200% 200%;animation:gradient-shift 6s ease infinite}
 .discord-card{background:var(--bg2);border:1px solid rgba(88,101,242,.2);border-radius:14px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
 @keyframes spin{to{transform:rotate(360deg)}}
+@keyframes navActivate{from{opacity:.6;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pageOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-6px)}}
 @keyframes aurora{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
 @keyframes gradient-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
 @keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(245,200,66,.2)}50%{box-shadow:0 0 40px rgba(245,200,66,.5)}}
 @keyframes ripple{0%{transform:scale(0);opacity:.6}100%{transform:scale(4);opacity:0}}
 .content>*{animation:fadeInUp .4s ease both}
 .content>*:nth-child(1){animation-delay:.05s}.content>*:nth-child(2){animation-delay:.1s}.content>*:nth-child(3){animation-delay:.15s}
+.content.page-out{animation:pageOut .12s ease forwards;pointer-events:none}
+.content.page-in{animation:pageIn .22s ease forwards}
 .logo-icon{animation:pulse-glow 4s ease-in-out infinite}
 #auth-screen{background:radial-gradient(ellipse 60% 50% at 20% 10%,rgba(245,200,66,.1) 0%,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 90%,rgba(240,66,122,.1) 0%,transparent 60%),var(--bg)}
 .btn-grad .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.3);transform:scale(0);animation:ripple .6s linear;pointer-events:none}
@@ -495,9 +500,19 @@ async function goPage(page){
   if(page.startsWith('aff-ticket-')){const n=document.getElementById('nav-aff-tickets');if(n)n.classList.add('active');}
   if(page.startsWith('admin-ticket-')){const n=document.getElementById('nav-admin-tickets');if(n)n.classList.add('active');}
   document.getElementById('page-title').textContent=page.startsWith('admin-ref-')?'Détail parrainage':page.startsWith('aff-ticket-')||page.startsWith('admin-ticket-')?'💬 Ticket':(TITLES[page]||page);
-  document.getElementById('content').innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';
-  try{const html=await renderPage(page);document.getElementById('content').innerHTML=html;}
-  catch(e){document.getElementById('content').innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}
+  const content=document.getElementById('content');
+  // Fade out current content
+  content.classList.add('page-out');
+  await new Promise(r=>setTimeout(r,120));
+  content.classList.remove('page-out');
+  content.innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';
+  try{
+    const html=await renderPage(page);
+    content.innerHTML=html;
+    content.classList.add('page-in');
+    setTimeout(()=>content.classList.remove('page-in'),250);
+  }
+  catch(e){content.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}
 }
 
 function sbadge(s){const m={approved:'<span class="badge bg2"><span class="dot dg"></span>Approuvée</span>',pending:'<span class="badge by2"><span class="dot dy"></span>En attente</span>',rejected:'<span class="badge br2"><span class="dot dr"></span>Rejetée</span>',paid:'<span class="badge bg2">Payé</span>',active:'<span class="badge bg2">Actif</span>',disabled:'<span class="badge br2">Désactivé</span>'};return m[s]||s;}
