@@ -89,6 +89,9 @@ function adminOnly(req, res, next) {
 app.post('/api/register', async (req, res) => {
   const { name, email, password, referral_code } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Champs requis' });
+  // Check maintenance mode
+  const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
+  if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
   const hash = await bcrypt.hash(password, 10);
   const newCode = Math.random().toString(36).substring(2, 10).toUpperCase();
   let referred_by = null;
@@ -151,6 +154,11 @@ app.post('/api/login', async (req, res) => {
   if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
   const valid = user.password === password || await bcrypt.compare(password, user.password);
   if (!valid) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+  // Check maintenance mode for non-admin
+  if (user.role !== 'admin') {
+    const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
+    if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
+  }
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
   res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at } });
 });
