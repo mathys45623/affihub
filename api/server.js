@@ -159,6 +159,9 @@ app.post('/api/login', async (req, res) => {
     const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
     if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
   }
+  // Log connexion
+  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || '';
+  supabase.from('activity_logs').insert({ user_id: user.id, action: 'login', details: 'Connexion de '+user.name, ip }).then(()=>{});
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
   res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at } });
 });
@@ -745,12 +748,12 @@ app.get('/api/logs', auth, adminOnly, async (req, res) => {
   const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(500);
   res.json(data || []);
 });
-app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
-  await supabase.from('activity_logs').delete().eq('id', req.params.id);
-  res.json({ success: true });
-});
 app.delete('/api/logs', auth, adminOnly, async (req, res) => {
   await supabase.from('activity_logs').delete().neq('id', 0);
+  res.json({ success: true });
+});
+app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('activity_logs').delete().eq('id', req.params.id);
   res.json({ success: true });
 });
 
