@@ -674,7 +674,7 @@ async function renderPage(page){
 
   if(page==='aff-top'){
     const ranking=await api('GET','/api/ranking');window._topRanking=ranking;
-    const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+    const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
     const mkRows=sort=>{
       const sorted=[...ranking].sort((a,b)=>sort==='gains'?b.totalGains-a.totalGains:sort==='conv'?b.totalConversions-a.totalConversions:sort==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
       return sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
@@ -1077,7 +1077,7 @@ async function doAddConv(){
 function doSortTop(by){
   ['gains','conv','clicks','date'].forEach(k=>{const el=document.getElementById('sort-'+k);if(el)el.className='btn btn-'+(k===by?'grad':'gst')+' btn-sm';});
   const ranking=window._topRanking||[];
-  const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':'#'+(i+1);
+  const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
   const sorted=[...ranking].sort((a,b)=>by==='gains'?b.totalGains-a.totalGains:by==='conv'?b.totalConversions-a.totalConversions:by==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
   const tbody=document.getElementById('top-tbody');
   if(tbody)tbody.innerHTML=sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
