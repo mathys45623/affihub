@@ -168,16 +168,14 @@ app.post('/api/login', async (req, res) => {
   }
   log(user.id, 'login', 'Connexion de '+user.name+' ('+user.role+')', req);
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at } });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, is_super_admin: user.is_super_admin || false, admin_permissions: user.admin_permissions || 'all' } });
 });
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
   const { data } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
   res.json(data);
-});
-
-app.patch('/api/users/:id/permissions', auth, async (req, res) => {
+}); auth, async (req, res) => {
   // Only super admin can change permissions
   const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
   if (!me?.is_super_admin) return res.status(403).json({ error: 'Non autorisé' });
