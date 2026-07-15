@@ -70,6 +70,12 @@ async function sendEmail(to, subject, html) {
   } catch(e) { console.error('Email error:', e.message); }
 }
 
+// ── LOG HELPER ──
+function log(userId, action, details, req) {
+  const ip = req?.headers?.['x-forwarded-for']?.split(',')[0] || req?.socket?.remoteAddress || '';
+  supabase.from('activity_logs').insert({ user_id: userId, action, details, ip }).then(()=>{}).catch(()=>{});
+}
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
@@ -138,6 +144,7 @@ app.post('/api/register', async (req, res) => {
     </div>
   `);
   const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET);
+  log(data.id, 'inscription', 'Nouveau compte créé : '+name, req);
   // Discord notification
   notifyDiscord2(DISCORD_REGISTER, '👤 Nouvel affilié !', 0x00D68F, [
     { name: '👤 Nom', value: name, inline: true },
@@ -159,9 +166,7 @@ app.post('/api/login', async (req, res) => {
     const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
     if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
   }
-  // Log connexion
-  const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || '';
-  supabase.from('activity_logs').insert({ user_id: user.id, action: 'login', details: 'Connexion de '+user.name, ip }).then(()=>{});
+  log(user.id, 'login', 'Connexion de '+user.name+' ('+user.role+')', req);
   const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
   res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at } });
 });
@@ -276,6 +281,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   const { data: conv } = await supabase.from('conversions').select('*, users(name), offers(name)').eq('id', req.params.id).single();
   if (!conv || conv.status !== 'pending') return res.status(400).json({ error: 'Conversion invalide' });
   await supabase.from('conversions').update({ status: 'approved' }).eq('id', req.params.id);
+  log(req.user.id, 'conversion-approuvée', 'Conversion #'+req.params.id+' approuvée ($'+conv.amount+')', req);
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
   // Notify Discord
@@ -306,6 +312,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
 
 app.patch('/api/conversions/:id/reject', auth, adminOnly, async (req, res) => {
   await supabase.from('conversions').update({ status: 'rejected' }).eq('id', req.params.id);
+  log(req.user.id, 'conversion-rejetée', 'Conversion #'+req.params.id+' rejetée', req);
   res.json({ success: true });
 });
 
@@ -341,6 +348,7 @@ app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
   if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
   const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre', image_url: image_url || null, active: active !== undefined ? active : true }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'offre-modifiée', 'Offre #'+req.params.id+' modifiée', req);
   res.json(data);
 });
 app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
@@ -408,6 +416,7 @@ app.post('/api/withdrawals', auth, async (req, res) => {
     { name: '💰 Montant', value: '$' + amount, inline: true },
     { name: '💳 Moyen', value: crypto, inline: true }
   ]);
+  log(req.user.id, 'retrait-demandé', 'Demande de $'+amount+' en '+crypto, req);
   res.json(data);
 });
 app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
@@ -415,6 +424,7 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
   // Discord notification
+  log(req.user.id, 'retrait-payé', 'Retrait #'+req.params.id+' de $'+wd.amount+' payé à '+(wd.users?.name||'?'), req);
   notifyDiscord2(DISCORD_PAYMENT, '✅ Retrait payé !', 0x00D68F, [
     { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
     { name: '💰 Montant', value: '$' + wd.amount, inline: true },
@@ -430,6 +440,7 @@ app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
   // Discord notification
+  log(req.user.id, 'retrait-rejeté', 'Retrait #'+req.params.id+' de '+(wd.users?.name||'?')+' rejeté', req);
   notifyDiscord2(DISCORD_PAYMENT, '❌ Retrait rejeté', 0xFF4757, [
     { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
     { name: '💰 Montant', value: '$' + wd.amount, inline: true },
@@ -476,6 +487,7 @@ app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
     }
     await supabase.from('ticket_messages').delete().eq('user_id', uid);
     await supabase.from('tickets').delete().eq('user_id', uid);
+    log(req.user.id, 'affilié-supprimé', 'Compte supprimé : '+uid, req);
     const { error: delError } = await supabase.from('users').delete().eq('id', uid);
     if (delError) return res.status(500).json({ error: delError.message });
     res.json({ success: true });
@@ -565,6 +577,7 @@ app.post('/api/tickets', auth, async (req, res) => {
   await supabase.from('ticket_messages').insert({ ticket_id: ticket.id, user_id: req.user.id, content, image_url: image_url || null });
   // Discord notification
   const reasons = {'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+  log(req.user.id, 'ticket-créé', 'Ticket créé : '+reason, req);
   notifyDiscord2(DISCORD_TICKET, '🎫 Nouveau ticket support !', 0x4D9EFF, [
     { name: '👤 Affilié', value: req.user.name, inline: true },
     { name: '🏷️ Raison', value: reasons[reason] || reason, inline: true },
@@ -748,12 +761,12 @@ app.get('/api/logs', auth, adminOnly, async (req, res) => {
   const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(500);
   res.json(data || []);
 });
-app.delete('/api/logs', auth, adminOnly, async (req, res) => {
-  await supabase.from('activity_logs').delete().neq('id', 0);
-  res.json({ success: true });
-});
 app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
   await supabase.from('activity_logs').delete().eq('id', req.params.id);
+  res.json({ success: true });
+});
+app.delete('/api/logs', auth, adminOnly, async (req, res) => {
+  await supabase.from('activity_logs').delete().neq('id', 0);
   res.json({ success: true });
 });
 
