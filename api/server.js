@@ -743,6 +743,7 @@ app.get('/api/settings/all', auth, async (req, res) => {
 app.patch('/api/settings/maintenance', auth, adminOnly, async (req, res) => {
   const { enabled } = req.body;
   await supabase.from('settings').upsert({ key: 'maintenance_mode', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  log(req.user.id, 'maintenance-'+(enabled?'activée':'désactivée'), 'Mode maintenance '+(enabled?'activé':'désactivé'), req);
   res.json({ success: true });
 });
 
