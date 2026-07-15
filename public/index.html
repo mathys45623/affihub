@@ -360,7 +360,7 @@ function updateLogo(url){
   ['auth-logo-emoji','sb-logo-emoji'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
 }
 
-function startApp(){
+async function startApp(){
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('u-name').textContent=ME.name;
@@ -381,6 +381,8 @@ function startApp(){
     {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
   if(ME.role==='admin'){
+    // Refresh ME from server to get latest permissions
+    try{const fresh=await api('GET','/api/me');ME=fresh;localStorage.setItem('affihub_user',JSON.stringify(ME));}catch(e){}
     document.getElementById('role-badge').textContent='👑 Admin';
     document.getElementById('notif-bell-btn').style.display='none';
     // Parse permissions
