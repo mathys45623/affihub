@@ -173,8 +173,18 @@ app.post('/api/login', async (req, res) => {
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
-  const { data } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking').eq('id', req.user.id).single();
+  const { data } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
   res.json(data);
+});
+
+app.patch('/api/users/:id/permissions', auth, async (req, res) => {
+  // Only super admin can change permissions
+  const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
+  if (!me?.is_super_admin) return res.status(403).json({ error: 'Non autorisé' });
+  const { permissions } = req.body;
+  await supabase.from('users').update({ admin_permissions: JSON.stringify(permissions) }).eq('id', req.params.id);
+  log(req.user.id, 'permissions-modifiées', 'Permissions admin #'+req.params.id+' modifiées', req);
+  res.json({ success: true });
 });
 
 // ── CHANGE PASSWORD ──
