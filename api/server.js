@@ -397,11 +397,16 @@ app.post('/api/links', auth, async (req, res) => {
   const { data: existing } = await supabase.from('links').select('*').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
   if (existing) return res.status(400).json({ error: 'Lien déjà généré' });
   const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
-  const slug = offer ? offer.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').substring(0, 20) : 'offre';
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let code = ''; for (let i = 0; i < 5; i++) code += chars[Math.floor(Math.random() * chars.length)];
-  const id = `${slug}-${code}`;
-  const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true }).select().single();
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let id = ''; for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  // Shorten the link
+  const fullUrl = (process.env.SITE_URL || 'https://affihub-tau.vercel.app') + '/go/' + id;
+  let shortUrl = null;
+  try {
+    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl));
+    if (r.ok) shortUrl = await r.text();
+  } catch(e) {}
+  const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true, short_url: shortUrl || null }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   log(req.user.id, 'lien-généré', 'Lien généré pour "'+( offer?.name||'offre #'+offer_id)+'" : '+id, req);
   res.json(data);
