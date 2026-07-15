@@ -185,6 +185,7 @@ app.post('/api/change-password', auth, async (req, res) => {
   if (!valid) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
   const hash = await bcrypt.hash(new_password, 10);
   await supabase.from('users').update({ password: hash }).eq('id', req.user.id);
+  log(req.user.id, 'mot-de-passe-changé', 'Mot de passe modifié', req);
   res.json({ success: true });
 });
 
@@ -382,6 +383,7 @@ app.post('/api/links', auth, async (req, res) => {
   const id = `${slug}-${code}`;
   const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'lien-généré', 'Lien généré pour "'+( offer?.name||'offre #'+offer_id)+'" : '+id, req);
   res.json(data);
 });
 app.patch('/api/links/:id', auth, adminOnly, async (req, res) => {
@@ -573,6 +575,11 @@ app.get('/api/tickets', auth, async (req, res) => {
 app.post('/api/tickets', auth, async (req, res) => {
   const { reason, content, image_url } = req.body;
   if (!reason || !content) return res.status(400).json({ error: 'Raison et message requis' });
+  // Check if affiliate already has an open ticket
+  if (req.user.role !== 'admin') {
+    const { data: existing } = await supabase.from('tickets').select('id').eq('user_id', req.user.id).eq('status', 'open').single();
+    if (existing) return res.status(400).json({ error: 'Tu as déjà un ticket ouvert. Ferme-le avant d\'en créer un nouveau.' });
+  }
   const { data: ticket, error } = await supabase.from('tickets').insert({ user_id: req.user.id, reason, status: 'open' }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   await supabase.from('ticket_messages').insert({ ticket_id: ticket.id, user_id: req.user.id, content, image_url: image_url || null });
@@ -615,6 +622,7 @@ app.patch('/api/tickets/:id/status', auth, async (req, res) => {
   if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   if (req.user.role !== 'admin' && status !== 'closed') return res.status(403).json({ error: 'Non autorisé' });
   await supabase.from('tickets').update({ status }).eq('id', req.params.id);
+  log(req.user.id, 'ticket-'+status, 'Ticket #'+req.params.id+' '+(status==='resolved'?'résolu':status==='closed'?'fermé':'mis à jour'), req);
   res.json({ success: true });
 });
 
