@@ -553,6 +553,7 @@ app.get('/api/ranking', auth, async (req, res) => {
 app.patch('/api/me/ranking', auth, async (req, res) => {
   const { show } = req.body;
   await supabase.from('users').update({ show_ranking: show }).eq('id', req.user.id);
+  log(req.user.id, 'classement-'+(show?'visible':'masqué'), 'Profil '+(show?'visible':'masqué')+' dans le classement', req);
   res.json({ success: true });
 });
 
