@@ -175,7 +175,9 @@ app.post('/api/login', async (req, res) => {
 app.get('/api/me', auth, async (req, res) => {
   const { data } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
   res.json(data);
-}); auth, async (req, res) => {
+});
+
+app.patch('/api/users/:id/permissions', auth, async (req, res) => {
   // Only super admin can change permissions
   const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
   if (!me?.is_super_admin) return res.status(403).json({ error: 'Non autorisé' });
