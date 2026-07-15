@@ -99,7 +99,17 @@ app.post('/api/register', async (req, res) => {
   const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
   if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
   const hash = await bcrypt.hash(password, 10);
-  const newCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+  // Generate referral code from username (lowercase, no spaces, unique)
+  const baseCode = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
+  // Check if code already exists and make it unique if needed
+  let newCode = baseCode;
+  let suffix = 1;
+  while(true) {
+    const { data: existing } = await supabase.from('users').select('id').eq('referral_code', newCode).single();
+    if (!existing) break;
+    newCode = baseCode + suffix;
+    suffix++;
+  }
   let referred_by = null;
   if (referral_code) {
     const { data: referrer } = await supabase.from('users').select('id').eq('referral_code', referral_code).single();
