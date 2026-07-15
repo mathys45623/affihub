@@ -343,12 +343,13 @@ app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
   if (active !== undefined && !name) {
     const { data, error } = await supabase.from('offers').update({ active }).eq('id', req.params.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    log(req.user.id, 'offre-'+(active?'activée':'désactivée'), 'Offre "'+(data?.name||'#'+req.params.id)+'" '+(active?'activée':'désactivée'), req);
     return res.json(data);
   }
   if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
   const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre', image_url: image_url || null, active: active !== undefined ? active : true }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'offre-modifiée', 'Offre #'+req.params.id+' modifiée', req);
+  log(req.user.id, 'offre-modifiée', 'Offre "'+name+'" modifiée', req);
   res.json(data);
 });
 app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
