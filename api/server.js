@@ -474,7 +474,14 @@ app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
 
 // ── USERS ──
 app.get('/api/users', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('users').select('id,name,email,role,balance,created_at').eq('role', 'affiliate');
+  const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
+  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin');
+  if (!me?.is_super_admin) {
+    query = query.eq('role', 'affiliate');
+  } else {
+    query = query.neq('id', req.user.id); // don't show yourself
+  }
+  const { data } = await query.order('created_at', { ascending: false });
   res.json(data || []);
 });
 app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
