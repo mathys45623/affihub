@@ -626,7 +626,7 @@ app.post('/api/tickets', auth, async (req, res) => {
     { name: '👤 Affilié', value: req.user.name, inline: true },
     { name: '🏷️ Raison', value: reasons[reason] || reason, inline: true },
     { name: '💬 Message', value: content.substring(0, 100) + (content.length > 100 ? '...' : ''), inline: false }
-  ]);
+  ], '<@1504481208266915861>');
   res.json(ticket);
 });
 
