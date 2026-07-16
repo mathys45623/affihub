@@ -41,12 +41,13 @@ async function notifyDiscord(affiliateName, offerName, amount) {
   } catch(e) { console.error('Discord webhook error:', e.message); }
 }
 
-async function notifyDiscord2(webhook, title, color, fields) {
+async function notifyDiscord2(webhook, title, color, fields, content) {
   try {
     await fetch(webhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        content: content || undefined,
         embeds: [{
           title,
           color,
@@ -445,7 +446,7 @@ app.post('/api/withdrawals', auth, async (req, res) => {
     { name: '👤 Affilié', value: user.name, inline: true },
     { name: '💰 Montant', value: '$' + amount, inline: true },
     { name: '💳 Moyen', value: crypto, inline: true }
-  ]);
+  ], '<@1504481208266915861>');
   log(req.user.id, 'retrait-demandé', 'Demande de $'+amount+' en '+crypto, req);
   res.json(data);
 });
