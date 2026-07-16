@@ -138,6 +138,26 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 .discord-card{background:var(--bg2);border:1px solid rgba(88,101,242,.2);border-radius:14px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes navActivate{from{opacity:.6;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
+.faq-item{border:1px solid #1e1e1e;border-radius:14px;margin-bottom:10px;overflow:hidden;cursor:pointer;transition:border-color .2s;background:#0d0d0d}
+.faq-item:hover{border-color:rgba(245,200,66,.25)}
+.faq-q{padding:20px 22px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.faq-chev{color:var(--yellow);font-size:12px;flex-shrink:0;transition:transform .3s}
+.faq-a{padding:0 22px;font-size:13px;color:var(--muted);line-height:1.8;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}
+.faq-item.open .faq-a{max-height:200px;padding:0 22px 20px}
+.faq-item.open .faq-chev{transform:rotate(90deg)}
+.faq-item.open{border-color:rgba(245,200,66,.3);background:rgba(245,200,66,.02)}
+@keyframes orb1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-40px)}}
+@keyframes orb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,30px)}}
+@keyframes orb3{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.2)}}
+.land-stat-val{font-size:32px;font-weight:900;letter-spacing:-1px;margin-bottom:6px}
+.land-stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.land-feat{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:26px;transition:all .3s;position:relative;overflow:hidden}
+.land-feat::before{content:'';position:absolute;inset:0;background:var(--feat-color,rgba(255,255,255,.05));opacity:0;transition:opacity .3s}
+.land-feat:hover{border-color:rgba(255,255,255,.15);transform:translateY(-4px)}
+.land-feat:hover::before{opacity:1}
+.land-feat-icon{font-size:32px;margin-bottom:14px;display:block}
+.land-feat-title{font-size:15px;font-weight:800;margin-bottom:8px}
+.land-feat-desc{font-size:13px;color:var(--muted);line-height:1.65}
 @keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 @keyframes pageOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-6px)}}
@@ -178,70 +198,142 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 </head>
 <body>
 <canvas id="particles-canvas"></canvas>
-<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:2;overflow:hidden;isolation:isolate">
-  <!-- Bg glow -->
-  <div style="position:absolute;top:-200px;left:50%;transform:translateX(-50%);width:800px;height:600px;background:radial-gradient(ellipse,rgba(245,200,66,.07) 0%,transparent 70%);pointer-events:none"></div>
-  <div style="position:absolute;bottom:-100px;right:-100px;width:500px;height:500px;background:radial-gradient(ellipse,rgba(240,66,122,.08) 0%,transparent 70%);pointer-events:none"></div>
+<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:2;overflow:hidden">
+
+  <!-- Animated background orbs -->
+  <div style="position:fixed;top:-20%;left:-10%;width:600px;height:600px;background:radial-gradient(circle,rgba(245,200,66,.12) 0%,transparent 70%);pointer-events:none;animation:orb1 8s ease-in-out infinite;z-index:0"></div>
+  <div style="position:fixed;bottom:-20%;right:-10%;width:700px;height:700px;background:radial-gradient(circle,rgba(240,66,122,.1) 0%,transparent 70%);pointer-events:none;animation:orb2 10s ease-in-out infinite;z-index:0"></div>
+  <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(77,158,255,.05) 0%,transparent 70%);pointer-events:none;animation:orb3 12s ease-in-out infinite;z-index:0"></div>
 
   <!-- Nav -->
-  <nav style="padding:18px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,10,.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06);z-index:10">
+  <nav style="padding:16px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,10,.7);backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.05);z-index:10">
     <div style="display:flex;align-items:center;gap:10px">
-      <div class="logo-icon" style="width:34px;height:34px;font-size:16px"><img id="land-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="land-logo-emoji">🔗</span></div>
-      <span style="font-size:17px;font-weight:800">AffiHub</span>
+      <div class="logo-icon" style="width:32px;height:32px;font-size:15px"><img id="land-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="land-logo-emoji">🔗</span></div>
+      <span style="font-size:17px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">AffiHub</span>
     </div>
-    <button class="btn btn-gst btn-sm" onclick="showAuth()" style="font-size:12px">Connexion</button>
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="https://discord.gg/nwjUjQcHH7" target="_blank" style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;text-decoration:none;padding:7px 14px;border-radius:8px;border:1px solid #222;transition:all .2s" onmouseover="this.style.borderColor='rgba(88,101,242,.5)';this.style.color='#fff'" onmouseout="this.style.borderColor='#222';this.style.color='var(--muted)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.04.037.052a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+        Discord
+      </a>
+      <button class="btn btn-grad btn-sm" onclick="showAuth()" style="font-size:12px">Se connecter</button>
+    </div>
   </nav>
 
   <!-- Hero -->
-  <div style="max-width:860px;margin:0 auto;padding:90px 24px 60px;text-align:center;position:relative">
-    <div style="display:inline-flex;align-items:center;gap:8px;background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.18);border-radius:20px;padding:6px 18px;font-size:12px;font-weight:700;color:var(--yellow);margin-bottom:28px;letter-spacing:.5px">⚡ Accès sur invitation</div>
-    <h1 style="font-size:clamp(40px,7vw,72px);font-weight:900;line-height:1.05;letter-spacing:-2px;margin-bottom:22px;color:var(--text)">Transforme ton<br><span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 200%;animation:gradient-shift 4s ease infinite">audience en revenus</span></h1>
-    <p style="font-size:17px;color:var(--muted);max-width:480px;margin:0 auto 44px;line-height:1.75">Rejoins notre réseau d'affiliation privé. Génère tes liens, suis tes gains en temps réel et retire en crypto.</p>
-    <button class="btn btn-grad" onclick="showAuthRegister()" style="font-size:16px;padding:16px 40px;border-radius:14px;box-shadow:0 8px 32px rgba(240,66,122,.4)">🚀 Commencer l'aventure</button>
-    <div style="margin-top:16px;font-size:12px;color:var(--muted)">Déjà inscrit ? <button onclick="showAuth()" style="background:none;border:none;color:var(--yellow);cursor:pointer;font-family:inherit;font-size:12px;font-weight:700">Se connecter</button></div>
-  </div>
-
-  <!-- Stats bar -->
-  <div style="max-width:700px;margin:0 auto 70px;padding:0 24px">
-    <div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:20px 32px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center">
-      <div><div style="font-size:26px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$25</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Retrait minimum</div></div>
-      <div style="border-left:1px solid rgba(255,255,255,.08);border-right:1px solid rgba(255,255,255,.08)"><div style="font-size:26px;font-weight:900;color:var(--green)">5%</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Commission parrainage</div></div>
-      <div><div style="font-size:26px;font-weight:900;color:var(--yellow)">7</div><div style="font-size:11px;color:var(--muted);margin-top:3px">Moyens de paiement</div></div>
-    </div>
-  </div>
-
-  <!-- Features -->
-  <div style="max-width:860px;margin:0 auto 70px;padding:0 24px">
-    <div style="text-align:center;margin-bottom:36px"><h2 style="font-size:28px;font-weight:900;margin-bottom:8px">Tout ce dont tu as besoin</h2><p style="color:var(--muted);font-size:14px">Un dashboard complet pour gérer ton activité d'affiliation</p></div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px">
-      <div style="background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">🔗</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Liens trackés</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Chaque clic et conversion enregistrés automatiquement en temps réel</div></div>
-      <div style="background:rgba(0,214,143,.05);border:1px solid rgba(0,214,143,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">💰</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Paiements flexibles</div><div style="font-size:13px;color:var(--muted);line-height:1.6">BTC, Solana, Litecoin, Revolut, Virement, PayPal, Carte cadeau — dès $25</div></div>
-      <div style="background:rgba(77,158,255,.05);border:1px solid rgba(77,158,255,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">📊</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Stats complètes</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Clics, conversions, gains et taux par offre — tout en un coup d'œil</div></div>
-      <div style="background:rgba(240,66,122,.05);border:1px solid rgba(240,66,122,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">👥</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Parrainage 5%</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Invite tes amis et gagne 5% sur toutes leurs conversions approuvées</div></div>
-      <div style="background:rgba(168,85,247,.05);border:1px solid rgba(168,85,247,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">🎨</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Liens personnalisés</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Personnalise ta page avec ton branding — logo, photos, slogan</div></div>
-      <div style="background:rgba(136,136,136,.05);border:1px solid rgba(136,136,136,.15);border-radius:16px;padding:22px"><div style="font-size:30px;margin-bottom:12px">🎫</div><div style="font-weight:800;margin-bottom:6px;font-size:15px">Support dédié</div><div style="font-size:13px;color:var(--muted);line-height:1.6">Un manager disponible sur Discord pour t'accompagner</div></div>
-    </div>
-  </div>
-
-  <!-- CTA final -->
-  <div style="max-width:600px;margin:0 auto;padding:0 24px 80px;text-align:center">
-    <div style="background:var(--grad);border-radius:20px;padding:40px 32px;background-size:200% 200%;animation:gradient-shift 4s ease infinite">
-      <div style="font-size:44px;margin-bottom:12px">🍍</div>
-      <h2 style="font-size:26px;font-weight:900;color:#000;margin-bottom:10px">Rejoins le Discord</h2>
-      <p style="font-size:14px;color:rgba(0,0,0,.65);margin-bottom:24px">Rejoins notre serveur Discord pour obtenir ton accès et discuter avec la communauté</p>
-      <a href="https://discord.gg/nwjUjQcHH7" target="_blank" style="display:inline-flex;align-items:center;gap:10px;background:rgba(0,0,0,.15);color:#000;border:2px solid rgba(0,0,0,.2);font-size:15px;padding:14px 36px;border-radius:12px;font-weight:800;text-decoration:none">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.04.037.052a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+  <div style="max-width:900px;margin:0 auto;padding:100px 24px 70px;text-align:center;position:relative;z-index:1">
+    <h1 style="font-size:clamp(42px,7vw,80px);font-weight:900;line-height:1.02;letter-spacing:-3px;margin-bottom:24px;color:var(--text);animation:fadeInUp .6s .1s ease both">
+      Transforme ton<br>
+      <span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 200%;animation:gradient-shift 4s ease infinite">audience en cash</span>
+    </h1>
+    <p style="font-size:18px;color:var(--muted);max-width:520px;margin:0 auto 48px;line-height:1.8;animation:fadeInUp .6s .2s ease both">Rejoins notre réseau d'affiliation privé. Génère tes liens, suis tes conversions en temps réel et retire tes gains facilement.</p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;animation:fadeInUp .6s .3s ease both">
+      <button class="btn btn-grad" onclick="showAuthRegister()" style="font-size:15px;padding:15px 36px;border-radius:14px;box-shadow:0 8px 32px rgba(240,66,122,.4)">🚀 Rejoindre maintenant</button>
+      <a href="https://discord.gg/nwjUjQcHH7" target="_blank" style="display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;padding:15px 28px;border-radius:14px;border:1px solid #2a2a2a;transition:all .2s" onmouseover="this.style.borderColor='rgba(245,200,66,.3)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='var(--muted)'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.04.037.052a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
         Rejoindre le Discord
       </a>
     </div>
   </div>
+
+  <!-- Stats animated -->
+  <div style="max-width:760px;margin:0 auto 80px;padding:0 24px;position:relative;z-index:1">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.05);border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,.06)">
+      <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center">
+        <div class="land-stat-val" style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$25</div>
+        <div class="land-stat-label">Retrait minimum</div>
+      </div>
+      <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center;border-left:1px solid rgba(255,255,255,.05);border-right:1px solid rgba(255,255,255,.05)">
+        <div class="land-stat-val" style="color:var(--green)">5%</div>
+        <div class="land-stat-label">Commission parrainage</div>
+      </div>
+      <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center">
+        <div class="land-stat-val" style="color:var(--yellow)">7</div>
+        <div class="land-stat-label">Moyens de paiement</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <div style="max-width:900px;margin:0 auto 80px;padding:0 24px;position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:48px">
+      <div style="font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">Fonctionnalités</div>
+      <h2 style="font-size:clamp(24px,4vw,36px);font-weight:900;letter-spacing:-1px">Tout ce dont tu as besoin</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+      <div class="land-feat" style="--feat-color:rgba(245,200,66,.15)">
+        <div class="land-feat-icon">🔗</div>
+        <div class="land-feat-title">Liens trackés</div>
+        <div class="land-feat-desc">Chaque clic et conversion enregistrés automatiquement. Postback Adunlock intégré.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(0,214,143,.15)">
+        <div class="land-feat-icon">💰</div>
+        <div class="land-feat-title">Paiements flexibles</div>
+        <div class="land-feat-desc">BTC, Solana, Litecoin, Revolut, Virement, PayPal, Carte cadeau — dès $25.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(77,158,255,.15)">
+        <div class="land-feat-icon">📊</div>
+        <div class="land-feat-title">Stats en temps réel</div>
+        <div class="land-feat-desc">Clics, conversions, gains par offre — tableau de bord complet et intuitif.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(240,66,122,.15)">
+        <div class="land-feat-icon">👥</div>
+        <div class="land-feat-title">Parrainage 5%</div>
+        <div class="land-feat-desc">Invite tes amis et gagne 5% sur toutes leurs conversions approuvées.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(168,85,247,.15)">
+        <div class="land-feat-icon">🎨</div>
+        <div class="land-feat-title">Liens personnalisés</div>
+        <div class="land-feat-desc">Personnalise ta page avec ton branding — logo, photos, slogan sur mesure.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(88,101,242,.15)">
+        <div class="land-feat-icon">🎫</div>
+        <div class="land-feat-title">Support dédié</div>
+        <div class="land-feat-desc">Manager disponible sur Discord. Ticket support intégré pour toutes tes questions.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <div style="max-width:760px;margin:0 auto;padding:0 24px 100px;position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:48px">
+      <div style="font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">FAQ</div>
+      <h2 style="font-size:clamp(24px,4vw,36px);font-weight:900;letter-spacing:-1px">Questions fréquentes</h2>
+    </div>
+    <div id="faq-list">
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">C'est quoi AffiHub, concrètement ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">AffiHub est une agence d'affiliation. On te met en relation avec des casinos en ligne partenaires, des sites de dating, etc... Tu partages ton lien à ton audience, et tu touches une commission sur chaque joueur qui paye sur le site partenaire.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Il faut avoir une grosse audience pour commencer ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Non. Si tu as une communauté active — même petite — sur Twitch, YouTube, TikTok, Instagram, Discord ou un site, tu peux candidater. C'est la qualité de ton audience qui compte, pas seulement la taille.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Comment je suis payé ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Tes commissions s'accumulent en temps réel dans ton espace. Dès que tu as atteint un montant suffisant, tu demandes un retrait et tu es payé rapidement en crypto ou virement.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Est-ce que c'est gratuit ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Oui, 100 %. L'inscription et l'utilisation de la plateforme sont totalement gratuites. Tu ne paies rien, tu gagnes uniquement.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Je n'y connais rien en technique, c'est grave ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Non, tout est fait pour être simple. Tu partages un lien, et un manager t'accompagne dès le début pour tout t'expliquer.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- end landing -->
 </div>
+
 <div id="auth-screen">
   <div class="auth-box">
     <div style="text-align:center;margin-bottom:30px">
       <div class="logo-wrap"><div class="logo-icon" id="auth-logo-wrap"><img id="auth-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="auth-logo-emoji">🔗</span></div>AffiHub</div>
       <p style="color:var(--muted);font-size:13px;margin-top:7px">La plateforme d'affiliation privée</p>
     </div>
+    <button onclick="showLanding()" style="background:var(--bg3);border:1px solid #2a2a2a;color:#aaa;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;gap:6px;margin:0 auto 20px;padding:8px 16px;border-radius:10px;transition:all .2s" onmouseover="this.style.borderColor='rgba(245,200,66,.4)';this.style.color='var(--yellow)'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#aaa'">← Retour à l'accueil</button>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Connexion</button>
       <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Inscription</button>
@@ -1407,6 +1499,11 @@ if(TOKEN&&ME){startApp();}else{showLanding();}
 const urlParams=new URLSearchParams(window.location.search);const refCode=urlParams.get('ref');
 if(refCode){switchTab('register');setTimeout(()=>{const el=document.getElementById('r-ref');if(el){el.value=refCode;el.style.borderColor='var(--yellow)';}},100);}
 
+function toggleFaq(el){
+  const isOpen=el.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+  if(!isOpen)el.classList.add('open');
+}
 function showLanding(){
   const hasRef=new URLSearchParams(window.location.search).get('ref');
   if(hasRef){showAuthRegister();return;}
