@@ -222,7 +222,7 @@ app.get('/go/:linkId', async (req, res) => {
   if (!link || !link.active) return res.status(404).send('Lien invalide ou désactivé');
   await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', linkId);
   const separator = link.offers.url.includes('?') ? '&' : '?';
-  res.redirect(link.offers.url + separator + 'ref=' + linkId);
+  res.redirect(link.offers.url + separator + 'sub=' + linkId);
 });
 
 // ── POSTBACK CONVERSION ──
