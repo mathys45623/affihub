@@ -227,10 +227,21 @@ app.get('/go/:linkId', async (req, res) => {
 
 // ── POSTBACK CONVERSION ──
 app.get('/api/postback', async (req, res) => {
-  const { ref, amount } = req.query;
+  const { ref, amount, status } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
+  // Gérer le reversed (fraude/remboursement)
+  if (status === 'reversed') {
+    const { data: conv } = await supabase.from('conversions').select('*, users(balance)').eq('link_id', ref).eq('status', 'approved').order('created_at', { ascending: false }).limit(1).single();
+    if (conv) {
+      await supabase.from('conversions').update({ status: 'rejected' }).eq('id', conv.id);
+      const newBalance = Math.max(0, (conv.users?.balance || 0) - conv.amount);
+      await supabase.from('users').update({ balance: newBalance }).eq('id', conv.user_id);
+    }
+    return res.json({ success: true, action: 'reversed' });
+  }
   const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
+  // Commission depuis l'offre AffiHub
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
@@ -257,7 +268,7 @@ app.get('/api/postback', async (req, res) => {
   }
   // Notify Discord
   notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
-  res.json({ success: true, conversion_id: conv.id });
+  res.json({ success: true, conversion_id: conv.id, amount: convAmount });
 });
 
 app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
