@@ -360,7 +360,7 @@ function updateLogo(url){
   ['auth-logo-emoji','sb-logo-emoji'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
 }
 
-function startApp(){
+async function startApp(){
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('u-name').textContent=ME.name;
@@ -381,9 +381,36 @@ function startApp(){
     {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
   if(ME.role==='admin'){
+    // Refresh ME to get latest permissions
+    try{const fresh=await api('GET','/api/me');ME=fresh;localStorage.setItem('affihub_user',JSON.stringify(ME));}catch(e){}
     document.getElementById('role-badge').textContent='👑 Admin';
     document.getElementById('notif-bell-btn').style.display='none';
-    buildNav(adminNav);buildMobileNav(adminNav);goPage('admin-dash');
+    const isSuperAdmin=ME.is_super_admin===true;
+    let perms=null;
+    if(!isSuperAdmin&&ME.admin_permissions&&ME.admin_permissions!=='all'){
+      try{perms=JSON.parse(ME.admin_permissions);}catch(e){perms=null;}
+    }
+    const canSee=p=>!perms||perms.includes(p);
+    const filteredAdminNav=[
+      {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
+      {section:'GESTION',items:[
+        {icon:'👥',label:'Affiliés',page:'admin-aff'},
+        {icon:'🔁',label:'Conversions',page:'admin-conv'},
+        {icon:'💸',label:'Retraits',page:'admin-wd'},
+        {icon:'🤝',label:'Parrainages',page:'admin-ref'},
+        {icon:'🎫',label:'Tickets',page:'admin-tickets'},
+        {icon:'🎨',label:'Liens perso',page:'admin-custom'}
+      ].filter(i=>canSee(i.page))},
+      {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+      {section:'CONFIGURATION',items:[
+        {icon:'🎯',label:'Offres',page:'admin-offers'},
+        {icon:'🔗',label:'Liens',page:'admin-links'},
+        {icon:'⏳',label:'Liens temporaires',page:'admin-temp'},
+        {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
+        {icon:'⚙️',label:'Paramètres',page:'admin-settings'}
+      ].filter(i=>canSee(i.page))}
+    ];
+    buildNav(filteredAdminNav);buildMobileNav(filteredAdminNav);goPage('admin-dash');
     setTimeout(refreshNotifs,500);
   }else{
     document.getElementById('role-badge').textContent='⚡ Affilié';
@@ -752,8 +779,9 @@ async function renderPage(page){
   if(page==='admin-aff'){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px"><button class="btn btn-gst btn-sm" onclick="openNoteAff(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\',' +JSON.stringify(u.admin_note||'').replace(/'/g,"\\'")+')">📝</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
-    return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><div style="display:flex;gap:8px;align-items:center"><span class="badge bp2">'+users.length+' affilié(s)</span><button class="btn btn-gst btn-sm" onclick="exportCSV(\'affiliates\')">📥 CSV</button></div></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    const isSuperAdmin=ME.is_super_admin===true;
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' utilisateur(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
   if(page==='admin-conv'){
@@ -1307,6 +1335,40 @@ function openNoteAff(userId,userName,currentNote){
   document.getElementById('m-title').textContent='📝 Note — '+userName;
   document.getElementById('m-body').innerHTML='<div class="fi"><label>Note privée (visible uniquement par vous)</label><textarea id="note-txt" placeholder="Ex: VIP, à surveiller, bon affilié..." style="resize:vertical;min-height:100px">'+currentNote+'</textarea></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveNote(\''+userId+'\')" style="flex:1;justify-content:center">💾 Sauvegarder</button></div>';
   document.getElementById('mo').classList.add('open');
+}
+async function openPermissions(userId, userName){
+  const users=await api('GET','/api/users');
+  const u=users.find(x=>x.id===userId);
+  let currentPerms=[];
+  if(u?.admin_permissions&&u.admin_permissions!=='all'){
+    try{currentPerms=JSON.parse(u.admin_permissions);}catch(e){currentPerms=[];}
+  } else {
+    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
+  }
+  const pages=[
+    {page:'admin-dash',label:'📊 Dashboard'},
+    {page:'admin-aff',label:'👥 Affiliés'},
+    {page:'admin-conv',label:'🔁 Conversions'},
+    {page:'admin-wd',label:'💸 Retraits'},
+    {page:'admin-ref',label:'🤝 Parrainages'},
+    {page:'admin-tickets',label:'🎫 Tickets'},
+    {page:'admin-custom',label:'🎨 Liens personnalisés'},
+    {page:'aff-top',label:'🏆 TOP Affiliés'},
+    {page:'admin-offers',label:'🎯 Offres'},
+    {page:'admin-links',label:'🔗 Liens'},
+    {page:'admin-temp',label:'⏳ Liens temporaires'},
+    {page:'admin-logs',label:'📋 Logs d\'activité'},
+    {page:'admin-settings',label:'⚙️ Paramètres'},
+  ];
+  const checkboxes=pages.map(p=>'<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:10px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="perm-'+p.page+'" '+(currentPerms.includes(p.page)?'checked':'')+' style="width:16px;height:16px;accent-color:var(--yellow)"><span style="font-size:13px">'+p.label+'</span></label>').join('');
+  document.getElementById('m-title').textContent='🔐 Permissions — '+userName;
+  document.getElementById('m-body').innerHTML='<div style="max-height:60vh;overflow-y:auto;margin-bottom:16px">'+checkboxes+'</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="savePermissions(\''+userId+'\')" style="flex:1;justify-content:center">💾 Sauvegarder</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function savePermissions(userId){
+  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
+  const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
+  try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
 }
 async function saveNote(userId){
   const note=document.getElementById('note-txt').value.trim();
