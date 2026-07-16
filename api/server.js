@@ -414,6 +414,7 @@ app.post('/api/links', auth, async (req, res) => {
 app.patch('/api/links/:id', auth, adminOnly, async (req, res) => {
   const { active } = req.body;
   const { data } = await supabase.from('links').update({ active }).eq('id', req.params.id).select().single();
+  log(req.user.id, 'lien-'+(active?'activé':'désactivé'), 'Lien '+req.params.id+' '+(active?'activé':'désactivé')+' par admin', req);
   res.json(data);
 });
 app.delete('/api/links/:id', auth, async (req, res) => {
@@ -421,6 +422,7 @@ app.delete('/api/links/:id', auth, async (req, res) => {
   if (!link) return res.status(404).json({ error: 'Lien introuvable' });
   if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   await supabase.from('links').delete().eq('id', req.params.id);
+  log(req.user.id, 'lien-supprimé', 'Lien '+req.params.id+' supprimé', req);
   res.json({ success: true });
 });
 
