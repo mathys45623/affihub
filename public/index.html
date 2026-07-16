@@ -1564,6 +1564,7 @@ async function closeAnnouncement(id){
   closeMo();
 }
 function closeAnnouncementBanner(id,banner){
+  api('POST','/api/announcements/'+id+'/read').catch(()=>{});
   if(banner)banner.remove();
   const main=document.querySelector('.main');
   if(main)main.style.marginTop='';
