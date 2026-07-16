@@ -241,15 +241,12 @@ app.get('/api/postback', async (req, res) => {
   }
   const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
-  // Commission depuis l'offre AffiHub
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
-  // Créditer le solde
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', link.user_id).single();
   if (user) {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
-    // Commission parrainage
     if (user.referred_by) {
       const commission = parseFloat((convAmount * 0.05).toFixed(2));
       const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
@@ -258,7 +255,6 @@ app.get('/api/postback', async (req, res) => {
         await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
       }
     }
-    // Postback affilié
     if (user.postback_url) {
       try {
         const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
@@ -266,7 +262,6 @@ app.get('/api/postback', async (req, res) => {
       } catch(e) {}
     }
   }
-  // Notify Discord
   notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
   res.json({ success: true, conversion_id: conv.id, amount: convAmount });
 });
@@ -410,8 +405,14 @@ app.post('/api/links', auth, async (req, res) => {
   const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let id = ''; for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  // Shorten the link
   const fullUrl = (process.env.SITE_URL || 'https://affihub-tau.vercel.app') + '/go/' + id;
-  const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true }).select().single();
+  let shortUrl = null;
+  try {
+    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl));
+    if (r.ok) shortUrl = await r.text();
+  } catch(e) {}
+  const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true, short_url: shortUrl || null }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   log(req.user.id, 'lien-généré', 'Lien généré pour "'+( offer?.name||'offre #'+offer_id)+'" : '+id, req);
   res.json(data);
