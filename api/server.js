@@ -410,12 +410,12 @@ app.post('/api/links', auth, async (req, res) => {
   const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let id = ''; for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
-  // Shorten the link
+  // Shorten the link with is.gd (instant redirect, no interstitial page)
   const fullUrl = (process.env.SITE_URL || 'https://affihub-tau.vercel.app') + '/go/' + id;
   let shortUrl = null;
   try {
-    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl));
-    if (r.ok) shortUrl = await r.text();
+    const r = await fetch('https://is.gd/create.php?format=simple&url=' + encodeURIComponent(fullUrl));
+    if (r.ok) shortUrl = (await r.text()).trim();
   } catch(e) {}
   const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true, short_url: shortUrl || null }).select().single();
   if (error) return res.status(500).json({ error: error.message });
