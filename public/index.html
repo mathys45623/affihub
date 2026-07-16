@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
@@ -408,6 +408,23 @@ const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI
 const LOGO_URL=SURL+'/storage/v1/object/public/settings/logo.png';
 var TOKEN=localStorage.getItem('affihub_token');
 var ME=JSON.parse(localStorage.getItem('affihub_user')||'null');
+const SESSION_DURATION = 60 * 60 * 1000; // 1 heure
+
+function refreshSession(){
+  localStorage.setItem('affihub_session_start', Date.now().toString());
+}
+function checkSession(){
+  if(!TOKEN||!ME)return;
+  const start=parseInt(localStorage.getItem('affihub_session_start')||'0');
+  if(start && Date.now()-start > SESSION_DURATION){
+    logout();
+    toast('Session expirée — reconnecte-toi','i');
+  }
+}
+// Check session every minute
+setInterval(checkSession, 60*1000);
+// Reset timer on user activity
+['click','keydown','scroll','touchstart'].forEach(e=>document.addEventListener(e,refreshSession,{passive:true}));
 var selCrypto=null;var curPage='';var refreshTimer=null;
 
 async function api(method,path,body){
@@ -427,7 +444,7 @@ function switchTab(t){
 
 async function doLogin(){
   try{const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
-  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));startApp();}
+  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));refreshSession();startApp();}
   catch(e){toast(e.message,'e');}
 }
 
@@ -437,6 +454,7 @@ async function doRegister(){
     TOKEN=r.token;ME=r.user;
     localStorage.setItem('affihub_token',TOKEN);
     localStorage.setItem('affihub_user',JSON.stringify(ME));
+    refreshSession();
     startApp();
     if(r.welcome_message){
       setTimeout(()=>{
@@ -533,7 +551,7 @@ async function startApp(){
   }
 }
 
-function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
+function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');localStorage.removeItem('affihub_session_start');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
 
 function buildNav(sections){
   var nav=document.getElementById('sb-nav');nav.innerHTML='';
