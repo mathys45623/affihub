@@ -300,6 +300,7 @@ app.delete('/api/conversions/:id', auth, adminOnly, async (req, res) => {
     if (user) await supabase.from('users').update({ balance: Math.max(0, user.balance - conv.amount) }).eq('id', conv.user_id);
   }
   await supabase.from('conversions').delete().eq('id', req.params.id);
+  log(req.user.id, 'conversion-supprimée', 'Conversion #'+req.params.id+' supprimée ($'+conv.amount+')', req);
   res.json({ success: true });
 });
 
