@@ -819,6 +819,7 @@ app.post('/api/announcements', auth, adminOnly, async (req, res) => {
   if (!title || !message) return res.status(400).json({ error: 'Titre et message requis' });
   const { data, error } = await supabase.from('announcements').insert({ title, message, type: type || 'global', target_user_id: target_user_id || null, created_by: req.user.id }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'annonce-créée', 'Annonce "'+title+'" ('+(type||'global')+') créée', req);
   res.json(data);
 });
 app.post('/api/announcements/:id/read', auth, async (req, res) => {
@@ -826,8 +827,10 @@ app.post('/api/announcements/:id/read', auth, async (req, res) => {
   res.json({ success: true });
 });
 app.delete('/api/announcements/:id', auth, adminOnly, async (req, res) => {
+  const { data: ann } = await supabase.from('announcements').select('title').eq('id', req.params.id).single();
   await supabase.from('announcements_read').delete().eq('announcement_id', req.params.id);
   await supabase.from('announcements').delete().eq('id', req.params.id);
+  log(req.user.id, 'annonce-supprimée', 'Annonce "'+(ann?.title||'#'+req.params.id)+'" supprimée', req);
   res.json({ success: true });
 });
 
