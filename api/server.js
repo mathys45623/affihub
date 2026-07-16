@@ -222,31 +222,23 @@ app.get('/go/:linkId', async (req, res) => {
   if (!link || !link.active) return res.status(404).send('Lien invalide ou désactivé');
   await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', linkId);
   const separator = link.offers.url.includes('?') ? '&' : '?';
-  res.redirect(link.offers.url + separator + 'sub=' + linkId);
+  res.redirect(link.offers.url + separator + 'ref=' + linkId);
 });
 
 // ── POSTBACK CONVERSION ──
 app.get('/api/postback', async (req, res) => {
-  const { ref, amount, status } = req.query;
+  const { ref, amount } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
-  // Gérer le reversed (fraude/remboursement)
-  if (status === 'reversed') {
-    const { data: conv } = await supabase.from('conversions').select('*, users(balance)').eq('link_id', ref).eq('status', 'approved').order('created_at', { ascending: false }).limit(1).single();
-    if (conv) {
-      await supabase.from('conversions').update({ status: 'rejected' }).eq('id', conv.id);
-      const newBalance = Math.max(0, (conv.users?.balance || 0) - conv.amount);
-      await supabase.from('users').update({ balance: newBalance }).eq('id', conv.user_id);
-    }
-    return res.json({ success: true, action: 'reversed' });
-  }
   const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
+  // Créditer le solde
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', link.user_id).single();
   if (user) {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
+    // Commission parrainage
     if (user.referred_by) {
       const commission = parseFloat((convAmount * 0.05).toFixed(2));
       const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
@@ -255,6 +247,7 @@ app.get('/api/postback', async (req, res) => {
         await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
       }
     }
+    // Postback affilié
     if (user.postback_url) {
       try {
         const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
@@ -262,8 +255,9 @@ app.get('/api/postback', async (req, res) => {
       } catch(e) {}
     }
   }
+  // Notify Discord
   notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
-  res.json({ success: true, conversion_id: conv.id, amount: convAmount });
+  res.json({ success: true, conversion_id: conv.id });
 });
 
 app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
@@ -300,7 +294,6 @@ app.delete('/api/conversions/:id', auth, adminOnly, async (req, res) => {
     if (user) await supabase.from('users').update({ balance: Math.max(0, user.balance - conv.amount) }).eq('id', conv.user_id);
   }
   await supabase.from('conversions').delete().eq('id', req.params.id);
-  log(req.user.id, 'conversion-supprimée', 'Conversion #'+req.params.id+' supprimée ($'+conv.amount+')', req);
   res.json({ success: true });
 });
 
@@ -805,6 +798,36 @@ app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
   const valid = ['casino', 'dating', 'ia', 'autre', 'influenceuse'];
   if (!valid.includes(category)) return res.status(400).json({ error: 'Catégorie invalide' });
   await supabase.from('settings').upsert({ key: 'cat_' + category + '_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  res.json({ success: true });
+});
+
+// ── ANNOUNCEMENTS ──
+app.get('/api/announcements', auth, async (req, res) => {
+  if (req.user.role === 'admin') {
+    const { data } = await supabase.from('announcements').select('*, users!created_by(name)').order('created_at', { ascending: false });
+    return res.json(data || []);
+  }
+  // For affiliates: get unread announcements (global + targeted)
+  const { data: read } = await supabase.from('announcements_read').select('announcement_id').eq('user_id', req.user.id);
+  const readIds = (read || []).map(r => r.announcement_id);
+  const { data: announcements } = await supabase.from('announcements').select('*').or('type.eq.global,target_user_id.eq.'+req.user.id).order('created_at', { ascending: false });
+  const unread = (announcements || []).filter(a => !readIds.includes(a.id));
+  res.json(unread);
+});
+app.post('/api/announcements', auth, adminOnly, async (req, res) => {
+  const { title, message, type, target_user_id } = req.body;
+  if (!title || !message) return res.status(400).json({ error: 'Titre et message requis' });
+  const { data, error } = await supabase.from('announcements').insert({ title, message, type: type || 'global', target_user_id: target_user_id || null, created_by: req.user.id }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+app.post('/api/announcements/:id/read', auth, async (req, res) => {
+  await supabase.from('announcements_read').upsert({ announcement_id: parseInt(req.params.id), user_id: req.user.id }, { onConflict: 'announcement_id,user_id' });
+  res.json({ success: true });
+});
+app.delete('/api/announcements/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('announcements_read').delete().eq('announcement_id', req.params.id);
+  await supabase.from('announcements').delete().eq('id', req.params.id);
   res.json({ success: true });
 });
 
