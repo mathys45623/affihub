@@ -514,12 +514,12 @@ async function startApp(){
         {icon:'💸',label:'Retraits',page:'admin-wd'},
         {icon:'🤝',label:'Parrainages',page:'admin-ref'},
         {icon:'🎫',label:'Tickets',page:'admin-tickets'},
-        {icon:'🎨',label:'Liens perso',page:'admin-custom'}
       ].filter(i=>canSee(i.page))},
       {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
       {section:'CONFIGURATION',items:[
         {icon:'🎯',label:'Offres',page:'admin-offers'},
         {icon:'🔗',label:'Liens',page:'admin-links'},
+        {icon:'🎨',label:'Liens perso',page:'admin-custom'},
         {icon:'⏳',label:'Liens temporaires',page:'admin-temp'},
         {icon:'📢',label:'Annonces',page:'admin-announcements'},
         {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
@@ -544,7 +544,6 @@ async function startApp(){
       buildNav(nav);buildMobileNav(nav);
       goPage('aff-dash');
       setTimeout(refreshNotifs,500);
-      setTimeout(checkAnnouncements,1500);
     }).catch(()=>{
       buildNav(affNav);buildMobileNav(affNav);
       goPage('aff-dash');
@@ -631,7 +630,7 @@ const TITLES={
   'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions',
   'aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager',
   'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres',
-  'admin-announcements':'📢 Annonces','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
+  'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés',
   'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
 };
@@ -1103,17 +1102,6 @@ async function renderPage(page){
     return html;
   }
 
-  if(page==='admin-announcements'){
-    const [announcements, users] = await Promise.all([api('GET','/api/announcements'), api('GET','/api/users')]);
-    const userOpts = users.filter(u=>u.role==='affiliate').map(u=>'<option value="'+u.id+'">'+u.name+'</option>').join('');
-    const rows = announcements.map(a=>'<tr><td><b>'+a.title+'</b></td><td style="color:var(--muted);font-size:12px">'+a.message.substring(0,60)+(a.message.length>60?'...':'')+'</td><td>'+(a.type==='global'?'<span class="badge bb2">🌍 Globale</span>':'<span class="badge bp2">🎯 Ciblée</span>')+'</td><td style="color:var(--muted)">'+fmt(a.created_at)+'</td><td><button class="btn btn-red btn-sm" onclick="deleteAnnouncement('+a.id+')">🗑</button></td></tr>').join('');
-    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">📢 Annonces</div><button class="btn btn-grad btn-sm" onclick="openCreateAnnouncement()">+ Nouvelle annonce</button></div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">'
-    +'<div class="card" style="margin-bottom:0;border-color:rgba(77,158,255,.2)"><div style="font-size:28px;margin-bottom:8px">🌍</div><div style="font-weight:800;margin-bottom:4px">Annonce globale</div><div style="font-size:12px;color:var(--muted);line-height:1.6">Bannière en haut du dashboard pour tous les affiliés. Ils peuvent la fermer.</div></div>'
-    +'<div class="card" style="margin-bottom:0;border-color:rgba(240,66,122,.2)"><div style="font-size:28px;margin-bottom:8px">🎯</div><div style="font-weight:800;margin-bottom:4px">Annonce ciblée</div><div style="font-size:12px;color:var(--muted);line-height:1.6">Popup au milieu de l\'écran pour un affilié spécifique. Se ferme définitivement avec la croix.</div></div>'
-    +'</div>'
-    +'<div class="card">'+(announcements.length===0?'<div class="empty"><div class="empty-icon">📢</div><p>Aucune annonce</p></div>':'<div class="tw"><table><thead><tr><th>📌 Titre</th><th>💬 Message</th><th>📍 Type</th><th>📅 Date</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
-  }
   if(page==='admin-logs'){
     const logs=await api('GET','/api/logs');
     if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
@@ -1497,77 +1485,6 @@ async function savePermissions(userId){
   const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
   const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
   try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
-}
-// ── ANNOUNCEMENTS ──
-function openCreateAnnouncement(){
-  api('GET','/api/users').then(users=>{
-    const userOpts=users.filter(u=>u.role==='affiliate').map(u=>'<option value="'+u.id+'">'+u.name+'</option>').join('');
-    document.getElementById('m-title').textContent='📢 Nouvelle annonce';
-    document.getElementById('m-body').innerHTML='<div class="fi"><label>Type</label><select id="ann-type" onchange="toggleAnnTarget(this.value)"><option value="global">🌍 Globale (bannière pour tous)</option><option value="targeted">🎯 Ciblée (popup pour un affilié)</option></select></div><div class="fi" id="ann-target-field" style="display:none"><label>Affilié ciblé</label><select id="ann-target"><option value="">-- Choisir --</option>'+userOpts+'</select></div><div class="fi"><label>Titre</label><input type="text" id="ann-title" placeholder="Ex: Maintenance prévue, Nouvelle offre..."></div><div class="fi"><label>Message</label><textarea id="ann-msg" placeholder="Votre message..." style="resize:vertical;min-height:100px"></textarea></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="submitAnnouncement()" style="flex:1;justify-content:center">📢 Envoyer</button></div>';
-    document.getElementById('mo').classList.add('open');
-  }).catch(e=>toast(e.message,'e'));
-}
-function toggleAnnTarget(type){
-  const f=document.getElementById('ann-target-field');
-  if(f)f.style.display=type==='targeted'?'block':'none';
-}
-async function submitAnnouncement(){
-  const type=document.getElementById('ann-type').value;
-  const title=document.getElementById('ann-title').value.trim();
-  const message=document.getElementById('ann-msg').value.trim();
-  const target=type==='targeted'?document.getElementById('ann-target').value:'';
-  if(!title){toast('Titre requis','e');return;}
-  if(!message){toast('Message requis','e');return;}
-  if(type==='targeted'&&!target){toast('Choisissez un affilié','e');return;}
-  try{
-    await api('POST','/api/announcements',{title,message,type,target_user_id:target||null});
-    closeMo();toast('Annonce envoyée ✓','s');goPage('admin-announcements');
-  }catch(e){toast(e.message,'e');}
-}
-async function deleteAnnouncement(id){
-  try{await api('DELETE','/api/announcements/'+id);toast('Supprimée','s');goPage('admin-announcements');}catch(e){toast(e.message,'e');}
-}
-async function checkAnnouncements(){
-  if(!ME||ME.role==='admin')return;
-  try{
-    const announcements=await api('GET','/api/announcements');
-    if(announcements.length===0)return;
-    // Show targeted popup first
-    const targeted=announcements.find(a=>a.type==='targeted');
-    const globals=announcements.filter(a=>a.type==='global');
-    if(targeted){showAnnouncementPopup(targeted);}
-    else if(globals.length>0){showAnnouncementBanner(globals);}
-  }catch(e){}
-}
-function showAnnouncementPopup(ann){
-  document.getElementById('m-title').textContent='📢 '+ann.title;
-  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 24px"><div style="font-size:48px;margin-bottom:16px">📣</div><div style="font-size:14px;color:var(--muted);line-height:1.8;white-space:pre-wrap">'+ann.message+'</div><button class="btn btn-grad" onclick="closeAnnouncement('+ann.id+')" style="margin-top:24px;width:100%;justify-content:center">✅ J\'ai lu</button></div>';
-  document.getElementById('mo').classList.add('open');
-  // Mark as read when modal opens
-  api('POST','/api/announcements/'+ann.id+'/read').catch(()=>{});
-}
-function showAnnouncementBanner(globals){
-  const existing=document.getElementById('ann-banner');
-  if(existing)existing.remove();
-  const ann=globals[0];
-  const banner=document.createElement('div');
-  banner.id='ann-banner';
-  banner.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(135deg,#1a1400,#0d0d0d);border-bottom:1px solid rgba(245,200,66,.3);padding:12px 20px;display:flex;align-items:center;gap:12px;animation:fadeInUp .3s ease';
-  banner.innerHTML='<span style="font-size:18px;flex-shrink:0">📢</span><div style="flex:1"><div style="font-size:13px;font-weight:700;color:var(--yellow)">'+ann.title+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+ann.message+'</div></div><button onclick="closeAnnouncementBanner('+ann.id+',this.parentElement)" style="background:none;border:1px solid #333;border-radius:8px;color:var(--muted);cursor:pointer;padding:6px 12px;font-family:inherit;font-size:12px;flex-shrink:0">✕ Fermer</button>';
-  document.body.appendChild(banner);
-  // Push content down
-  const main=document.querySelector('.main');
-  if(main)main.style.marginTop='64px';
-  api('POST','/api/announcements/'+ann.id+'/read').catch(()=>{});
-}
-async function closeAnnouncement(id){
-  closeMo();
-}
-function closeAnnouncementBanner(id,banner){
-  api('POST','/api/announcements/'+id+'/read').catch(()=>{});
-  if(banner)banner.remove();
-  const main=document.querySelector('.main');
-  if(main)main.style.marginTop='';
 }
 async function saveNote(userId){
   const note=document.getElementById('note-txt').value.trim();
