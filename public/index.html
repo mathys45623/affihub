@@ -244,7 +244,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
         <div class="land-stat-label">Retrait minimum</div>
       </div>
       <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center;border-left:1px solid rgba(255,255,255,.05);border-right:1px solid rgba(255,255,255,.05)">
-        <div class="land-stat-val" style="color:var(--green)">5%</div>
+        <div class="land-stat-val" style="color:var(--green)">10%</div>
         <div class="land-stat-label">Commission parrainage</div>
       </div>
       <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center">
@@ -278,8 +278,8 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
       </div>
       <div class="land-feat" style="--feat-color:rgba(240,66,122,.15)">
         <div class="land-feat-icon">👥</div>
-        <div class="land-feat-title">Parrainage 5%</div>
-        <div class="land-feat-desc">Invite tes amis et gagne 5% sur toutes leurs conversions approuvées.</div>
+        <div class="land-feat-title">Parrainage 10%</div>
+        <div class="land-feat-desc">Invite tes amis et gagne 10% sur toutes leurs conversions approuvées.</div>
       </div>
       <div class="land-feat" style="--feat-color:rgba(168,85,247,.15)">
         <div class="land-feat-icon">🎨</div>
@@ -514,14 +514,13 @@ async function startApp(){
         {icon:'💸',label:'Retraits',page:'admin-wd'},
         {icon:'🤝',label:'Parrainages',page:'admin-ref'},
         {icon:'🎫',label:'Tickets',page:'admin-tickets'},
+        {icon:'🎨',label:'Liens perso',page:'admin-custom'}
       ].filter(i=>canSee(i.page))},
       {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
       {section:'CONFIGURATION',items:[
         {icon:'🎯',label:'Offres',page:'admin-offers'},
         {icon:'🔗',label:'Liens',page:'admin-links'},
-        {icon:'🎨',label:'Liens perso',page:'admin-custom'},
         {icon:'⏳',label:'Liens temporaires',page:'admin-temp'},
-        {icon:'📢',label:'Annonces',page:'admin-announcements'},
         {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
         {icon:'⚙️',label:'Paramètres',page:'admin-settings'}
       ].filter(i=>canSee(i.page))}
@@ -809,8 +808,8 @@ async function renderPage(page){
     const refLink=origin+'/?ref='+(ME.referral_code||'');
     const fRows=ref.filleules.map(f=>{const earned=ref.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);return '<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+f.name[0]+'</div><b>'+f.name+'</b></div></td><td style="color:var(--muted)">'+fmt(f.created_at)+'</td><td style="color:var(--green)">$'+earned.toFixed(2)+'</td></tr>';}).join('');
     const cRows=ref.commissions.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td><b>'+(c.users?.name||'?')+'</b></td><td style="color:var(--yellow)">$'+(c.conversions?.amount||0)+'</td><td style="color:var(--green)">$'+c.amount.toFixed(2)+'</td></tr>').join('');
-    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Gagnez <strong>5%</strong> sur chaque vente</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">Total gagné</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div>'
-    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux</div><div class="stat-val gy">5%</div></div></div>'
+    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Gagnez <strong>10%</strong> sur chaque vente</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">Total gagné</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div>'
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux</div><div class="stat-val gy">10%</div></div></div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">👥 Mes filleuls</div>'+(ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Gains générés</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">💸 Commissions</div>'+(ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
   }
