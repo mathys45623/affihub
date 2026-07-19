@@ -244,7 +244,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
         <div class="land-stat-label">Retrait minimum</div>
       </div>
       <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center;border-left:1px solid rgba(255,255,255,.05);border-right:1px solid rgba(255,255,255,.05)">
-        <div class="land-stat-val" style="color:var(--green)">10%</div>
+        <div class="land-stat-val" style="color:var(--green)">5%</div>
         <div class="land-stat-label">Commission parrainage</div>
       </div>
       <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center">
@@ -278,8 +278,8 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
       </div>
       <div class="land-feat" style="--feat-color:rgba(240,66,122,.15)">
         <div class="land-feat-icon">👥</div>
-        <div class="land-feat-title">Parrainage 10%</div>
-        <div class="land-feat-desc">Invite tes amis et gagne 10% sur toutes leurs conversions approuvées.</div>
+        <div class="land-feat-title">Parrainage 5%</div>
+        <div class="land-feat-desc">Invite tes amis et gagne 5% sur toutes leurs conversions approuvées.</div>
       </div>
       <div class="land-feat" style="--feat-color:rgba(168,85,247,.15)">
         <div class="land-feat-icon">🎨</div>
@@ -808,8 +808,8 @@ async function renderPage(page){
     const refLink=origin+'/?ref='+(ME.referral_code||'');
     const fRows=ref.filleules.map(f=>{const earned=ref.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);return '<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+f.name[0]+'</div><b>'+f.name+'</b></div></td><td style="color:var(--muted)">'+fmt(f.created_at)+'</td><td style="color:var(--green)">$'+earned.toFixed(2)+'</td></tr>';}).join('');
     const cRows=ref.commissions.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td><b>'+(c.users?.name||'?')+'</b></td><td style="color:var(--yellow)">$'+(c.conversions?.amount||0)+'</td><td style="color:var(--green)">$'+c.amount.toFixed(2)+'</td></tr>').join('');
-    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Gagnez <strong>10%</strong> sur chaque vente</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">Total gagné</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div>'
-    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux</div><div class="stat-val gy">10%</div></div></div>'
+    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Gagnez <strong>5%</strong> sur chaque vente</div></div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">Total gagné</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div>'
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux</div><div class="stat-val gy">5%</div></div></div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">👥 Mes filleuls</div>'+(ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Gains générés</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">💸 Commissions</div>'+(ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
   }
@@ -992,7 +992,7 @@ async function renderPage(page){
       html+='<div id="adm-cat-'+cat.key+'" style="display:none;padding-top:10px">';
       catOffers.forEach(o=>{
         const n=o.name.replace(/'/g,"\\'");const d=(o.description||'').replace(/'/g,"\\'");const u=o.url.replace(/'/g,"\\'");const img=(o.image_url||'').replace(/'/g,"\\'");
-        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class="btn '+(o.active?'btn-red':'btn-grn')+' btn-sm" onclick="toggleOffer('+o.id+','+(o.active?'false':'true')+')">'+(o.active?'🚫':'✅')+'</button><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
+        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class=\"btn btn-gst btn-sm\" onclick=\"openOfferVisibility(\'+o.id+\',\\\'\'+n+\'\\\')\">👁</button><button class="btn '+(o.active?'btn-red':'btn-grn')+' btn-sm" onclick="toggleOffer('+o.id+','+(o.active?'false':'true')+')">'+(o.active?'🚫':'✅')+'</button><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
       });
       html+='</div></div>';
     });
@@ -1398,6 +1398,55 @@ async function submitCustomRequest(offerId){
 }
 async function sendCustomLink(id){const link=document.getElementById('clink-'+id)?.value.trim();if(!link){toast('Entre le lien','e');return;}try{await api('PATCH','/api/custom-requests/'+id+'/link',{custom_link:link});toast('Lien envoyé ✓','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
 async function deleteCustomReq(id){try{await api('DELETE','/api/custom-requests/'+id);toast('Supprimé','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
+
+
+// ── OFFER VISIBILITY ──
+async function openOfferVisibility(offerId, offerName) {
+  const [users, visIds] = await Promise.all([
+    api('GET', '/api/users'),
+    api('GET', '/api/offers/' + offerId + '/visibility')
+  ]);
+  const affiliates = users.filter(u => u.role !== 'admin');
+  const allSelected = affiliates.every(u => visIds.includes(u.id));
+  const noneSelected = visIds.length === 0;
+  document.getElementById('m-title').textContent = '👁 Visibilité — ' + offerName;
+  const checkboxes = affiliates.map(u =>
+    '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:10px;cursor:pointer;margin-bottom:6px">'
+    + '<input type="checkbox" class="vis-cb" data-uid="' + u.id + '" ' + (noneSelected || visIds.includes(u.id) ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--yellow)">'
+    + '<div style="flex:1"><div style="font-size:13px;font-weight:700">' + u.name + '</div><div style="font-size:11px;color:var(--muted)">' + u.email + '</div></div>'
+    + '</label>'
+  ).join('');
+  document.getElementById('m-body').innerHTML =
+    '<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">'
+    + '<div style="font-size:12px;color:var(--muted);flex:1">Par défaut (aucune sélection) = visible par <b style="color:var(--text)">tous</b>. Sélectionner des affiliés = visible <b style="color:var(--yellow)">uniquement par eux</b>.</div>'
+    + '</div>'
+    + '<div style="display:flex;gap:8px;margin-bottom:12px">'
+    + '<button class="btn btn-grad btn-sm" onclick="selectAllVis(true)">✅ Tout sélectionner</button>'
+    + '<button class="btn btn-gst btn-sm" onclick="selectAllVis(false)">❌ Tout désélectionner</button>'
+    + '</div>'
+    + '<div style="max-height:52vh;overflow-y:auto;margin-bottom:16px">' + (affiliates.length === 0 ? '<div class="empty"><p>Aucun affilié</p></div>' : checkboxes) + '</div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>'
+    + '<button class="btn btn-grad" onclick="saveOfferVisibility(' + offerId + ')" style="flex:1;justify-content:center">💾 Sauvegarder</button>'
+    + '</div>';
+  document.getElementById('mo').classList.add('open');
+}
+function selectAllVis(check) {
+  document.querySelectorAll('.vis-cb').forEach(cb => cb.checked = check);
+}
+async function saveOfferVisibility(offerId) {
+  const all = [...document.querySelectorAll('.vis-cb')];
+  const allChecked = all.every(cb => cb.checked);
+  // If all selected OR none selected → empty array (visible to all)
+  const noneChecked = all.every(cb => !cb.checked);
+  const user_ids = (allChecked || noneChecked) ? [] : all.filter(cb => cb.checked).map(cb => cb.dataset.uid);
+  try {
+    await api('PUT', '/api/offers/' + offerId + '/visibility', { user_ids });
+    closeMo();
+    const msg = user_ids.length === 0 ? 'Visible par tous ✅' : 'Visible par ' + user_ids.length + ' affilié(s) ✅';
+    toast(msg, 's');
+  } catch(e) { toast(e.message, 'e'); }
+}
 
 // ── UTILS ──
 function closeMo(){document.getElementById('mo').classList.remove('open');}
