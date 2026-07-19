@@ -992,7 +992,7 @@ async function renderPage(page){
       html+='<div id="adm-cat-'+cat.key+'" style="display:none;padding-top:10px">';
       catOffers.forEach(o=>{
         const n=o.name.replace(/'/g,"\\'");const d=(o.description||'').replace(/'/g,"\\'");const u=o.url.replace(/'/g,"\\'");const img=(o.image_url||'').replace(/'/g,"\\'");
-        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class=\"btn btn-gst btn-sm\" onclick=\"openOfferVisibility(\'+o.id+\',\\\'\'+n+\'\\\')\">👁</button><button class="btn '+(o.active?'btn-red':'btn-grn')+' btn-sm" onclick="toggleOffer('+o.id+','+(o.active?'false':'true')+')">'+(o.active?'🚫':'✅')+'</button><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
+        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openOfferVisibility(\'+o.id+\',\'+n+\')">👁</button><button class="btn '+(o.active?'btn-red':'btn-grn')+' btn-sm" onclick="toggleOffer('+o.id+','+(o.active?'false':'true')+')">'+(o.active?'🚫':'✅')+'</button><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
       });
       html+='</div></div>';
     });
@@ -1407,9 +1407,8 @@ async function openOfferVisibility(offerId, offerName) {
     api('GET', '/api/offers/' + offerId + '/visibility')
   ]);
   const affiliates = users.filter(u => u.role !== 'admin');
-  const allSelected = affiliates.every(u => visIds.includes(u.id));
   const noneSelected = visIds.length === 0;
-  document.getElementById('m-title').textContent = '👁 Visibilité — ' + offerName;
+  document.getElementById('m-title').textContent = '\U0001f441 Visibilit\u00e9 \u2014 ' + offerName;
   const checkboxes = affiliates.map(u =>
     '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:10px;cursor:pointer;margin-bottom:6px">'
     + '<input type="checkbox" class="vis-cb" data-uid="' + u.id + '" ' + (noneSelected || visIds.includes(u.id) ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--yellow)">'
@@ -1417,9 +1416,7 @@ async function openOfferVisibility(offerId, offerName) {
     + '</label>'
   ).join('');
   document.getElementById('m-body').innerHTML =
-    '<div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">'
-    + '<div style="font-size:12px;color:var(--muted);flex:1">Par défaut (aucune sélection) = visible par <b style="color:var(--text)">tous</b>. Sélectionner des affiliés = visible <b style="color:var(--yellow)">uniquement par eux</b>.</div>'
-    + '</div>'
+    '<div style="margin-bottom:12px;font-size:12px;color:var(--muted)">Aucune s\u00e9lection = visible par <b style="color:var(--text)">tous</b>. S\u00e9lection = visible <b style="color:var(--yellow)">uniquement par eux</b>.</div>'
     + '<div style="display:flex;gap:8px;margin-bottom:12px">'
     + '<button class="btn btn-grad btn-sm" onclick="selectAllVis(true)">✅ Tout sélectionner</button>'
     + '<button class="btn btn-gst btn-sm" onclick="selectAllVis(false)">❌ Tout désélectionner</button>'
@@ -1436,8 +1433,7 @@ function selectAllVis(check) {
 }
 async function saveOfferVisibility(offerId) {
   const all = [...document.querySelectorAll('.vis-cb')];
-  const allChecked = all.every(cb => cb.checked);
-  // If all selected OR none selected → empty array (visible to all)
+  const allChecked = all.length > 0 && all.every(cb => cb.checked);
   const noneChecked = all.every(cb => !cb.checked);
   const user_ids = (allChecked || noneChecked) ? [] : all.filter(cb => cb.checked).map(cb => cb.dataset.uid);
   try {
