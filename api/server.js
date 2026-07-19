@@ -18,6 +18,9 @@ const DISCORD_WITHDRAWAL = 'https://discord.com/api/webhooks/1526535135003148411
 const DISCORD_PAYMENT = 'https://discord.com/api/webhooks/1526535272437780600/RLIxROgmO64UPycLUJgbDN31kCuDIt7VpJmTgSSouYHolByFqZNeAB59k7ZjOm0u2qHa';
 const DISCORD_TICKET = 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
 const DISCORD_REFERRAL = 'https://discord.com/api/webhooks/1526536467168493658/SJ-Et9ONIpTC_YmCd7Ow_VZbOrO5FIGHB8MNaV9FcxolheQFmtf2pdou4za8UA8r73OD';
+// ⚠️ À REMPLACER : colle ici les URL des webhooks Discord des salons "lien temporaire" et "lien personnalisé"
+const DISCORD_TEMP_LINK = 'https://discord.com/api/webhooks/REPLACE_ME_TEMP_LINK_WEBHOOK';
+const DISCORD_CUSTOM_LINK = 'https://discord.com/api/webhooks/REPLACE_ME_CUSTOM_LINK_WEBHOOK';
 
 async function notifyDiscord(affiliateName, offerName, amount) {
   try {
@@ -65,7 +68,7 @@ async function sendEmail(to, subject, html) {
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: 'AffiHub <onboarding@resend.dev>', to, subject, html })
+      body: JSON.stringify({ from: process.env.EMAIL_FROM || 'AffiHub <onboarding@resend.dev>', to, subject, html })
     });
     if (!res.ok) console.error('Email error:', await res.text());
   } catch(e) { console.error('Email error:', e.message); }
@@ -704,10 +707,18 @@ app.post('/api/custom-requests', auth, async (req, res) => {
   if (existing) {
     const { data, error } = await supabase.from('custom_link_requests').update({ server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text, status: 'pending', updated_at: new Date() }).eq('id', existing.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    notifyDiscord2(DISCORD_CUSTOM_LINK, '🎨 Demande de lien personnalisé (mise à jour) !', 0xa855f7, [
+      { name: '👤 Affilié', value: req.user.name, inline: true },
+      { name: '🖥️ Serveur', value: server_name || '—', inline: true }
+    ], '<@1504481208266915861>');
     return res.json(data);
   }
   const { data, error } = await supabase.from('custom_link_requests').insert({ user_id: req.user.id, offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  notifyDiscord2(DISCORD_CUSTOM_LINK, '🎨 Nouvelle demande de lien personnalisé !', 0xa855f7, [
+    { name: '👤 Affilié', value: req.user.name, inline: true },
+    { name: '🖥️ Serveur', value: server_name || '—', inline: true }
+  ], '<@1504481208266915861>');
   res.json(data);
 });
 
@@ -737,6 +748,11 @@ app.post('/api/temp-links', auth, async (req, res) => {
   if (existing) return res.status(400).json({ error: 'Demande déjà existante pour cette offre' });
   const { data, error } = await supabase.from('temp_links').insert({ user_id: req.user.id, offer_id }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
+  notifyDiscord2(DISCORD_TEMP_LINK, '⏳ Nouvelle demande de lien temporaire !', 0x4D9EFF, [
+    { name: '👤 Affilié', value: req.user.name, inline: true },
+    { name: '🎯 Offre', value: offer?.name || '?', inline: true }
+  ], '<@1504481208266915861>');
   res.json(data);
 });
 
