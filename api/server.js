@@ -41,12 +41,13 @@ async function notifyDiscord(affiliateName, offerName, amount) {
   } catch(e) { console.error('Discord webhook error:', e.message); }
 }
 
-async function notifyDiscord2(webhook, title, color, fields) {
+async function notifyDiscord2(webhook, title, color, fields, content) {
   try {
     await fetch(webhook, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        content: content || undefined,
         embeds: [{
           title,
           color,
@@ -124,7 +125,7 @@ app.post('/api/register', async (req, res) => {
       notifyDiscord2(DISCORD_REFERRAL, '🤝 Nouveau parrainage !', 0xa855f7, [
         { name: '👤 Parrain', value: referrer.name, inline: true },
         { name: '🆕 Filleul', value: name, inline: true },
-        { name: '💰 Commission', value: '5% sur chaque vente', inline: true }
+        { name: '💰 Commission', value: '10% sur chaque vente', inline: true }
       ]);
     }
   }
@@ -146,7 +147,7 @@ app.post('/api/register', async (req, res) => {
       ${wmsg?.value ? `<div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:12px;padding:16px;margin-bottom:24px"><p style="color:#F5C842;font-size:13px;line-height:1.7;margin:0">${wmsg.value}</p></div>` : ''}
       <div style="font-size:12px;color:#aaa;line-height:2">
         <div>✅ Retrait minimum : <b style="color:#fff">$25</b></div>
-        <div>✅ Commission parrainage : <b style="color:#fff">5%</b></div>
+        <div>✅ Commission parrainage : <b style="color:#fff">10%</b></div>
         <div>✅ 7 moyens de paiement disponibles</div>
         <div>💬 Support Discord : <b style="color:#fff">ananous.</b></div>
       </div>
@@ -222,13 +223,22 @@ app.get('/go/:linkId', async (req, res) => {
   if (!link || !link.active) return res.status(404).send('Lien invalide ou désactivé');
   await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', linkId);
   const separator = link.offers.url.includes('?') ? '&' : '?';
-  res.redirect(link.offers.url + separator + 'ref=' + linkId);
+  res.redirect(link.offers.url + separator + 'sub=' + linkId);
 });
 
 // ── POSTBACK CONVERSION ──
 app.get('/api/postback', async (req, res) => {
-  const { ref, amount } = req.query;
+  const { ref, amount, status } = req.query;
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
+  if (status === 'reversed') {
+    const { data: conv } = await supabase.from('conversions').select('*, users(balance)').eq('link_id', ref).eq('status', 'approved').order('created_at', { ascending: false }).limit(1).single();
+    if (conv) {
+      await supabase.from('conversions').update({ status: 'rejected' }).eq('id', conv.id);
+      const newBalance = Math.max(0, (conv.users?.balance || 0) - conv.amount);
+      await supabase.from('users').update({ balance: newBalance }).eq('id', conv.user_id);
+    }
+    return res.json({ success: true, action: 'reversed' });
+  }
   const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
@@ -240,7 +250,7 @@ app.get('/api/postback', async (req, res) => {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
     // Commission parrainage
     if (user.referred_by) {
-      const commission = parseFloat((convAmount * 0.05).toFixed(2));
+      const commission = parseFloat((convAmount * 0.10).toFixed(2));
       const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
       if (referrer) {
         await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
@@ -273,7 +283,7 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
     if (user) {
       await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
       if (user.referred_by) {
-        const commission = parseFloat((parseFloat(amount) * 0.05).toFixed(2));
+        const commission = parseFloat((parseFloat(amount) * 0.10).toFixed(2));
         const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
         if (referrer) {
           await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
@@ -310,7 +320,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   if (user.referred_by) {
     const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
     if (referee && referee.referral_active !== false) {
-      const commission = parseFloat((conv.amount * 0.05).toFixed(2));
+      const commission = parseFloat((conv.amount * 0.10).toFixed(2));
       const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
       if (referrer) {
         await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
@@ -347,16 +357,8 @@ app.get('/api/conversions', auth, async (req, res) => {
 
 // ── OFFERS ──
 app.get('/api/offers', auth, async (req, res) => {
-  const { data: offers } = await supabase.from('offers').select('*').order('id');
-  if (req.user.role === 'admin') return res.json(offers || []);
-  // Filter by visibility: if offer has entries in offer_visibility, only show to those users
-  const { data: visRows } = await supabase.from('offer_visibility').select('offer_id,user_id');
-  const offerIds = [...new Set((visRows||[]).map(r => r.offer_id))];
-  const filtered = (offers||[]).filter(o => {
-    if (!offerIds.includes(o.id)) return true; // no restrictions → visible to all
-    return (visRows||[]).some(r => r.offer_id === o.id && r.user_id === req.user.id);
-  });
-  res.json(filtered);
+  const { data } = await supabase.from('offers').select('*').order('id');
+  res.json(data || []);
 });
 app.post('/api/offers', auth, adminOnly, async (req, res) => {
   const { name, description, url, commission, category, image_url } = req.body;
@@ -408,13 +410,7 @@ app.post('/api/links', auth, async (req, res) => {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
   let id = ''; for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
   // Shorten the link
-  const fullUrl = (process.env.SITE_URL || 'https://affihub-tau.vercel.app') + '/go/' + id;
-  let shortUrl = null;
-  try {
-    const r = await fetch('https://tinyurl.com/api-create.php?url=' + encodeURIComponent(fullUrl));
-    if (r.ok) shortUrl = await r.text();
-  } catch(e) {}
-  const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true, short_url: shortUrl || null }).select().single();
+  const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   log(req.user.id, 'lien-généré', 'Lien généré pour "'+( offer?.name||'offre #'+offer_id)+'" : '+id, req);
   res.json(data);
@@ -453,7 +449,7 @@ app.post('/api/withdrawals', auth, async (req, res) => {
     { name: '👤 Affilié', value: user.name, inline: true },
     { name: '💰 Montant', value: '$' + amount, inline: true },
     { name: '💳 Moyen', value: crypto, inline: true }
-  ]);
+  ], '<@1504481208266915861>');
   log(req.user.id, 'retrait-demandé', 'Demande de $'+amount+' en '+crypto, req);
   res.json(data);
 });
@@ -517,6 +513,9 @@ app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
       const linkIds = links.map(l => l.id);
       await supabase.from('conversions').delete().in('link_id', linkIds);
     }
+    await supabase.from('activity_logs').delete().eq('user_id', uid);
+    await supabase.from('notifications').delete().eq('user_id', uid);
+    await supabase.from('announcements_read').delete().eq('user_id', uid);
     await supabase.from('conversions').delete().eq('user_id', uid);
     await supabase.from('links').delete().eq('user_id', uid);
     await supabase.from('withdrawals').delete().eq('user_id', uid);
@@ -633,7 +632,7 @@ app.post('/api/tickets', auth, async (req, res) => {
     { name: '👤 Affilié', value: req.user.name, inline: true },
     { name: '🏷️ Raison', value: reasons[reason] || reason, inline: true },
     { name: '💬 Message', value: content.substring(0, 100) + (content.length > 100 ? '...' : ''), inline: false }
-  ]);
+  ], '<@1504481208266915861>');
   res.json(ticket);
 });
 
@@ -810,20 +809,35 @@ app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
 });
 
 
-// ── OFFER VISIBILITY ──
-app.get('/api/offers/:id/visibility', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('offer_visibility').select('user_id').eq('offer_id', req.params.id);
-  res.json((data||[]).map(r => r.user_id));
-});
-app.put('/api/offers/:id/visibility', auth, adminOnly, async (req, res) => {
-  const { user_ids } = req.body; // array of user_ids, empty = visible to all
-  const offerId = parseInt(req.params.id);
-  await supabase.from('offer_visibility').delete().eq('offer_id', offerId);
-  if (user_ids && user_ids.length > 0) {
-    const rows = user_ids.map(uid => ({ offer_id: offerId, user_id: uid }));
-    await supabase.from('offer_visibility').insert(rows);
+// ── ANNOUNCEMENTS ──
+app.get('/api/announcements', auth, async (req, res) => {
+  if (req.user.role === 'admin') {
+    const { data } = await supabase.from('announcements').select('*, users!created_by(name)').order('created_at', { ascending: false });
+    return res.json(data || []);
   }
-  log(req.user.id, 'visibilité-offre', 'Visibilité offre #'+offerId+' mise à jour ('+( user_ids?.length||0)+' affiliés)', req);
+  const { data: read } = await supabase.from('announcements_read').select('announcement_id').eq('user_id', req.user.id);
+  const readIds = (read || []).map(r => r.announcement_id);
+  const { data: announcements } = await supabase.from('announcements').select('*').or('type.eq.global,target_user_id.eq.'+req.user.id).order('created_at', { ascending: false });
+  const unread = (announcements || []).filter(a => !readIds.includes(a.id));
+  res.json(unread);
+});
+app.post('/api/announcements', auth, adminOnly, async (req, res) => {
+  const { title, message, type, target_user_id } = req.body;
+  if (!title || !message) return res.status(400).json({ error: 'Titre et message requis' });
+  const { data, error } = await supabase.from('announcements').insert({ title, message, type: type || 'global', target_user_id: target_user_id || null, created_by: req.user.id }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'annonce-créée', 'Annonce "'+title+'" ('+(type||'global')+') créée', req);
+  res.json(data);
+});
+app.post('/api/announcements/:id/read', auth, async (req, res) => {
+  await supabase.from('announcements_read').upsert({ announcement_id: parseInt(req.params.id), user_id: req.user.id }, { onConflict: 'announcement_id,user_id' });
+  res.json({ success: true });
+});
+app.delete('/api/announcements/:id', auth, adminOnly, async (req, res) => {
+  const { data: ann } = await supabase.from('announcements').select('title').eq('id', req.params.id).single();
+  await supabase.from('announcements_read').delete().eq('announcement_id', req.params.id);
+  await supabase.from('announcements').delete().eq('id', req.params.id);
+  log(req.user.id, 'annonce-supprimée', 'Annonce "'+(ann?.title||'#'+req.params.id)+'" supprimée', req);
   res.json({ success: true });
 });
 
