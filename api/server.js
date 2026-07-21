@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
+const dns = require('dns').promises;
+const net = require('net');
 
 const app = express();
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -75,6 +77,44 @@ async function sendEmail(to, subject, html) {
 function log(userId, action, details, req) {
   const ip = req?.headers?.['x-forwarded-for']?.split(',')[0] || req?.socket?.remoteAddress || '';
   supabase.from('activity_logs').insert({ user_id: userId, action, details, ip }).then(()=>{}).catch(()=>{});
+}
+
+// ── Protection SSRF pour postback_url (empêche d'atteindre des adresses internes/privées) ──
+function isPrivateIP(ip) {
+  if (net.isIPv4(ip)) {
+    const p = ip.split('.').map(Number);
+    if (p[0] === 127) return true;                          // loopback
+    if (p[0] === 10) return true;                            // 10.0.0.0/8
+    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true; // 172.16.0.0/12
+    if (p[0] === 192 && p[1] === 168) return true;           // 192.168.0.0/16
+    if (p[0] === 169 && p[1] === 254) return true;           // link-local / metadata cloud
+    if (p[0] === 0) return true;                             // 0.0.0.0/8
+    if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true; // CGNAT
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const l = ip.toLowerCase();
+    if (l === '::1') return true;                            // loopback
+    if (l.startsWith('fc') || l.startsWith('fd')) return true; // fc00::/7 (unique local)
+    if (l.startsWith('fe80')) return true;                    // link-local
+    if (l.startsWith('::ffff:')) {                            // IPv4 mappée en IPv6
+      const v4 = l.split(':').pop();
+      if (net.isIPv4(v4)) return isPrivateIP(v4);
+    }
+    return false;
+  }
+  return true; // format inconnu → on bloque par sécurité
+}
+async function isSafePostbackUrl(urlStr) {
+  try {
+    const u = new URL(urlStr);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
+    if (u.hostname === 'localhost') return false;
+    const addresses = await dns.lookup(u.hostname, { all: true });
+    if (!addresses.length) return false;
+    for (const a of addresses) { if (isPrivateIP(a.address)) return false; }
+    return true;
+  } catch (e) { return false; }
 }
 
 app.use(cors());
@@ -212,6 +252,11 @@ app.post('/api/change-password', auth, async (req, res) => {
 
 app.patch('/api/me/postback', auth, async (req, res) => {
   const { postback_url } = req.body;
+  if (postback_url) {
+    const test = postback_url.replace('{LINK_ID}', 'test').replace('{AMOUNT}', '1').replace('{STATUS}', 'approved');
+    const safe = await isSafePostbackUrl(test);
+    if (!safe) return res.status(400).json({ error: 'URL invalide ou non autorisée (adresse interne/privée refusée)' });
+  }
   await supabase.from('users').update({ postback_url: postback_url || null }).eq('id', req.user.id);
   res.json({ success: true });
 });
@@ -262,10 +307,8 @@ app.get('/api/postback', async (req, res) => {
     }
     // Postback affilié
     if (user.postback_url) {
-      try {
-        const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
-        fetch(postbackUrl).catch(()=>{});
-      } catch(e) {}
+      const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
+      isSafePostbackUrl(postbackUrl).then(safe => { if (safe) fetch(postbackUrl).catch(()=>{}); }).catch(()=>{});
     }
   }
   // Notify Discord
@@ -333,13 +376,13 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   }
   // Send postback to affiliate's own system if configured
   if (user.postback_url) {
-    try {
-      const postbackUrl = user.postback_url
-        .replace('{LINK_ID}', conv.link_id || '')
-        .replace('{AMOUNT}', conv.amount)
-        .replace('{STATUS}', 'approved');
-      fetch(postbackUrl).catch(err => console.error('Postback affilié échoué:', err.message));
-    } catch (e) { console.error('Postback affilié erreur:', e.message); }
+    const postbackUrl = user.postback_url
+      .replace('{LINK_ID}', conv.link_id || '')
+      .replace('{AMOUNT}', conv.amount)
+      .replace('{STATUS}', 'approved');
+    isSafePostbackUrl(postbackUrl).then(safe => {
+      if (safe) fetch(postbackUrl).catch(err => console.error('Postback affilié échoué:', err.message));
+    }).catch(()=>{});
   }
   res.json({ success: true });
 });
