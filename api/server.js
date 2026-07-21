@@ -855,37 +855,35 @@ app.delete('/api/logs', auth, adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 
-// ── DISCORD REQUESTS ──
-app.post('/api/discord-requests', auth, async (req, res) => {
-  const { discord_type, discord_pseudo } = req.body;
-  const valid = ['casino', 'ia', 'dating'];
-  if (!valid.includes(discord_type)) return res.status(400).json({ error: 'Discord invalide' });
-  if (!discord_pseudo || !discord_pseudo.trim()) return res.status(400).json({ error: 'Pseudo Discord requis' });
-  const { data: existing } = await supabase.from('discord_requests').select('id').eq('user_id', req.user.id).eq('status', 'pending').single();
-  if (existing) return res.status(400).json({ error: 'Tu as déjà une demande en attente' });
-  const { data, error } = await supabase.from('discord_requests').insert({ user_id: req.user.id, discord_type, discord_pseudo: discord_pseudo.trim(), status: 'pending' }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-app.get('/api/discord-requests', auth, async (req, res) => {
-  if (req.user.role === 'admin') {
-    const { data } = await supabase.from('discord_requests').select('*, users(name,email)').order('created_at', { ascending: false });
-    return res.json(data || []);
-  }
-  const { data } = await supabase.from('discord_requests').select('*').eq('user_id', req.user.id).order('created_at', { ascending: false });
+// ── DISCORD SERVERS (bibliothèque de liens gérée par l'admin) ──
+app.get('/api/discord-servers', auth, async (req, res) => {
+  const { data } = await supabase.from('discord_servers').select('*').order('created_at', { ascending: false });
   res.json(data || []);
 });
-app.patch('/api/discord-requests/:id/accept', auth, adminOnly, async (req, res) => {
-  const { data, error } = await supabase.from('discord_requests').update({ status: 'accepted', updated_at: new Date() }).eq('id', req.params.id).select().single();
+app.post('/api/discord-servers', auth, adminOnly, async (req, res) => {
+  const { name, categories, link } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
+  if (!link || !link.trim()) return res.status(400).json({ error: 'Lien requis' });
+  if (!categories || !categories.length) return res.status(400).json({ error: 'Choisis au moins une catégorie' });
+  const cats = Array.isArray(categories) ? categories.join(',') : categories;
+  const { data, error } = await supabase.from('discord_servers').insert({ name: name.trim(), categories: cats, link: link.trim() }).select().single();
   if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'discord-demande-acceptée', 'Demande Discord #' + req.params.id + ' acceptée', req);
+  log(req.user.id, 'discord-serveur-créé', 'Serveur Discord "' + name.trim() + '" créé', req);
   res.json(data);
 });
-app.patch('/api/discord-requests/:id/reject', auth, adminOnly, async (req, res) => {
-  const { data, error } = await supabase.from('discord_requests').update({ status: 'rejected', updated_at: new Date() }).eq('id', req.params.id).select().single();
+app.patch('/api/discord-servers/:id', auth, adminOnly, async (req, res) => {
+  const { name, categories, link } = req.body;
+  const update = {};
+  if (name !== undefined) update.name = name.trim();
+  if (link !== undefined) update.link = link.trim();
+  if (categories !== undefined) update.categories = Array.isArray(categories) ? categories.join(',') : categories;
+  const { data, error } = await supabase.from('discord_servers').update(update).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'discord-demande-rejetée', 'Demande Discord #' + req.params.id + ' rejetée', req);
   res.json(data);
+});
+app.delete('/api/discord-servers/:id', auth, adminOnly, async (req, res) => {
+  await supabase.from('discord_servers').delete().eq('id', req.params.id);
+  res.json({ success: true });
 });
 
 // ── NOTIFICATIONS ──
