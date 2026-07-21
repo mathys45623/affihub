@@ -484,7 +484,7 @@ async function startApp(){
   setTimeout(()=>updateLogo(LOGO_URL),100);
   const adminNav=[
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
-    {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'}]},
+    {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'💬',label:'Demandes Discord',page:'admin-discord'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
     {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
@@ -493,7 +493,7 @@ async function startApp(){
     {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
     {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+    {section:'SUPPORT',items:[{icon:'💬',label:'Demande Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
   if(ME.role==='admin'){
     // Refresh ME to get latest permissions
@@ -513,7 +513,8 @@ async function startApp(){
         {icon:'🔁',label:'Conversions',page:'admin-conv'},
         {icon:'💸',label:'Retraits',page:'admin-wd'},
         {icon:'🤝',label:'Parrainages',page:'admin-ref'},
-        {icon:'🎫',label:'Tickets',page:'admin-tickets'}
+        {icon:'🎫',label:'Tickets',page:'admin-tickets'},
+        {icon:'💬',label:'Demandes Discord',page:'admin-discord'}
       ].filter(i=>canSee(i.page))},
       {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
       {section:'CONFIGURATION',items:[
@@ -538,7 +539,7 @@ async function startApp(){
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
         {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
         {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-        {section:'SUPPORT',items:[{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+        {section:'SUPPORT',items:[{icon:'💬',label:'Demande Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
       ];
       buildNav(nav);buildMobileNav(nav);
       goPage('aff-dash');
@@ -628,9 +629,9 @@ function closeMobileNav(){
 const TITLES={
   'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions',
   'aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager',
-  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres',
+  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Demande Discord',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
-  'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés',
+  'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Demandes Discord',
   'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
 };
 
@@ -838,6 +839,28 @@ async function renderPage(page){
     +'<div class="settings-section"><div class="settings-section-title">🔌 Postback vers mon système</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici. Quand une conversion est approuvée, AffiHub enverra automatiquement les infos à ton système.<br><br>Variables disponibles : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL de postback</label><input type="text" id="pb-url" placeholder="https://ta-plateforme.com/postback?sub1={LINK_ID}&amount={AMOUNT}" value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">💾 Sauvegarder</button></div>';
   }
 
+  if(page==='aff-discord'){
+    const reqs=await api('GET','/api/discord-requests');
+    const pending=reqs.find(r=>r.status==='pending');
+    const latest=reqs[0];
+    const typeLabels={casino:'🎰 Discord Casino',ia:'🤖 Discord Meuf IA',dating:'💕 Discord Dating / Influenceuse'};
+    const historyRows=reqs.map(r=>'<tr><td>'+(typeLabels[r.discord_type]||r.discord_type)+'</td><td>'+r.discord_pseudo+'</td><td style="color:var(--muted)">'+fmt(r.created_at)+'</td><td>'+sbadge(r.status==='accepted'?'approved':r.status==='rejected'?'rejected':'pending')+'</td></tr>').join('');
+    let banner='';
+    if(latest&&latest.status==='accepted')banner='<div style="background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.3);border-radius:12px;padding:16px;margin-bottom:18px"><b style="color:var(--green)">✅ Vous avez reçu une demande d\'ami sur Discord !</b><div style="color:var(--muted);font-size:13px;margin-top:6px">Accepte la demande d\'ami pour rejoindre le salon.</div></div>';
+    else if(latest&&latest.status==='rejected')banner='<div style="background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:12px;padding:16px;margin-bottom:18px"><b style="color:var(--red)">❌ Ta demande a été rejetée</b><div style="color:var(--muted);font-size:13px;margin-top:6px">Tu peux refaire une nouvelle demande ci-dessous.</div></div>';
+    return '<div class="card" style="margin-bottom:22px"><div class="card-title" style="margin-bottom:16px">💬 Demander l\'accès à un Discord</div>'
+      +banner
+      +(pending?'<div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:12px;padding:16px"><b style="color:var(--yellow)">⏳ Demande en attente</b><div style="color:var(--muted);font-size:13px;margin-top:6px">On revient vers toi bientôt.</div></div>':
+        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px">'
+        +'<div class="card" id="dt-casino" onclick="selDiscordType(\'casino\')" style="cursor:pointer;text-align:center;padding:22px;margin-bottom:0"><div style="font-size:30px;margin-bottom:8px">🎰</div><div style="font-weight:800">Discord Casino</div></div>'
+        +'<div class="card" id="dt-ia" onclick="selDiscordType(\'ia\')" style="cursor:pointer;text-align:center;padding:22px;margin-bottom:0"><div style="font-size:30px;margin-bottom:8px">🤖</div><div style="font-weight:800">Discord Meuf IA</div></div>'
+        +'<div class="card" id="dt-dating" onclick="selDiscordType(\'dating\')" style="cursor:pointer;text-align:center;padding:22px;margin-bottom:0"><div style="font-size:30px;margin-bottom:8px">💕</div><div style="font-weight:800">Discord Dating / Influ</div></div>'
+        +'</div>'
+        +'<input id="discord-pseudo-input" placeholder="Ton pseudo Discord" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:14px;font-family:inherit">'
+        +'<button class="btn btn-grn" onclick="submitDiscordRequest()">Envoyer la demande</button>')
+      +'</div>'
+      +(reqs.length?'<div class="card"><div class="card-title" style="margin-bottom:16px">📜 Historique</div><div class="tw"><table><thead><tr><th>Discord</th><th>Pseudo</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+historyRows+'</tbody></table></div></div>':'');
+  }
   if(page==='aff-tickets'){
     const tickets=await api('GET','/api/tickets');
     const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
@@ -931,6 +954,14 @@ async function renderPage(page){
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">💸 Commissions</div>'+(aff.commissions.length===0?'<div class="empty"><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
   }
 
+  if(page==='admin-discord'){
+    const reqs=await api('GET','/api/discord-requests');
+    const typeLabels={casino:'🎰 Casino',ia:'🤖 Meuf IA',dating:'💕 Dating/Influ'};
+    const rows=reqs.map(r=>'<tr><td><b>'+(r.users?.name||'?')+'</b><div style="color:var(--muted);font-size:11px">'+(r.users?.email||'')+'</div></td><td>'+(typeLabels[r.discord_type]||r.discord_type)+'</td><td>'+r.discord_pseudo+'</td><td style="color:var(--muted)">'+fmt(r.created_at)+'</td><td>'+sbadge(r.status==='accepted'?'approved':r.status==='rejected'?'rejected':'pending')+'</td><td>'+(r.status==='pending'?'<div style="display:flex;gap:6px"><button class="btn btn-grn btn-sm" onclick="acceptDiscordReq('+r.id+')">✅ Accepter</button><button class="btn btn-red btn-sm" onclick="rejectDiscordReq('+r.id+')">❌ Rejeter</button></div>':'—')+'</td></tr>').join('');
+    return '<div class="card"><div class="card-title" style="margin-bottom:16px">💬 Demandes Discord</div>'
+      +(reqs.length===0?'<div class="empty"><div class="empty-icon">💬</div><p>Aucune demande</p></div>':'<div class="tw"><table><thead><tr><th>👤 Affilié</th><th>💬 Discord</th><th>🏷️ Pseudo</th><th>📅 Date</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+      +'</div>';
+  }
   if(page==='admin-tickets'){
     const tickets=await api('GET','/api/tickets');
     const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
@@ -1276,6 +1307,19 @@ async function sendReply(ticketId){
 }
 async function closeMyTicket(id){document.getElementById('m-title').textContent='Fermer le ticket';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔴</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Fermer ce ticket ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doCloseMyTicket('+id+')" style="flex:1">Fermer</button></div></div>';document.getElementById('mo').classList.add('open');}
 async function doCloseMyTicket(id){try{await api('PATCH','/api/tickets/'+id+'/status',{status:'closed'});closeMo();toast('Ticket fermé','s');goPage('aff-tickets');}catch(e){toast(e.message,'e');}}
+let selectedDiscordType=null;
+function selDiscordType(t){
+  selectedDiscordType=t;
+  ['casino','ia','dating'].forEach(k=>{const el=document.getElementById('dt-'+k);if(el)el.style.borderColor=(k===t)?'var(--yellow)':'';});
+}
+async function submitDiscordRequest(){
+  if(!selectedDiscordType){toast('Choisis un Discord','e');return;}
+  const pseudo=document.getElementById('discord-pseudo-input').value.trim();
+  if(!pseudo){toast('Renseigne ton pseudo Discord','e');return;}
+  try{await api('POST','/api/discord-requests',{discord_type:selectedDiscordType,discord_pseudo:pseudo});toast('Demande envoyée ✓','s');selectedDiscordType=null;goPage('aff-discord');}catch(e){toast(e.message,'e');}
+}
+async function acceptDiscordReq(id){try{await api('PATCH','/api/discord-requests/'+id+'/accept');toast('Demande acceptée ✓','s');goPage('admin-discord');}catch(e){toast(e.message,'e');}}
+async function rejectDiscordReq(id){try{await api('PATCH','/api/discord-requests/'+id+'/reject');toast('Demande rejetée','s');goPage('admin-discord');}catch(e){toast(e.message,'e');}}
 function confirmDeleteTicket(id){document.getElementById('m-title').textContent='Supprimer le ticket';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer ce ticket ?</div><div style="font-size:12px;color:var(--red);background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Action irréversible.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteTicket('+id+')" style="flex:1">Supprimer</button></div></div>';document.getElementById('mo').classList.add('open');}
 async function deleteTicket(id){try{await api('DELETE','/api/tickets/'+id);closeMo();toast('Ticket supprimé','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
 async function closeTicket(id,status){try{await api('PATCH','/api/tickets/'+id+'/status',{status});toast(status==='resolved'?'Ticket résolu ✅':'Ticket fermé 🔴','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
