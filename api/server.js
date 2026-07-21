@@ -228,7 +228,10 @@ app.get('/go/:linkId', async (req, res) => {
 
 // ── POSTBACK CONVERSION ──
 app.get('/api/postback', async (req, res) => {
-  const { ref, amount, status } = req.query;
+  const { ref, amount, status, secret } = req.query;
+  if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) {
+    return res.status(401).json({ error: 'Non autorisé' });
+  }
   if (!ref) return res.status(400).json({ error: 'ref manquant' });
   if (status === 'reversed') {
     const { data: conv } = await supabase.from('conversions').select('*, users(balance)').eq('link_id', ref).eq('status', 'approved').order('created_at', { ascending: false }).limit(1).single();
