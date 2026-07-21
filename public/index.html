@@ -1590,7 +1590,7 @@ async function openPermissions(userId, userName){
   if(u?.admin_permissions&&u.admin_permissions!=='all'){
     try{currentPerms=JSON.parse(u.admin_permissions);}catch(e){currentPerms=[];}
   } else {
-    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
+    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
   }
   const pages=[
     {page:'admin-dash',label:'📊 Dashboard'},
@@ -1599,6 +1599,7 @@ async function openPermissions(userId, userName){
     {page:'admin-wd',label:'💸 Retraits'},
     {page:'admin-ref',label:'🤝 Parrainages'},
     {page:'admin-tickets',label:'🎫 Tickets'},
+    {page:'admin-discord',label:'💬 Serveurs Discord'},
     {page:'admin-custom',label:'🎨 Liens personnalisés'},
     {page:'aff-top',label:'🏆 TOP Affiliés'},
     {page:'admin-offers',label:'🎯 Offres'},
@@ -1613,7 +1614,7 @@ async function openPermissions(userId, userName){
   document.getElementById('mo').classList.add('open');
 }
 async function savePermissions(userId){
-  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
+  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
   const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
   try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
 }
