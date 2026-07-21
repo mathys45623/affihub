@@ -140,6 +140,7 @@ app.post('/api/register', async (req, res) => {
   const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
   if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
   const hash = await bcrypt.hash(password, 10);
+  const signupIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
   // Generate referral code from username (lowercase, no spaces, unique)
   const baseCode = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
   // Check if code already exists and make it unique if needed
@@ -152,21 +153,27 @@ app.post('/api/register', async (req, res) => {
     suffix++;
   }
   let referred_by = null;
+  let referral_same_ip = false;
   if (referral_code) {
-    const { data: referrer } = await supabase.from('users').select('id').eq('referral_code', referral_code).single();
-    if (referrer) referred_by = referrer.id;
+    const { data: referrer } = await supabase.from('users').select('id,signup_ip').eq('referral_code', referral_code).single();
+    if (referrer) {
+      referred_by = referrer.id;
+      if (signupIp && referrer.signup_ip && signupIp === referrer.signup_ip) referral_same_ip = true;
+    }
   }
-  const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, show_ranking: true }).select().single();
+  const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, referral_same_ip, signup_ip: signupIp, show_ranking: true }).select().single();
   if (error) return res.status(400).json({ error: 'Email déjà utilisé' });
   // Notify referrer on Discord if referred
   if (referred_by) {
     const { data: referrer } = await supabase.from('users').select('name').eq('id', referred_by).single();
     if (referrer) {
-      notifyDiscord2(DISCORD_REFERRAL, '🤝 Nouveau parrainage !', 0xa855f7, [
+      const fields = [
         { name: '👤 Parrain', value: referrer.name, inline: true },
         { name: '🆕 Filleul', value: name, inline: true },
         { name: '💰 Commission', value: '10% sur chaque vente', inline: true }
-      ]);
+      ];
+      if (referral_same_ip) fields.push({ name: '⚠️ Alerte', value: 'Même IP que le parrain — double compte possible !', inline: false });
+      notifyDiscord2(DISCORD_REFERRAL, referral_same_ip ? '⚠️ Nouveau parrainage — DOUBLE COMPTE DÉTECTÉ' : '🤝 Nouveau parrainage !', referral_same_ip ? 0xff4757 : 0xa855f7, fields);
     }
   }
   // Get welcome message
@@ -609,7 +616,7 @@ app.get('/api/stats', auth, adminOnly, async (req, res) => {
 app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
   const { data: affiliates } = await supabase.from('users').select('id,name,email,balance,created_at,referral_code').eq('role','affiliate');
   const result = await Promise.all((affiliates||[]).map(async aff => {
-    const { data: filleules } = await supabase.from('users').select('id,name,created_at,referral_active').eq('referred_by', aff.id);
+    const { data: filleules } = await supabase.from('users').select('id,name,created_at,referral_active,referral_same_ip').eq('referred_by', aff.id);
     const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', aff.id).order('created_at',{ascending:false});
     const totalEarned = (commissions||[]).reduce((s,c)=>s+c.amount,0);
     return { ...aff, filleules: filleules||[], commissions: commissions||[], totalEarned };
