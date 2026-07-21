@@ -227,6 +227,11 @@ app.get('/go/:linkId', async (req, res) => {
 });
 
 // ── POSTBACK CONVERSION ──
+// ⚠️ TEMPORAIRE — route de diagnostic, à supprimer une fois le problème résolu
+app.get('/api/postback-debug', (req, res) => {
+  const s = process.env.POSTBACK_SECRET || '';
+  res.json({ configured: !!process.env.POSTBACK_SECRET, length: s.length, first2: s.slice(0,2), last2: s.slice(-2) });
+});
 app.get('/api/postback', async (req, res) => {
   const { ref, amount, status, secret } = req.query;
   if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) {
