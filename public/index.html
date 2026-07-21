@@ -484,7 +484,7 @@ async function startApp(){
   setTimeout(()=>updateLogo(LOGO_URL),100);
   const adminNav=[
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
-    {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'💬',label:'Demandes Discord',page:'admin-discord'}]},
+    {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'💬',label:'Serveurs Discord',page:'admin-discord'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
     {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
@@ -493,7 +493,7 @@ async function startApp(){
     {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
     {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'SUPPORT',items:[{icon:'💬',label:'Demande Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+    {section:'SUPPORT',items:[{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
   if(ME.role==='admin'){
     // Refresh ME to get latest permissions
@@ -514,7 +514,7 @@ async function startApp(){
         {icon:'💸',label:'Retraits',page:'admin-wd'},
         {icon:'🤝',label:'Parrainages',page:'admin-ref'},
         {icon:'🎫',label:'Tickets',page:'admin-tickets'},
-        {icon:'💬',label:'Demandes Discord',page:'admin-discord'}
+        {icon:'💬',label:'Serveurs Discord',page:'admin-discord'}
       ].filter(i=>canSee(i.page))},
       {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
       {section:'CONFIGURATION',items:[
@@ -539,7 +539,7 @@ async function startApp(){
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
         {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
         {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-        {section:'SUPPORT',items:[{icon:'💬',label:'Demande Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+        {section:'SUPPORT',items:[{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
       ];
       buildNav(nav);buildMobileNav(nav);
       goPage('aff-dash');
@@ -629,9 +629,9 @@ function closeMobileNav(){
 const TITLES={
   'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions',
   'aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager',
-  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Demande Discord',
+  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
-  'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Demandes Discord',
+  'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
   'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
 };
 
@@ -840,26 +840,28 @@ async function renderPage(page){
   }
 
   if(page==='aff-discord'){
-    const reqs=await api('GET','/api/discord-requests');
-    const pending=reqs.find(r=>r.status==='pending');
-    const latest=reqs[0];
-    const typeLabels={casino:'🎰 Discord Casino',ia:'🤖 Discord Meuf IA',dating:'💕 Discord Dating / Influenceuse'};
-    const historyRows=reqs.map(r=>'<tr><td>'+(typeLabels[r.discord_type]||r.discord_type)+'</td><td>'+r.discord_pseudo+'</td><td style="color:var(--muted)">'+fmt(r.created_at)+'</td><td>'+sbadge(r.status==='accepted'?'approved':r.status==='rejected'?'rejected':'pending')+'</td></tr>').join('');
-    let banner='';
-    if(latest&&latest.status==='accepted')banner='<div style="background:rgba(46,213,115,.08);border:1px solid rgba(46,213,115,.3);border-radius:12px;padding:16px;margin-bottom:18px"><b style="color:var(--green)">✅ Vous avez reçu une demande d\'ami sur Discord !</b><div style="color:var(--muted);font-size:13px;margin-top:6px">Accepte la demande d\'ami pour rejoindre le salon.</div></div>';
-    else if(latest&&latest.status==='rejected')banner='<div style="background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.3);border-radius:12px;padding:16px;margin-bottom:18px"><b style="color:var(--red)">❌ Ta demande a été rejetée</b><div style="color:var(--muted);font-size:13px;margin-top:6px">Tu peux refaire une nouvelle demande ci-dessous.</div></div>';
-    return '<div class="card" style="margin-bottom:22px"><div class="card-title" style="margin-bottom:16px">💬 Demander l\'accès à un Discord</div>'
-      +banner
-      +(pending?'<div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:12px;padding:16px"><b style="color:var(--yellow)">⏳ Demande en attente</b><div style="color:var(--muted);font-size:13px;margin-top:6px">On revient vers toi bientôt.</div></div>':
-        '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:18px">'
-        +'<div class="card" id="dt-casino" onclick="selDiscordType(\'casino\')" style="cursor:pointer;text-align:center;padding:22px;margin-bottom:0"><div style="font-size:30px;margin-bottom:8px">🎰</div><div style="font-weight:800">Discord Casino</div></div>'
-        +'<div class="card" id="dt-ia" onclick="selDiscordType(\'ia\')" style="cursor:pointer;text-align:center;padding:22px;margin-bottom:0"><div style="font-size:30px;margin-bottom:8px">🤖</div><div style="font-weight:800">Discord Meuf IA</div></div>'
-        +'<div class="card" id="dt-dating" onclick="selDiscordType(\'dating\')" style="cursor:pointer;text-align:center;padding:22px;margin-bottom:0"><div style="font-size:30px;margin-bottom:8px">💕</div><div style="font-weight:800">Discord Dating / Influ</div></div>'
-        +'</div>'
-        +'<input id="discord-pseudo-input" placeholder="Ton pseudo Discord" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:14px;font-family:inherit">'
-        +'<button class="btn btn-grn" onclick="submitDiscordRequest()">Envoyer la demande</button>')
-      +'</div>'
-      +(reqs.length?'<div class="card"><div class="card-title" style="margin-bottom:16px">📜 Historique</div><div class="tw"><table><thead><tr><th>Discord</th><th>Pseudo</th><th>Date</th><th>Statut</th></tr></thead><tbody>'+historyRows+'</tbody></table></div></div>':'');
+    const servers=await api('GET','/api/discord-servers');
+    const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF'},dating:{icon:'💕',label:'Dating',color:'#F0427A'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7'}};
+    const filter=discordCatFilter;
+    const filtered=filter==='all'?servers:servers.filter(s=>(s.categories||'').split(',').includes(filter));
+    const tabs=['all',...Object.keys(catMeta)].map(k=>{
+      const active=filter===k;
+      const label=k==='all'?'Tous':catMeta[k].icon+' '+catMeta[k].label;
+      return '<button onclick="filterDiscordCat(\''+k+'\')" class="btn '+(active?'btn-grn':'btn-gst')+' btn-sm" style="margin-right:8px;margin-bottom:8px">'+label+'</button>';
+    }).join('');
+    const cards=filtered.map(s=>{
+      const cats=(s.categories||'').split(',').filter(Boolean).map(c=>catMeta[c]?('<span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin:0 4px 4px 0;background:'+catMeta[c].color+'22;color:'+catMeta[c].color+'">'+catMeta[c].icon+' '+catMeta[c].label+'</span>'):'').join('');
+      return '<div class="card" style="padding:20px">'
+        +'<div style="font-weight:800;font-size:16px;margin-bottom:10px">'+s.name+'</div>'
+        +'<div style="margin-bottom:16px">'+cats+'</div>'
+        +'<div style="display:flex;gap:8px">'
+        +'<button class="btn btn-gst btn-sm" data-link="'+escAttr(s.link)+'" onclick="copyDiscordLink(this)" style="flex:1">📋 Copier</button>'
+        +'<button class="btn btn-grn btn-sm" data-link="'+escAttr(s.link)+'" onclick="openDiscordLink(this)" style="flex:1">↗️ Ouvrir</button>'
+        +'</div></div>';
+    }).join('');
+    return '<div style="margin-bottom:18px">'+tabs+'</div>'
+      +(filtered.length===0?'<div class="empty"><div class="empty-icon">💬</div><p>Aucun serveur disponible pour le moment</p></div>':
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">'+cards+'</div>');
   }
   if(page==='aff-tickets'){
     const tickets=await api('GET','/api/tickets');
@@ -955,11 +957,26 @@ async function renderPage(page){
   }
 
   if(page==='admin-discord'){
-    const reqs=await api('GET','/api/discord-requests');
-    const typeLabels={casino:'🎰 Casino',ia:'🤖 Meuf IA',dating:'💕 Dating/Influ'};
-    const rows=reqs.map(r=>'<tr><td><b>'+(r.users?.name||'?')+'</b><div style="color:var(--muted);font-size:11px">'+(r.users?.email||'')+'</div></td><td>'+(typeLabels[r.discord_type]||r.discord_type)+'</td><td>'+r.discord_pseudo+'</td><td style="color:var(--muted)">'+fmt(r.created_at)+'</td><td>'+sbadge(r.status==='accepted'?'approved':r.status==='rejected'?'rejected':'pending')+'</td><td>'+(r.status==='pending'?'<div style="display:flex;gap:6px"><button class="btn btn-grn btn-sm" onclick="acceptDiscordReq('+r.id+')">✅ Accepter</button><button class="btn btn-red btn-sm" onclick="rejectDiscordReq('+r.id+')">❌ Rejeter</button></div>':'—')+'</td></tr>').join('');
-    return '<div class="card"><div class="card-title" style="margin-bottom:16px">💬 Demandes Discord</div>'
-      +(reqs.length===0?'<div class="empty"><div class="empty-icon">💬</div><p>Aucune demande</p></div>':'<div class="tw"><table><thead><tr><th>👤 Affilié</th><th>💬 Discord</th><th>🏷️ Pseudo</th><th>📅 Date</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+    const servers=await api('GET','/api/discord-servers');
+    DISCORD_SERVERS_CACHE=servers;
+    const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF'},dating:{icon:'💕',label:'Dating',color:'#F0427A'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7'}};
+    const catCheckboxes=Object.keys(catMeta).map(k=>
+      '<label style="display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border:1px solid #2a2a2a;border-radius:10px;margin:0 8px 8px 0;cursor:pointer">'
+      +'<input type="checkbox" id="dcat-'+k+'" style="accent-color:var(--yellow)"> '+catMeta[k].icon+' '+catMeta[k].label+'</label>'
+    ).join('');
+    const rows=servers.map(s=>{
+      const cats=(s.categories||'').split(',').filter(Boolean).map(c=>catMeta[c]?catMeta[c].icon:'').join(' ');
+      return '<tr><td><b>'+s.name+'</b></td><td>'+cats+'</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">'+s.link+'</td><td><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="editDiscordServer('+s.id+')">✏️</button><button class="btn btn-red btn-sm" onclick="deleteDiscordServer('+s.id+')">🗑️</button></div></td></tr>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:22px"><div class="card-title" style="margin-bottom:16px" id="discord-form-title">➕ Ajouter un serveur Discord</div>'
+      +'<input id="ds-name" placeholder="Nom du serveur (ex: VIP Casino #1)" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:12px;font-family:inherit">'
+      +'<div style="margin-bottom:12px">'+catCheckboxes+'</div>'
+      +'<input id="ds-link" placeholder="Lien d\'invitation Discord (https://discord.gg/...)" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:14px;font-family:inherit">'
+      +'<input type="hidden" id="ds-edit-id" value="">'
+      +'<div style="display:flex;gap:8px"><button class="btn btn-grn" id="ds-submit-btn" onclick="submitDiscordServer()">Créer</button><button class="btn btn-gst" id="ds-cancel-btn" onclick="goPage(\'admin-discord\')" style="display:none">Annuler</button></div>'
+      +'</div>'
+      +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Serveurs existants</div>'
+      +(servers.length===0?'<div class="empty"><div class="empty-icon">💬</div><p>Aucun serveur créé</p></div>':'<div class="tw"><table><thead><tr><th>Nom</th><th>Catégories</th><th>Lien</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
       +'</div>';
   }
   if(page==='admin-tickets'){
@@ -1307,19 +1324,45 @@ async function sendReply(ticketId){
 }
 async function closeMyTicket(id){document.getElementById('m-title').textContent='Fermer le ticket';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔴</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Fermer ce ticket ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doCloseMyTicket('+id+')" style="flex:1">Fermer</button></div></div>';document.getElementById('mo').classList.add('open');}
 async function doCloseMyTicket(id){try{await api('PATCH','/api/tickets/'+id+'/status',{status:'closed'});closeMo();toast('Ticket fermé','s');goPage('aff-tickets');}catch(e){toast(e.message,'e');}}
-let selectedDiscordType=null;
-function selDiscordType(t){
-  selectedDiscordType=t;
-  ['casino','ia','dating'].forEach(k=>{const el=document.getElementById('dt-'+k);if(el)el.style.borderColor=(k===t)?'var(--yellow)':'';});
+function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+let discordCatFilter='all';
+function filterDiscordCat(cat){discordCatFilter=cat;goPage('aff-discord');}
+function copyDiscordLink(btn){
+  const link=btn.dataset.link;
+  navigator.clipboard.writeText(link).then(()=>toast('Lien copié ✓','s')).catch(()=>toast('Erreur copie','e'));
 }
-async function submitDiscordRequest(){
-  if(!selectedDiscordType){toast('Choisis un Discord','e');return;}
-  const pseudo=document.getElementById('discord-pseudo-input').value.trim();
-  if(!pseudo){toast('Renseigne ton pseudo Discord','e');return;}
-  try{await api('POST','/api/discord-requests',{discord_type:selectedDiscordType,discord_pseudo:pseudo});toast('Demande envoyée ✓','s');selectedDiscordType=null;goPage('aff-discord');}catch(e){toast(e.message,'e');}
+function openDiscordLink(btn){window.open(btn.dataset.link,'_blank');}
+let DISCORD_SERVERS_CACHE=[];
+async function submitDiscordServer(){
+  const name=document.getElementById('ds-name').value.trim();
+  const link=document.getElementById('ds-link').value.trim();
+  const editId=document.getElementById('ds-edit-id').value;
+  const cats=['casino','ia','dating','influenceuse'].filter(k=>document.getElementById('dcat-'+k).checked);
+  if(!name){toast('Nom requis','e');return;}
+  if(!link){toast('Lien requis','e');return;}
+  if(!cats.length){toast('Choisis au moins une catégorie','e');return;}
+  try{
+    if(editId){await api('PATCH','/api/discord-servers/'+editId,{name,categories:cats,link});toast('Serveur modifié ✓','s');}
+    else{await api('POST','/api/discord-servers',{name,categories:cats,link});toast('Serveur créé ✓','s');}
+    goPage('admin-discord');
+  }catch(e){toast(e.message,'e');}
 }
-async function acceptDiscordReq(id){try{await api('PATCH','/api/discord-requests/'+id+'/accept');toast('Demande acceptée ✓','s');goPage('admin-discord');}catch(e){toast(e.message,'e');}}
-async function rejectDiscordReq(id){try{await api('PATCH','/api/discord-requests/'+id+'/reject');toast('Demande rejetée','s');goPage('admin-discord');}catch(e){toast(e.message,'e');}}
+function editDiscordServer(id){
+  const s=DISCORD_SERVERS_CACHE.find(x=>x.id===id);
+  if(!s)return;
+  document.getElementById('ds-name').value=s.name;
+  document.getElementById('ds-link').value=s.link;
+  document.getElementById('ds-edit-id').value=id;
+  ['casino','ia','dating','influenceuse'].forEach(k=>{document.getElementById('dcat-'+k).checked=(s.categories||'').split(',').includes(k);});
+  document.getElementById('discord-form-title').textContent='✏️ Modifier le serveur';
+  document.getElementById('ds-submit-btn').textContent='Enregistrer';
+  document.getElementById('ds-cancel-btn').style.display='inline-block';
+  window.scrollTo(0,0);
+}
+async function deleteDiscordServer(id){
+  if(!confirm('Supprimer ce serveur ?'))return;
+  try{await api('DELETE','/api/discord-servers/'+id);toast('Supprimé','s');goPage('admin-discord');}catch(e){toast(e.message,'e');}
+}
 function confirmDeleteTicket(id){document.getElementById('m-title').textContent='Supprimer le ticket';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer ce ticket ?</div><div style="font-size:12px;color:var(--red);background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Action irréversible.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteTicket('+id+')" style="flex:1">Supprimer</button></div></div>';document.getElementById('mo').classList.add('open');}
 async function deleteTicket(id){try{await api('DELETE','/api/tickets/'+id);closeMo();toast('Ticket supprimé','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
 async function closeTicket(id,status){try{await api('PATCH','/api/tickets/'+id+'/status',{status});toast(status==='resolved'?'Ticket résolu ✅':'Ticket fermé 🔴','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
