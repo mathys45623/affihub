@@ -298,11 +298,14 @@ app.get('/api/postback', async (req, res) => {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
     // Commission parrainage
     if (user.referred_by) {
-      const commission = parseFloat((convAmount * 0.10).toFixed(2));
-      const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
-      if (referrer) {
-        await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-        await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
+      const { data: referee } = await supabase.from('users').select('referral_active').eq('id', link.user_id).single();
+      if (referee && referee.referral_active !== false) {
+        const commission = parseFloat((convAmount * 0.10).toFixed(2));
+        const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+        if (referrer) {
+          await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
+          await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
+        }
       }
     }
     // Postback affilié
@@ -329,11 +332,14 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
     if (user) {
       await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
       if (user.referred_by) {
-        const commission = parseFloat((parseFloat(amount) * 0.10).toFixed(2));
-        const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
-        if (referrer) {
-          await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-          await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: user_id, conversion_id: conv.id, amount: commission });
+        const { data: referee } = await supabase.from('users').select('referral_active').eq('id', user_id).single();
+        if (referee && referee.referral_active !== false) {
+          const commission = parseFloat((parseFloat(amount) * 0.10).toFixed(2));
+          const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+          if (referrer) {
+            await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
+            await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: user_id, conversion_id: conv.id, amount: commission });
+          }
         }
       }
     }
