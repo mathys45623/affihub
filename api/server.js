@@ -321,6 +321,34 @@ app.get('/go/:linkId', async (req, res) => {
 });
 
 // ── POSTBACK CONVERSION ──
+// ⚠️ TEMPORAIRE — route de diagnostic DM Discord, à supprimer une fois le problème résolu
+app.get('/api/dm-debug', async (req, res) => {
+  const { secret, discord_id } = req.query;
+  if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) return res.status(401).json({ error: 'Non autorisé' });
+  if (!discord_id) return res.status(400).json({ error: 'discord_id manquant' });
+  const result = { bot_token_configured: !!process.env.DISCORD_BOT_TOKEN };
+  if (!process.env.DISCORD_BOT_TOKEN) return res.json(result);
+  try {
+    const chanRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient_id: discord_id })
+    });
+    result.channel_status = chanRes.status;
+    const chan = await chanRes.json();
+    result.channel_response = chan;
+    if (chan.id) {
+      const msgRes = await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: '🧪 Test AffiHub — si tu vois ce message, la config est bonne !' })
+      });
+      result.message_status = msgRes.status;
+      result.message_response = await msgRes.json();
+    }
+  } catch (e) { result.error = e.message; }
+  res.json(result);
+});
 app.get('/api/postback', async (req, res) => {
   const { ref, amount, status, secret } = req.query;
   if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) {
