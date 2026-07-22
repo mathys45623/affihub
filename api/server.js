@@ -62,6 +62,25 @@ async function notifyDiscord2(webhook, title, color, fields, content) {
   } catch(e) { console.error('Discord webhook error:', e.message); }
 }
 
+// ── DM privé à un affilié via un bot Discord (nécessite DISCORD_BOT_TOKEN) ──
+async function sendDiscordDM(discordId, title, color, fields) {
+  if (!discordId || !process.env.DISCORD_BOT_TOKEN) return;
+  try {
+    const chanRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient_id: discordId })
+    });
+    const chan = await chanRes.json();
+    if (!chan.id) { console.error('Discord DM: impossible d\'ouvrir le channel', chan); return; }
+    await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [{ title, color, fields, timestamp: new Date().toISOString(), footer: { text: 'AffiHub' } }] })
+    });
+  } catch (e) { console.error('Discord DM error:', e.message); }
+}
+
 async function sendEmail(to, subject, html) {
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -231,7 +250,17 @@ app.post('/api/login', async (req, res) => {
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
-  const { data } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
+  const { data } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id').eq('id', req.user.id).single();
+  if (data) {
+    const { data: convs } = await supabase.from('conversions').select('created_at').eq('user_id', req.user.id).eq('status', 'approved');
+    const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
+    let streak = 0;
+    const cursor = new Date();
+    const todayStr = cursor.toISOString().slice(0, 10);
+    if (!days.has(todayStr)) cursor.setDate(cursor.getDate() - 1); // pas encore vendu aujourd'hui : ok tant qu'hier compte
+    while (days.has(cursor.toISOString().slice(0, 10))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+    data.streak = streak;
+  }
   res.json(data);
 });
 
@@ -267,6 +296,12 @@ app.patch('/api/me/postback', auth, async (req, res) => {
   await supabase.from('users').update({ postback_url: postback_url || null }).eq('id', req.user.id);
   res.json({ success: true });
 });
+app.patch('/api/me/discord-id', auth, async (req, res) => {
+  const { discord_id } = req.body;
+  if (discord_id && !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord invalide' });
+  await supabase.from('users').update({ discord_id: discord_id || null }).eq('id', req.user.id);
+  res.json({ success: true });
+});
 
 // ── TRACKING CLIC ──
 app.get('/go/:linkId', async (req, res) => {
@@ -300,9 +335,14 @@ app.get('/api/postback', async (req, res) => {
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
   // Créditer le solde
-  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', link.user_id).single();
+  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', link.user_id).single();
   if (user) {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
+    // DM privé à l'affilié
+    sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
+      { name: '🎯 Offre', value: link.offers?.name || '?', inline: true },
+      { name: '💵 Montant', value: '$' + convAmount, inline: true }
+    ]);
     // Commission parrainage
     if (user.referred_by) {
       const { data: referee } = await supabase.from('users').select('referral_active').eq('id', link.user_id).single();
@@ -335,9 +375,14 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id, user_id, offer_id, amount: parseFloat(amount), status: status || 'pending' }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   if (status === 'approved') {
-    const { data: user } = await supabase.from('users').select('balance,referred_by').eq('id', user_id).single();
+    const { data: user } = await supabase.from('users').select('balance,referred_by,discord_id').eq('id', user_id).single();
     if (user) {
       await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
+      const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
+      sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
+        { name: '🎯 Offre', value: offer?.name || '?', inline: true },
+        { name: '💵 Montant', value: '$' + amount, inline: true }
+      ]);
       if (user.referred_by) {
         const { data: referee } = await supabase.from('users').select('referral_active').eq('id', user_id).single();
         if (referee && referee.referral_active !== false) {
@@ -372,8 +417,13 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   if (!conv || conv.status !== 'pending') return res.status(400).json({ error: 'Conversion invalide' });
   await supabase.from('conversions').update({ status: 'approved' }).eq('id', req.params.id);
   log(req.user.id, 'conversion-approuvée', 'Conversion #'+req.params.id+' approuvée ($'+conv.amount+')', req);
-  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url').eq('id', conv.user_id).single();
+  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
+  // DM privé à l'affilié
+  sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
+    { name: '🎯 Offre', value: conv.offers?.name || '?', inline: true },
+    { name: '💵 Montant', value: '$' + conv.amount, inline: true }
+  ]);
   // Notify Discord
   notifyDiscord(conv.users?.name || '?', conv.offers?.name || '?', conv.amount);
   if (user.referred_by) {
