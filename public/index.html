@@ -862,7 +862,7 @@ async function renderPage(page){
       +'<div id="guide-'+s.id+'" style="display:'+(i===0?'block':'none')+';padding:16px 18px;background:#0a0a0a;border:1px solid #2a2a2a;border-top:none;border-radius:0 0 14px 14px;font-size:13px;color:var(--muted);line-height:1.8">'+s.html+'</div>'
       +'</div>'
     ).join('');
-    return '<div class="card" style="margin-bottom:20px;background:var(--grad);border:none"><div style="font-size:18px;font-weight:900;color:#000">📖 Guide complet AffiHub</div><div style="font-size:13px;color:rgba(0,0,0,.7);margin-top:4px">Toutes les pages du site expliquées — clique sur une section pour l\'ouvrir.</div></div>'
+    return '<div style="margin-bottom:20px;background:var(--grad);border-radius:18px;padding:22px 28px;box-shadow:0 8px 40px rgba(240,66,122,.35)"><div style="font-size:18px;font-weight:900;color:#000">📖 Guide complet AffiHub</div><div style="font-size:13px;color:rgba(0,0,0,.7);margin-top:4px">Toutes les pages du site expliquées — clique sur une section pour l\'ouvrir.</div></div>'
       +html;
   }
   if(page==='aff-discord'){
