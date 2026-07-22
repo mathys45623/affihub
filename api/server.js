@@ -321,6 +321,21 @@ app.get('/go/:linkId', async (req, res) => {
 });
 
 // ── POSTBACK CONVERSION ──
+// ⚠️ TEMPORAIRE — diagnostic pour vérifier le compte propriétaire d'un lien
+app.get('/api/link-owner-debug', async (req, res) => {
+  const { secret, ref } = req.query;
+  if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) return res.status(401).json({ error: 'Non autorisé' });
+  const { data: link } = await supabase.from('links').select('user_id, offer_id').eq('id', ref).single();
+  if (!link) return res.status(404).json({ error: 'Lien introuvable' });
+  const { data: user } = await supabase.from('users').select('name,email,discord_id').eq('id', link.user_id).single();
+  res.json({
+    owner_name: user?.name,
+    owner_email: user?.email,
+    discord_id_set: !!user?.discord_id,
+    discord_id_length: (user?.discord_id || '').length,
+    discord_id_last4: (user?.discord_id || '').slice(-4)
+  });
+});
 app.get('/api/postback', async (req, res) => {
   const { ref, amount, status, secret } = req.query;
   if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) {
