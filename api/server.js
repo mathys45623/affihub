@@ -555,8 +555,9 @@ app.get('/api/withdrawals', auth, async (req, res) => {
 });
 app.post('/api/withdrawals', auth, async (req, res) => {
   const { amount, crypto, address } = req.body;
-  const { data: user } = await supabase.from('users').select('balance,name').eq('id', req.user.id).single();
+  const { data: user } = await supabase.from('users').select('balance,name,discord_id').eq('id', req.user.id).single();
   if (!user || user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
+  if (!user.discord_id) return res.status(400).json({ error: 'Renseigne ton ID Discord dans Paramètres avant de demander un retrait' });
   if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
   await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
