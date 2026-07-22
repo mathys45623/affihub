@@ -321,21 +321,6 @@ app.get('/go/:linkId', async (req, res) => {
 });
 
 // ── POSTBACK CONVERSION ──
-// ⚠️ TEMPORAIRE — diagnostic pour vérifier le compte propriétaire d'un lien
-app.get('/api/link-owner-debug', async (req, res) => {
-  const { secret, ref } = req.query;
-  if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) return res.status(401).json({ error: 'Non autorisé' });
-  const { data: link } = await supabase.from('links').select('user_id, offer_id').eq('id', ref).single();
-  if (!link) return res.status(404).json({ error: 'Lien introuvable' });
-  const { data: user } = await supabase.from('users').select('name,email,discord_id').eq('id', link.user_id).single();
-  res.json({
-    owner_name: user?.name,
-    owner_email: user?.email,
-    discord_id_set: !!user?.discord_id,
-    discord_id_length: (user?.discord_id || '').length,
-    discord_id_last4: (user?.discord_id || '').slice(-4)
-  });
-});
 app.get('/api/postback', async (req, res) => {
   const { ref, amount, status, secret } = req.query;
   if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) {
@@ -361,7 +346,7 @@ app.get('/api/postback', async (req, res) => {
   if (user) {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
     // DM privé à l'affilié
-    sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
+    await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
       { name: '🎯 Offre', value: link.offers?.name || '?', inline: true },
       { name: '💵 Montant', value: '$' + convAmount, inline: true }
     ]);
@@ -401,7 +386,7 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
     if (user) {
       await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
       const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
-      sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
+      await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
         { name: '🎯 Offre', value: offer?.name || '?', inline: true },
         { name: '💵 Montant', value: '$' + amount, inline: true }
       ]);
@@ -442,7 +427,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
   // DM privé à l'affilié
-  sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
+  await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
     { name: '🎯 Offre', value: conv.offers?.name || '?', inline: true },
     { name: '💵 Montant', value: '$' + conv.amount, inline: true }
   ]);
