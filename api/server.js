@@ -508,7 +508,7 @@ app.post('/api/withdrawals', auth, async (req, res) => {
     { name: '👤 Affilié', value: user.name, inline: true },
     { name: '💰 Montant', value: '$' + amount, inline: true },
     { name: '💳 Moyen', value: crypto, inline: true }
-  ], '<@1504481208266915861>');
+  ], '<@1504481208266915861> <@1475752325174788118>');
   log(req.user.id, 'retrait-demandé', 'Demande de $'+amount+' en '+crypto, req);
   res.json(data);
 });
@@ -691,7 +691,7 @@ app.post('/api/tickets', auth, async (req, res) => {
     { name: '👤 Affilié', value: req.user.name, inline: true },
     { name: '🏷️ Raison', value: reasons[reason] || reason, inline: true },
     { name: '💬 Message', value: content.substring(0, 100) + (content.length > 100 ? '...' : ''), inline: false }
-  ], '<@1504481208266915861>');
+  ], '<@1504481208266915861> <@1475752325174788118>');
   res.json(ticket);
 });
 
