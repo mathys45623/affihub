@@ -250,16 +250,23 @@ app.post('/api/login', async (req, res) => {
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
-  const { data } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id').eq('id', req.user.id).single();
+  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id').eq('id', req.user.id).single();
+  if (error) {
+    console.error('/api/me erreur (colonne manquante ?):', error.message);
+    const fallback = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
+    data = fallback.data;
+  }
   if (data) {
-    const { data: convs } = await supabase.from('conversions').select('created_at').eq('user_id', req.user.id).eq('status', 'approved');
-    const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
-    let streak = 0;
-    const cursor = new Date();
-    const todayStr = cursor.toISOString().slice(0, 10);
-    if (!days.has(todayStr)) cursor.setDate(cursor.getDate() - 1); // pas encore vendu aujourd'hui : ok tant qu'hier compte
-    while (days.has(cursor.toISOString().slice(0, 10))) { streak++; cursor.setDate(cursor.getDate() - 1); }
-    data.streak = streak;
+    try {
+      const { data: convs } = await supabase.from('conversions').select('created_at').eq('user_id', req.user.id).eq('status', 'approved');
+      const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
+      let streak = 0;
+      const cursor = new Date();
+      const todayStr = cursor.toISOString().slice(0, 10);
+      if (!days.has(todayStr)) cursor.setDate(cursor.getDate() - 1); // pas encore vendu aujourd'hui : ok tant qu'hier compte
+      while (days.has(cursor.toISOString().slice(0, 10))) { streak++; cursor.setDate(cursor.getDate() - 1); }
+      data.streak = streak;
+    } catch (e) { data.streak = 0; }
   }
   res.json(data);
 });
