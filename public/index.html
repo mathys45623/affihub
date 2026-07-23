@@ -1208,6 +1208,7 @@ async function renderPage(page){
     +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première inscription</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉" style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
+    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock. Désactive cette page une fois le postback actif.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
   }
 
@@ -1219,6 +1220,22 @@ async function genLink(offerId){try{await api('POST','/api/links',{offer_id:offe
 async function regenLink(linkId,offerId){document.getElementById('m-title').textContent='Regénérer le lien';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔄</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous regénérer ce lien ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doRegenLink(\''+linkId+'\','+offerId+')" style="flex:1">Regénérer</button></div></div>';document.getElementById('mo').classList.add('open');}
 async function doRegenLink(linkId,offerId){try{await api('DELETE','/api/links/'+linkId);await api('POST','/api/links',{offer_id:offerId});closeMo();toast('Lien regénéré ✓','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
 function cpLink(id,btn){navigator.clipboard?.writeText(window.location.origin+'/go/'+id);if(btn){btn.textContent='✅';setTimeout(()=>btn.textContent='📋',2000);}toast('Lien copié !','s');}
+function confirmDmAll(){
+  const msg=document.getElementById('dm-all-msg').value.trim();
+  if(!msg){toast('Écris un message','e');return;}
+  document.getElementById('m-title').textContent='Envoyer à tous les affiliés ?';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">📢</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Ce message sera envoyé en DM Discord à tous les affiliés ayant renseigné leur ID Discord.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doDmAll()" style="flex:1">Envoyer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doDmAll(){
+  const msg=document.getElementById('dm-all-msg').value.trim();
+  closeMo();
+  toast('Envoi en cours...','s');
+  try{
+    const r=await api('POST','/api/admin/dm-all',{message:msg});
+    toast('Envoyé à '+r.sent+'/'+r.total+' affilié(s)'+(r.failed?(' — '+r.failed+' échec(s)'):''),'s');
+  }catch(e){toast(e.message,'e');}
+}
 function pickCrypto(c,el){
   selCrypto=c;
   document.querySelectorAll('.crypto-opt').forEach(e=>e.classList.remove('sel'));
