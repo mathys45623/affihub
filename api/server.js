@@ -81,6 +81,26 @@ async function sendDiscordDM(discordId, title, color, fields) {
   } catch (e) { console.error('Discord DM error:', e.message); }
 }
 
+// DM texte brut (pour les envois groupés), renvoie true/false
+async function sendDiscordDMPlain(discordId, content) {
+  if (!discordId || !process.env.DISCORD_BOT_TOKEN) return false;
+  try {
+    const chanRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient_id: discordId })
+    });
+    const chan = await chanRes.json();
+    if (!chan.id) return false;
+    const msgRes = await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content })
+    });
+    return msgRes.ok;
+  } catch (e) { console.error('Discord DM plain error:', e.message); return false; }
+}
+
 async function sendEmail(to, subject, html) {
   try {
     const res = await fetch('https://api.resend.com/emails', {
@@ -308,6 +328,20 @@ app.patch('/api/me/discord-id', auth, async (req, res) => {
   if (discord_id && !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord invalide' });
   await supabase.from('users').update({ discord_id: discord_id || null }).eq('id', req.user.id);
   res.json({ success: true });
+});
+
+app.post('/api/admin/dm-all', auth, adminOnly, async (req, res) => {
+  const { message } = req.body;
+  if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
+  const { data: users } = await supabase.from('users').select('id,discord_id').eq('role', 'affiliate').not('discord_id', 'is', null);
+  const targets = (users || []).filter(u => u.discord_id);
+  let sent = 0, failed = 0;
+  for (const u of targets) {
+    const ok = await sendDiscordDMPlain(u.discord_id, message.trim());
+    if (ok) sent++; else failed++;
+  }
+  log(req.user.id, 'dm-groupé-discord', 'DM envoyé à ' + sent + '/' + targets.length + ' affiliés', req);
+  res.json({ total: targets.length, sent, failed });
 });
 
 // ── TRACKING CLIC ──
