@@ -354,6 +354,15 @@ app.get('/go/:linkId', async (req, res) => {
   res.redirect(link.offers.url + separator + 'sub=' + linkId);
 });
 
+// Aperçu de la destination d'un lien, sans compter comme un clic
+app.get('/api/links/:id/preview', auth, async (req, res) => {
+  const { data: link } = await supabase.from('links').select('*, offers(url)').eq('id', req.params.id).single();
+  if (!link) return res.status(404).json({ error: 'Lien invalide' });
+  if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
+  const separator = link.offers.url.includes('?') ? '&' : '?';
+  res.json({ url: link.offers.url + separator + 'sub=' + link.id });
+});
+
 // ── POSTBACK CONVERSION ──
 app.get('/api/postback', async (req, res) => {
   const { ref, amount, status, secret } = req.query;
