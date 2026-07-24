@@ -212,7 +212,7 @@ app.post('/api/register', async (req, res) => {
         { name: '💰 Commission', value: '10% sur chaque vente', inline: true }
       ];
       if (referral_same_ip) fields.push({ name: '⚠️ Alerte', value: 'Même IP que le parrain — double compte possible !', inline: false });
-      notifyDiscord2(DISCORD_REFERRAL, referral_same_ip ? '⚠️ Nouveau parrainage — DOUBLE COMPTE DÉTECTÉ' : '🤝 Nouveau parrainage !', referral_same_ip ? 0xff4757 : 0xa855f7, fields);
+      await notifyDiscord2(DISCORD_REFERRAL, referral_same_ip ? '⚠️ Nouveau parrainage — DOUBLE COMPTE DÉTECTÉ' : '🤝 Nouveau parrainage !', referral_same_ip ? 0xff4757 : 0xa855f7, fields);
     }
   }
   // Get welcome message
@@ -243,7 +243,7 @@ app.post('/api/register', async (req, res) => {
   const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET);
   log(data.id, 'inscription', 'Nouveau compte créé : '+name, req);
   // Discord notification
-  notifyDiscord2(DISCORD_REGISTER, '👤 Nouvel affilié !', 0x00D68F, [
+  await notifyDiscord2(DISCORD_REGISTER, '👤 Nouvel affilié !', 0x00D68F, [
     { name: '👤 Nom', value: name, inline: true },
     { name: '📧 Email', value: email, inline: true },
     { name: '🔗 Code parrainage', value: newCode, inline: true }
@@ -412,7 +412,7 @@ app.get('/api/postback', async (req, res) => {
     }
   }
   // Notify Discord
-  notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
+  await notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
   res.json({ success: true, conversion_id: conv.id });
 });
 
@@ -475,7 +475,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
     { name: '💵 Montant', value: '$' + conv.amount, inline: true }
   ]);
   // Notify Discord
-  notifyDiscord(conv.users?.name || '?', conv.offers?.name || '?', conv.amount);
+  await notifyDiscord(conv.users?.name || '?', conv.offers?.name || '?', conv.amount);
   if (user.referred_by) {
     const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
     if (referee && referee.referral_active !== false) {
@@ -605,7 +605,7 @@ app.post('/api/withdrawals', auth, async (req, res) => {
   await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
   const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
   // Discord notification
-  notifyDiscord2(DISCORD_WITHDRAWAL, '💸 Demande de retrait !', 0xF0427A, [
+  await notifyDiscord2(DISCORD_WITHDRAWAL, '💸 Demande de retrait !', 0xF0427A, [
     { name: '👤 Affilié', value: user.name, inline: true },
     { name: '💰 Montant', value: '$' + amount, inline: true },
     { name: '💳 Moyen', value: crypto, inline: true }
@@ -619,7 +619,7 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
   // Discord notification
   log(req.user.id, 'retrait-payé', 'Retrait #'+req.params.id+' de $'+wd.amount+' payé à '+(wd.users?.name||'?'), req);
-  notifyDiscord2(DISCORD_PAYMENT, '✅ Retrait payé !', 0x00D68F, [
+  await notifyDiscord2(DISCORD_PAYMENT, '✅ Retrait payé !', 0x00D68F, [
     { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
     { name: '💰 Montant', value: '$' + wd.amount, inline: true },
     { name: '💳 Moyen', value: wd.crypto, inline: true }
@@ -635,7 +635,7 @@ app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
   // Discord notification
   log(req.user.id, 'retrait-rejeté', 'Retrait #'+req.params.id+' de '+(wd.users?.name||'?')+' rejeté', req);
-  notifyDiscord2(DISCORD_PAYMENT, '❌ Retrait rejeté', 0xFF4757, [
+  await notifyDiscord2(DISCORD_PAYMENT, '❌ Retrait rejeté', 0xFF4757, [
     { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
     { name: '💰 Montant', value: '$' + wd.amount, inline: true },
     { name: '❓ Raison', value: reason || 'Non précisée', inline: true }
@@ -788,7 +788,7 @@ app.post('/api/tickets', auth, async (req, res) => {
   // Discord notification
   const reasons = {'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
   log(req.user.id, 'ticket-créé', 'Ticket créé : '+reason, req);
-  notifyDiscord2(DISCORD_TICKET, '🎫 Nouveau ticket support !', 0x4D9EFF, [
+  await notifyDiscord2(DISCORD_TICKET, '🎫 Nouveau ticket support !', 0x4D9EFF, [
     { name: '👤 Affilié', value: req.user.name, inline: true },
     { name: '🏷️ Raison', value: reasons[reason] || reason, inline: true },
     { name: '💬 Message', value: content.substring(0, 100) + (content.length > 100 ? '...' : ''), inline: false }
