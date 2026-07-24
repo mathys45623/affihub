@@ -515,6 +515,23 @@ app.get('/api/conversions', auth, async (req, res) => {
 });
 
 // ── OFFERS ──
+// ── COLLECTION DE CARTES ──
+app.get('/api/me/collection', auth, async (req, res) => {
+  const { data: offers } = await supabase.from('offers').select('*').order('id');
+  const { data: convs } = await supabase.from('conversions').select('offer_id,created_at').eq('user_id', req.user.id).eq('status', 'approved').order('created_at');
+  const unlocked = {};
+  (convs || []).forEach(c => {
+    if (!unlocked[c.offer_id]) unlocked[c.offer_id] = { count: 0, first: c.created_at };
+    unlocked[c.offer_id].count++;
+  });
+  const collection = (offers || []).map(o => ({
+    id: o.id, name: o.name, category: o.category, image_url: o.image_url,
+    unlocked: !!unlocked[o.id],
+    sales_count: unlocked[o.id]?.count || 0,
+    unlocked_at: unlocked[o.id]?.first || null
+  }));
+  res.json(collection);
+});
 app.get('/api/offers', auth, async (req, res) => {
   const { data } = await supabase.from('offers').select('*').order('id');
   res.json(data || []);
