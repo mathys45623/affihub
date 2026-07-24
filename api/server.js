@@ -516,21 +516,46 @@ app.get('/api/conversions', auth, async (req, res) => {
 
 // ── OFFERS ──
 // ── COLLECTION DE CARTES ──
-app.get('/api/me/collection', auth, async (req, res) => {
+async function getCollectionForUser(userId) {
   const { data: offers } = await supabase.from('offers').select('*').order('id');
-  const { data: convs } = await supabase.from('conversions').select('offer_id,created_at').eq('user_id', req.user.id).eq('status', 'approved').order('created_at');
+  const { data: convs } = await supabase.from('conversions').select('offer_id,created_at').eq('user_id', userId).eq('status', 'approved').order('created_at');
+  const { data: grants } = await supabase.from('manual_card_grants').select('offer_id,granted_at').eq('user_id', userId);
   const unlocked = {};
   (convs || []).forEach(c => {
-    if (!unlocked[c.offer_id]) unlocked[c.offer_id] = { count: 0, first: c.created_at };
+    if (!unlocked[c.offer_id]) unlocked[c.offer_id] = { count: 0, first: c.created_at, manual: false };
     unlocked[c.offer_id].count++;
   });
-  const collection = (offers || []).map(o => ({
+  (grants || []).forEach(g => {
+    if (!unlocked[g.offer_id]) unlocked[g.offer_id] = { count: 0, first: g.granted_at, manual: true };
+  });
+  return (offers || []).map(o => ({
     id: o.id, name: o.name, category: o.category, image_url: o.image_url,
     unlocked: !!unlocked[o.id],
     sales_count: unlocked[o.id]?.count || 0,
-    unlocked_at: unlocked[o.id]?.first || null
+    unlocked_at: unlocked[o.id]?.first || null,
+    manual: unlocked[o.id]?.manual || false
   }));
-  res.json(collection);
+}
+app.get('/api/me/collection', auth, async (req, res) => {
+  res.json(await getCollectionForUser(req.user.id));
+});
+app.get('/api/admin/collection/:userId', auth, adminOnly, async (req, res) => {
+  res.json(await getCollectionForUser(req.params.userId));
+});
+app.post('/api/admin/grant-card', auth, adminOnly, async (req, res) => {
+  const { user_id, offer_id } = req.body;
+  if (!user_id || !offer_id) return res.status(400).json({ error: 'user_id et offer_id requis' });
+  const { data: existing } = await supabase.from('manual_card_grants').select('id').eq('user_id', user_id).eq('offer_id', offer_id).single();
+  if (existing) return res.status(400).json({ error: 'Déjà débloquée manuellement' });
+  const { error } = await supabase.from('manual_card_grants').insert({ user_id, offer_id, granted_by: req.user.id });
+  if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'carte-débloquée-manuellement', 'Carte offre #' + offer_id + ' débloquée pour affilié #' + user_id, req);
+  res.json({ success: true });
+});
+app.delete('/api/admin/grant-card/:userId/:offerId', auth, adminOnly, async (req, res) => {
+  await supabase.from('manual_card_grants').delete().eq('user_id', req.params.userId).eq('offer_id', req.params.offerId);
+  log(req.user.id, 'carte-retirée', 'Déblocage manuel retiré (offre #' + req.params.offerId + ', affilié #' + req.params.userId + ')', req);
+  res.json({ success: true });
 });
 app.get('/api/offers', auth, async (req, res) => {
   const { data } = await supabase.from('offers').select('*').order('id');
