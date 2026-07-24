@@ -492,7 +492,7 @@ async function startApp(){
     {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},{icon:'⏳',label:'Liens temporaires',page:'aff-temp'}]},
     {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
     {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
-    {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+    {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'},{icon:'🎴',label:'Collection',page:'aff-collection'}]},
     {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
   if(ME.role==='admin'){
@@ -538,7 +538,7 @@ async function startApp(){
         {section:'ACCUEIL',items:accueilItems},
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
         {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
-        {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+        {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'},{icon:'🎴',label:'Collection',page:'aff-collection'}]},
         {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
       ];
       buildNav(nav);buildMobileNav(nav);
@@ -629,7 +629,7 @@ function closeMobileNav(){
 const TITLES={
   'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions',
   'aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager',
-  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide',
+  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
   'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
@@ -875,6 +875,27 @@ async function renderPage(page){
     ).join('');
     return '<div style="margin-bottom:20px;background:var(--grad);border-radius:18px;padding:22px 28px;box-shadow:0 8px 40px rgba(240,66,122,.35)"><div style="font-size:18px;font-weight:900;color:#000">📖 Guide complet AffiHub</div><div style="font-size:13px;color:rgba(0,0,0,.7);margin-top:4px">Toutes les pages du site expliquées — clique sur une section pour l\'ouvrir.</div></div>'
       +html;
+  }
+  if(page==='aff-collection'){
+    const coll=await api('GET','/api/me/collection');
+    const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842',rarity:'Légendaire'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF',rarity:'Rare'},dating:{icon:'💕',label:'Dating',color:'#F0427A',rarity:'Rare'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7',rarity:'Épique'},autre:{icon:'🎨',label:'Autre',color:'#00D68F',rarity:'Commune'}};
+    const unlockedCount=coll.filter(c=>c.unlocked).length;
+    const pct=coll.length?Math.round(unlockedCount/coll.length*100):0;
+    const cards=coll.map(o=>{
+      const m=catMeta[o.category]||catMeta.autre;
+      if(!o.unlocked){
+        return '<div style="border-radius:16px;background:#0d0d0d;border:2px dashed #2a2a2a;padding:16px;text-align:center;aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px"><div style="font-size:36px;opacity:.3">🔒</div><div style="font-size:12px;color:var(--muted);font-weight:700">??? </div><div style="font-size:10px;color:var(--muted)">Fais ta 1ère vente<br>pour débloquer</div></div>';
+      }
+      return '<div style="border-radius:16px;background:linear-gradient(160deg,'+m.color+'22,#0d0d0d 60%);border:2px solid '+m.color+';padding:14px;aspect-ratio:3/4;display:flex;flex-direction:column;box-shadow:0 0 20px '+m.color+'33;position:relative;overflow:hidden">'
+        +'<div style="position:absolute;top:8px;right:10px;font-size:9px;font-weight:900;color:'+m.color+';text-transform:uppercase;letter-spacing:.5px">'+m.rarity+'</div>'
+        +'<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:36px">'+(o.image_url?'<img src="'+o.image_url+'" style="width:100%;height:70px;object-fit:cover;border-radius:8px">':m.icon)+'</div>'
+        +'<div style="font-weight:900;font-size:12px;text-align:center;margin-top:8px">'+o.name+'</div>'
+        +'<div style="font-size:10px;color:'+m.color+';text-align:center;margin-top:2px">'+m.icon+' '+m.label+'</div>'
+        +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px;border-top:1px solid rgba(255,255,255,.08);padding-top:6px">🏅 '+o.sales_count+' vente'+(o.sales_count>1?'s':'')+'<br>Débloquée le '+fmt(o.unlocked_at)+'</div>'
+        +'</div>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="card-title">🎴 Ta collection</div><div style="font-weight:900;font-size:14px">'+unlockedCount+'/'+coll.length+'</div></div><div style="background:#111;border-radius:20px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:var(--grad);border-radius:20px;transition:width .3s"></div></div><div style="font-size:11px;color:var(--muted);margin-top:8px">Débloque une carte à chaque première vente sur une nouvelle offre.</div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px">'+cards+'</div>';
   }
   if(page==='aff-discord'){
     const servers=await api('GET','/api/discord-servers');
