@@ -978,7 +978,7 @@ async function renderPage(page){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
     const isSuperAdmin=ME.is_super_admin===true;
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
     return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' utilisateur(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
@@ -1675,6 +1675,26 @@ function openNoteAff(userId,userName,currentNote){
   document.getElementById('m-title').textContent='📝 Note — '+userName;
   document.getElementById('m-body').innerHTML='<div class="fi"><label>Note privée (visible uniquement par vous)</label><textarea id="note-txt" placeholder="Ex: VIP, à surveiller, bon affilié..." style="resize:vertical;min-height:100px">'+currentNote+'</textarea></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveNote(\''+userId+'\')" style="flex:1;justify-content:center">💾 Sauvegarder</button></div>';
   document.getElementById('mo').classList.add('open');
+}
+const CARD_CAT_META={casino:{icon:'🎰',label:'Casino',color:'#F5C842',rarity:'Légendaire'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF',rarity:'Rare'},dating:{icon:'💕',label:'Dating',color:'#F0427A',rarity:'Rare'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7',rarity:'Épique'},autre:{icon:'🎨',label:'Autre',color:'#00D68F',rarity:'Commune'}};
+async function openCollectionAdmin(userId, userName){
+  const coll=await api('GET','/api/admin/collection/'+userId);
+  const cards=coll.map(o=>{
+    const m=CARD_CAT_META[o.category]||CARD_CAT_META.autre;
+    if(o.unlocked){
+      return '<div style="border-radius:12px;background:linear-gradient(160deg,'+m.color+'22,#0d0d0d 60%);border:1px solid '+m.color+';padding:10px;text-align:center"><div style="font-size:11px;font-weight:800">'+o.name+'</div><div style="font-size:9px;color:'+m.color+'">'+m.icon+' '+m.rarity+'</div><div style="font-size:9px;color:var(--muted);margin-top:4px">'+(o.manual?'🔓 débloqué manuellement':'🏅 '+o.sales_count+' vente(s)')+'</div>'+(o.manual?'<button class="btn btn-gst btn-sm" style="margin-top:6px;font-size:10px" onclick="revokeCard(\''+userId+'\','+o.id+',\''+userName.replace(/'/g,"\\'")+'\')">Retirer</button>':'')+'</div>';
+    }
+    return '<div style="border-radius:12px;background:#0d0d0d;border:1px dashed #2a2a2a;padding:10px;text-align:center"><div style="font-size:20px;opacity:.3">🔒</div><div style="font-size:10px;color:var(--muted);margin-top:4px">'+o.name+'</div><button class="btn btn-grad btn-sm" style="margin-top:6px;font-size:10px" onclick="grantCard(\''+userId+'\','+o.id+',\''+userName.replace(/'/g,"\\'")+'\')">🔓 Débloquer</button></div>';
+  }).join('');
+  document.getElementById('m-title').textContent='🎴 Collection — '+userName;
+  document.getElementById('m-body').innerHTML='<div style="max-height:60vh;overflow-y:auto;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px">'+cards+'</div><button class="btn btn-gst" onclick="closeMo()" style="width:100%;justify-content:center">Fermer</button>';
+  document.getElementById('mo').classList.add('open');
+}
+async function grantCard(userId,offerId,userName){
+  try{await api('POST','/api/admin/grant-card',{user_id:userId,offer_id:offerId});toast('Carte débloquée ✓','s');openCollectionAdmin(userId,userName);}catch(e){toast(e.message,'e');}
+}
+async function revokeCard(userId,offerId,userName){
+  try{await api('DELETE','/api/admin/grant-card/'+userId+'/'+offerId);toast('Déblocage retiré','s');openCollectionAdmin(userId,userName);}catch(e){toast(e.message,'e');}
 }
 async function openPermissions(userId, userName){
   const users=await api('GET','/api/users');
