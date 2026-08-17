@@ -927,6 +927,8 @@ app.patch('/api/custom-requests/:id/link', auth, adminOnly, async (req, res) => 
   const trackedUrl = req.protocol + '://' + req.get('host') + '/go/' + linkId;
   const { data, error } = await supabase.from('custom_link_requests').update({ custom_link: trackedUrl, status: 'approved', updated_at: new Date() }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  const { data: offer } = await supabase.from('offers').select('name').eq('id', reqRow.offer_id).single();
+  await supabase.from('notifications').insert({ user_id: reqRow.user_id, type: 'custom_link', message: '🎨 Ton lien personnalisé pour "' + (offer?.name || 'une offre') + '" a été envoyé, va le récupérer dans Mes liens !', read: false });
   res.json(data);
 });
 
