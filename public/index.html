@@ -721,13 +721,14 @@ async function renderPage(page){
             bottomHtml='<span class="badge br2" style="width:100%;justify-content:center">🔒 Offre temporairement indisponible</span>';
           }
         } else if(o.id===54||o.id===55){
-          const cr=customReqs.find(r=>r.offer_id===o.id);
-          if(cr&&cr.custom_link){
-            bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2">✅ Lien reçu</span>';
-          } else if(cr){
-            bottomHtml='<span class="badge by2">⏳ Demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
+          const crList=customReqs.filter(r=>r.offer_id===o.id);
+          const approvedList=crList.filter(r=>r.status==='approved'&&r.custom_link);
+          const pendingReq=crList.find(r=>r.status==='pending');
+          bottomHtml=approvedList.map(cr=>'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div>').join('');
+          if(pendingReq){
+            bottomHtml+='<span class="badge by2">⏳ Nouvelle demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
           } else {
-            bottomHtml='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 Personnaliser & Demander</button>';
+            bottomHtml+='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 '+(approvedList.length?'Demander un autre lien':'Personnaliser & Demander')+'</button>';
           }
         } else if(el){
           const linkUrl=el.short_url||origin+'/go/'+el.id;
@@ -1067,7 +1068,7 @@ async function renderPage(page){
       const tags=isStarOF?[]:[r.tag1,r.tag2,r.tag3].filter(Boolean).map(t=>'<span class="badge bp2">'+t+'</span>').join('');
       const linkSection=r.status==='approved'
         ?'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+r.custom_link+'</code><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>'
-        :'<div style="display:flex;gap:8px;align-items:center"><input type="text" id="clink-'+r.id+'" placeholder="Colle le lien ici..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendCustomLink('+r.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>';
+        :'<div style="display:flex;gap:8px;align-items:center"><input type="text" id="clink-'+r.id+'" placeholder="URL de destination (page créée pour cet affilié)..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendCustomLink('+r.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>';
       return '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px">'+(r.logo_url?'<img src="'+r.logo_url+'" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid #2a2a2a;cursor:pointer" onclick="window.open(\''+r.logo_url+'\',\'_blank\')">':'<div style="width:48px;height:48px;border-radius:12px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:20px">🎮</div>')+'<div><div style="font-size:16px;font-weight:800">'+(r.server_name||'Sans nom')+'</div><div style="font-size:12px;color:var(--muted)">'+(r.users?.name)+' • '+(r.offers?.name)+' • '+fmt(r.created_at)+'</div></div></div>'+(r.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px">'+(isStarOF?
         '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Prénom</div><div style="font-size:13px">'+(r.server_name||'—')+'</div></div>'
@@ -1156,13 +1157,14 @@ async function renderPage(page){
       catOffers.forEach(o=>{
         let bottomHtml='';
         if(o.id===54||o.id===55){
-          const cr=customReqs.find(r=>r.offer_id===o.id);
-          if(cr&&cr.custom_link){
-            bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2">✅ Lien reçu</span>';
-          } else if(cr){
-            bottomHtml='<span class="badge by2">⏳ Demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
+          const crList=customReqs.filter(r=>r.offer_id===o.id);
+          const approvedList=crList.filter(r=>r.status==='approved'&&r.custom_link);
+          const pendingReq=crList.find(r=>r.status==='pending');
+          bottomHtml=approvedList.map(cr=>'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div>').join('');
+          if(pendingReq){
+            bottomHtml+='<span class="badge by2">⏳ Nouvelle demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
           } else {
-            bottomHtml='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 Personnaliser & Demander</button>';
+            bottomHtml+='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 '+(approvedList.length?'Demander un autre lien':'Personnaliser & Demander')+'</button>';
           }
         } else {
           const tl=tempLinks.find(t=>t.offer_id===o.id);
@@ -1198,7 +1200,7 @@ async function renderPage(page){
         catLinks.forEach(t=>{
           html+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px"><div class="avatar" style="width:40px;height:40px;font-size:16px">'+(t.users?.name||'?')[0]+'</div><div><div style="font-weight:700">'+(t.users?.name||'?')+'</div><div style="font-size:12px;color:var(--muted)">'+(t.offers?.name||'?')+' • '+fmt(t.created_at)+'</div></div></div>'+(t.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
             +(t.status==='approved'?'<div style="margin-top:12px;background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+t.custom_link+'</code><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>'
-            :'<div style="margin-top:12px;display:flex;gap:8px;align-items:center"><input type="text" id="tl-'+t.id+'" placeholder="Colle le lien Adunlock avec le nom de l\'affilié..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendTempLink('+t.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>')
+            :'<div style="margin-top:12px;display:flex;gap:8px;align-items:center"><input type="text" id="tl-'+t.id+'" placeholder="URL de destination Adunlock (le suivi est ajouté automatiquement)..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendTempLink('+t.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>')
             +'</div>';
         });
         html+='</div></div>';
