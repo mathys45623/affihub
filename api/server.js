@@ -350,8 +350,9 @@ app.get('/go/:linkId', async (req, res) => {
   const { data: link } = await supabase.from('links').select('*, offers(url)').eq('id', linkId).single();
   if (!link || !link.active) return res.status(404).send('Lien invalide ou désactivé');
   await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', linkId);
-  const separator = link.offers.url.includes('?') ? '&' : '?';
-  res.redirect(link.offers.url + separator + 'sub=' + linkId);
+  const destination = link.custom_url || link.offers.url;
+  const separator = destination.includes('?') ? '&' : '?';
+  res.redirect(destination + separator + 'sub=' + linkId);
 });
 
 // Aperçu de la destination d'un lien, sans compter comme un clic
@@ -359,8 +360,9 @@ app.get('/api/links/:id/preview', auth, async (req, res) => {
   const { data: link } = await supabase.from('links').select('*, offers(url)').eq('id', req.params.id).single();
   if (!link) return res.status(404).json({ error: 'Lien invalide' });
   if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
-  const separator = link.offers.url.includes('?') ? '&' : '?';
-  res.json({ url: link.offers.url + separator + 'sub=' + link.id });
+  const destination = link.custom_url || link.offers.url;
+  const separator = destination.includes('?') ? '&' : '?';
+  res.json({ url: destination + separator + 'sub=' + link.id });
 });
 
 // ── POSTBACK CONVERSION ──
@@ -536,6 +538,7 @@ async function getCollectionForUser(userId) {
     manual: unlocked[o.id]?.manual || false
   }));
 }
+
 app.get('/api/me/collection', auth, async (req, res) => {
   res.json(await getCollectionForUser(req.user.id));
 });
@@ -901,8 +904,8 @@ app.get('/api/custom-requests', auth, async (req, res) => {
 
 app.post('/api/custom-requests', auth, async (req, res) => {
   const { offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text } = req.body;
-  // Check if already exists
-  const { data: existing } = await supabase.from('custom_link_requests').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
+  // Ne fusionne qu'avec une demande encore EN ATTENTE (pas déjà approuvée), pour permettre plusieurs liens perso au fil du temps
+  const { data: existing } = await supabase.from('custom_link_requests').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).eq('status', 'pending').single();
   if (existing) {
     const { data, error } = await supabase.from('custom_link_requests').update({ server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text, status: 'pending', updated_at: new Date() }).eq('id', existing.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
@@ -915,7 +918,15 @@ app.post('/api/custom-requests', auth, async (req, res) => {
 
 app.patch('/api/custom-requests/:id/link', auth, adminOnly, async (req, res) => {
   const { custom_link } = req.body;
-  const { data, error } = await supabase.from('custom_link_requests').update({ custom_link, status: 'approved', updated_at: new Date() }).eq('id', req.params.id).select().single();
+  if (!custom_link || !custom_link.trim()) return res.status(400).json({ error: 'Lien de destination requis' });
+  const { data: reqRow } = await supabase.from('custom_link_requests').select('user_id,offer_id').eq('id', req.params.id).single();
+  if (!reqRow) return res.status(404).json({ error: 'Demande introuvable' });
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let linkId = ''; for (let i = 0; i < 6; i++) linkId += chars[Math.floor(Math.random() * chars.length)];
+  const { error: linkErr } = await supabase.from('links').insert({ id: linkId, user_id: reqRow.user_id, offer_id: reqRow.offer_id, custom_url: custom_link.trim(), clicks: 0, active: true });
+  if (linkErr) return res.status(500).json({ error: linkErr.message });
+  const trackedUrl = req.protocol + '://' + req.get('host') + '/go/' + linkId;
+  const { data, error } = await supabase.from('custom_link_requests').update({ custom_link: trackedUrl, status: 'approved', updated_at: new Date() }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
@@ -944,7 +955,15 @@ app.post('/api/temp-links', auth, async (req, res) => {
 
 app.patch('/api/temp-links/:id/link', auth, adminOnly, async (req, res) => {
   const { custom_link } = req.body;
-  const { data, error } = await supabase.from('temp_links').update({ custom_link, status: 'approved' }).eq('id', req.params.id).select().single();
+  if (!custom_link || !custom_link.trim()) return res.status(400).json({ error: 'Lien de destination requis' });
+  const { data: reqRow } = await supabase.from('temp_links').select('user_id,offer_id').eq('id', req.params.id).single();
+  if (!reqRow) return res.status(404).json({ error: 'Demande introuvable' });
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  let linkId = ''; for (let i = 0; i < 6; i++) linkId += chars[Math.floor(Math.random() * chars.length)];
+  const { error: linkErr } = await supabase.from('links').insert({ id: linkId, user_id: reqRow.user_id, offer_id: reqRow.offer_id, custom_url: custom_link.trim(), clicks: 0, active: true });
+  if (linkErr) return res.status(500).json({ error: linkErr.message });
+  const trackedUrl = req.protocol + '://' + req.get('host') + '/go/' + linkId;
+  const { data, error } = await supabase.from('temp_links').update({ custom_link: trackedUrl, status: 'approved' }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });
