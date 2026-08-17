@@ -27,6 +27,7 @@ async function notifyDiscord(affiliateName, offerName, amount) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        content: '<@&1520173497048105170>',
         embeds: [{
           title: '💰 Nouvelle conversion !',
           color: 0xF5C842,
