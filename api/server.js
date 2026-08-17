@@ -392,6 +392,7 @@ app.get('/api/postback', async (req, res) => {
   if (user) {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
     await supabase.from('notifications').insert({ user_id: link.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + convAmount + ' (' + (link.offers?.name || '?') + ')', read: false });
+    await checkCollectionComplete(link.user_id);
     // DM privé à l'affilié
     await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
       { name: '🎯 Offre', value: link.offers?.name || '?', inline: true },
@@ -434,6 +435,7 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
       await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
       const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
       await supabase.from('notifications').insert({ user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + amount + ' (' + (offer?.name || '?') + ')', read: false });
+      await checkCollectionComplete(user_id);
       await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
         { name: '🎯 Offre', value: offer?.name || '?', inline: true },
         { name: '💵 Montant', value: '$' + amount, inline: true }
@@ -475,6 +477,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
   await supabase.from('notifications').insert({ user_id: conv.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + conv.amount + ' (' + (conv.offers?.name || '?') + ')', read: false });
+  await checkCollectionComplete(conv.user_id);
   // DM privé à l'affilié
   await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
     { name: '🎯 Offre', value: conv.offers?.name || '?', inline: true },
@@ -542,6 +545,21 @@ async function getCollectionForUser(userId) {
     manual: unlocked[o.id]?.manual || false
   }));
 }
+// Bonus de $50, versé une seule fois, quand la collection passe à 100%
+async function checkCollectionComplete(userId) {
+  try {
+    const collection = await getCollectionForUser(userId);
+    if (collection.length === 0 || !collection.every(c => c.unlocked)) return;
+    const { data: user } = await supabase.from('users').select('balance,collection_bonus_claimed,discord_id').eq('id', userId).single();
+    if (!user || user.collection_bonus_claimed) return;
+    await supabase.from('users').update({ balance: user.balance + 50, collection_bonus_claimed: true }).eq('id', userId);
+    await supabase.from('notifications').insert({ user_id: userId, type: 'collection_complete', message: '🎴 Collection complète ! $50 de bonus ajoutés à ton solde 🎉', read: false });
+    await sendDiscordDM(user.discord_id, '🎴 Collection complète !', 0xE8B84B, [
+      { name: '🏆 Bravo', value: 'Toutes les cartes débloquées !', inline: true },
+      { name: '💰 Bonus', value: '$50 ajoutés à ton solde', inline: true }
+    ]);
+  } catch (e) { console.error('checkCollectionComplete error:', e.message); }
+}
 
 app.get('/api/me/collection', auth, async (req, res) => {
   res.json(await getCollectionForUser(req.user.id));
@@ -557,6 +575,7 @@ app.post('/api/admin/grant-card', auth, adminOnly, async (req, res) => {
   const { error } = await supabase.from('manual_card_grants').insert({ user_id, offer_id, granted_by: req.user.id });
   if (error) return res.status(500).json({ error: error.message });
   log(req.user.id, 'carte-débloquée-manuellement', 'Carte offre #' + offer_id + ' débloquée pour affilié #' + user_id, req);
+  await checkCollectionComplete(user_id);
   res.json({ success: true });
 });
 app.delete('/api/admin/grant-card/:userId/:offerId', auth, adminOnly, async (req, res) => {
