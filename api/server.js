@@ -728,7 +728,6 @@ app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
     await supabase.from('referral_commissions').delete().eq('referee_id', uid);
     await supabase.from('users').update({ referred_by: null }).eq('referred_by', uid);
     await supabase.from('custom_link_requests').delete().eq('user_id', uid);
-    await supabase.from('temp_links').delete().eq('user_id', uid);
     const { data: tickets } = await supabase.from('tickets').select('id').eq('user_id', uid);
     if (tickets && tickets.length > 0) {
       const ticketIds = tickets.map(t => t.id);
@@ -936,61 +935,12 @@ app.delete('/api/custom-requests/:id', auth, adminOnly, async (req, res) => {
   res.json({ success: true });
 });
 
-// ── TEMP LINKS (en attente du postback Adunlock) ──
-app.get('/api/temp-links', auth, async (req, res) => {
-  let query = supabase.from('temp_links').select('*, users(name,email), offers(name,category)').order('created_at', { ascending: false });
-  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
-  const { data } = await query;
-  res.json(data || []);
-});
-
-app.post('/api/temp-links', auth, async (req, res) => {
-  const { offer_id } = req.body;
-  const { data: existing } = await supabase.from('temp_links').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
-  if (existing) return res.status(400).json({ error: 'Demande déjà existante pour cette offre' });
-  const { data, error } = await supabase.from('temp_links').insert({ user_id: req.user.id, offer_id }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-app.patch('/api/temp-links/:id/link', auth, adminOnly, async (req, res) => {
-  const { custom_link } = req.body;
-  if (!custom_link || !custom_link.trim()) return res.status(400).json({ error: 'Lien de destination requis' });
-  const { data: reqRow } = await supabase.from('temp_links').select('user_id,offer_id').eq('id', req.params.id).single();
-  if (!reqRow) return res.status(404).json({ error: 'Demande introuvable' });
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let linkId = ''; for (let i = 0; i < 6; i++) linkId += chars[Math.floor(Math.random() * chars.length)];
-  const { error: linkErr } = await supabase.from('links').insert({ id: linkId, user_id: reqRow.user_id, offer_id: reqRow.offer_id, custom_url: custom_link.trim(), clicks: 0, active: true });
-  if (linkErr) return res.status(500).json({ error: linkErr.message });
-  const trackedUrl = req.protocol + '://' + req.get('host') + '/go/' + linkId;
-  const { data, error } = await supabase.from('temp_links').update({ custom_link: trackedUrl, status: 'approved' }).eq('id', req.params.id).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data);
-});
-
-app.delete('/api/temp-links/:id', auth, adminOnly, async (req, res) => {
-  await supabase.from('temp_links').delete().eq('id', req.params.id);
-  res.json({ success: true });
-});
-
 // ── GLOBAL SETTINGS ──
-app.get('/api/settings', auth, async (req, res) => {
-  const { data } = await supabase.from('settings').select('*').eq('key', 'temp_links_enabled').single();
-  res.json({ temp_links_enabled: data ? data.value === 'true' : true });
-});
-
-app.patch('/api/settings/temp-links', auth, adminOnly, async (req, res) => {
-  const { enabled } = req.body;
-  await supabase.from('settings').upsert({ key: 'temp_links_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
-  res.json({ success: true });
-});
-
 app.get('/api/settings/all', auth, async (req, res) => {
   const { data } = await supabase.from('settings').select('*');
   const obj = {};
   (data || []).forEach(s => { obj[s.key] = s.value; });
   res.json({
-    temp_links_enabled: obj.temp_links_enabled !== 'false',
     aff_links_enabled: obj.aff_links_enabled !== 'false',
     cat_casino_enabled: obj.cat_casino_enabled !== 'false',
     cat_dating_enabled: obj.cat_dating_enabled !== 'false',
