@@ -486,10 +486,10 @@ async function startApp(){
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
     {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'💬',label:'Serveurs Discord',page:'admin-discord'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'⏳',label:'Liens temporaires',page:'admin-temp'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
+    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
   const affNav=[
-    {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'},{icon:'⏳',label:'Liens temporaires',page:'aff-temp'}]},
+    {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},
     {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
     {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'},{icon:'🎴',label:'Collection',page:'aff-collection'}]},
@@ -520,7 +520,6 @@ async function startApp(){
       {section:'CONFIGURATION',items:[
         {icon:'🎯',label:'Offres',page:'admin-offers'},
         {icon:'🔗',label:'Liens',page:'admin-links'},
-        {icon:'⏳',label:'Liens temporaires',page:'admin-temp'},
         {icon:'🎨',label:'Liens perso',page:'admin-custom'},
         {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
         {icon:'⚙️',label:'Paramètres',page:'admin-settings'}
@@ -533,7 +532,6 @@ async function startApp(){
     document.getElementById('notif-bell-btn').style.display='block';
     api('GET','/api/settings/all').then(s=>{
       const accueilItems=[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}];
-      if(s.temp_links_enabled)accueilItems.push({icon:'⏳',label:'Liens temporaires',page:'aff-temp'});
       const nav=[
         {section:'ACCUEIL',items:accueilItems},
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
@@ -573,20 +571,18 @@ async function refreshNotifs(){
   if(!ME||!TOKEN)return;
   try{
     if(ME.role==='admin'){
-      const [convs,wds,tickets,customs,tempLinks]=await Promise.all([
+      const [convs,wds,tickets,customs]=await Promise.all([
         api('GET','/api/conversions'),api('GET','/api/withdrawals'),
-        api('GET','/api/tickets'),api('GET','/api/custom-requests'),api('GET','/api/temp-links')
+        api('GET','/api/tickets'),api('GET','/api/custom-requests')
       ]);
       const pendingConvs=convs.filter(c=>c.status==='pending').length;
       const pendingWds=wds.filter(w=>w.status==='pending').length;
       const unreadTickets=tickets.filter(t=>t.unread>0).length;
       const pendingCustoms=customs.filter(c=>c.status==='pending').length;
-      const pendingTempLinks=tempLinks.filter(t=>t.status==='pending').length;
       setNotif('admin-conv',pendingConvs);
       setNotif('admin-wd',pendingWds);
       setNotif('admin-tickets',unreadTickets);
       setNotif('admin-custom',pendingCustoms);
-      setNotif('admin-temp',pendingTempLinks+pendingCustoms);
     } else {
       const tickets=await api('GET','/api/tickets');
       const unread=tickets.filter(t=>t.unread>0).length;
@@ -632,7 +628,7 @@ const TITLES={
   'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
-  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-temp':'⏳ Liens temporaires','aff-temp':'⏳ Liens temporaires','admin-logs':'📋 Logs d\'activité'
+  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité'
 };
 
 async function goPage(page){
@@ -1140,75 +1136,6 @@ async function renderPage(page){
     return html;
   }
 
-  if(page==='aff-temp'){
-    const settings=await api('GET','/api/settings/all');
-    if(!settings.temp_links_enabled){
-      return '<div class="card"><div class="empty"><div class="empty-icon">🔒</div><p>Cette page est temporairement désactivée par l\'administrateur.</p></div></div>';
-    }
-    const [offers,tempLinks,customReqs]=await Promise.all([api('GET','/api/offers'),api('GET','/api/temp-links'),api('GET','/api/custom-requests')]);
-    const active=offers.filter(o=>o.active);
-    if(active.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">⏳</div><p>Aucune offre disponible.</p></div></div>';
-    let html='<div class="warning-box" style="margin-bottom:20px"><div style="font-size:16px">⏳</div><p style="font-size:12px;color:var(--yellow);line-height:1.7">Système temporaire en attendant l\'activation du postback automatique. Demande ton lien personnalisé ci-dessous, l\'admin te l\'enverra manuellement.</p></div>';
-    CATS.forEach(cat=>{
-      if(cat.key==='influenceuse'||cat.key==='autre')return;
-      const catOffers=active.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
-      html+='<div style="margin-bottom:16px"><div onclick="toggleCat(\'temp-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catOffers.length+' offre(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-temp-cat-'+cat.key+'">▸</span></div>';
-      html+='<div id="temp-cat-'+cat.key+'" style="display:none;padding-top:12px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
-      catOffers.forEach(o=>{
-        let bottomHtml='';
-        if(o.id===54||o.id===55){
-          const crList=customReqs.filter(r=>r.offer_id===o.id);
-          const approvedList=crList.filter(r=>r.status==='approved'&&r.custom_link);
-          const pendingReq=crList.find(r=>r.status==='pending');
-          bottomHtml=approvedList.map(cr=>'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div>').join('');
-          if(pendingReq){
-            bottomHtml+='<span class="badge by2">⏳ Nouvelle demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
-          } else {
-            bottomHtml+='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 '+(approvedList.length?'Demander un autre lien':'Personnaliser & Demander')+'</button>';
-          }
-        } else {
-          const tl=tempLinks.find(t=>t.offer_id===o.id);
-          if(tl&&tl.custom_link){
-            bottomHtml='<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+tl.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+tl.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div><span class="badge bg2" style="margin-top:8px">✅ Lien reçu</span>';
-          } else if(tl){
-            bottomHtml='<span class="badge by2">⏳ Demande envoyée — en attente</span>';
-          } else {
-            bottomHtml='<button class="btn btn-grad" onclick="requestTempLink('+o.id+')" style="width:100%;justify-content:center">📨 Demander mon lien</button>';
-          }
-        }
-        html+='<div style="background:#111;border:1px solid '+cat.border+';border-radius:14px;overflow:hidden;position:relative"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+cat.color+',transparent)"></div>'+(o.image_url?'<div style="width:100%;height:130px;overflow:hidden"><img src="'+o.image_url+'" style="width:100%;height:100%;object-fit:cover"></div>':'')+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
-      });
-      html+='</div></div></div>';
-    });
-    return html;
-  }
-
-  if(page==='admin-temp'){
-    const [tempLinks,offers]=await Promise.all([api('GET','/api/temp-links'),api('GET','/api/offers')]);
-
-    let html='<div class="card-header" style="margin-bottom:20px"><div class="card-title">⏳ Liens temporaires</div></div>';
-
-    if(tempLinks.length===0){
-      html+='<div class="card"><div class="empty"><div class="empty-icon">📨</div><p>Aucune demande</p></div></div>';
-    } else {
-      CATS.forEach(cat=>{
-        const catOfferIds=offers.filter(o=>(o.category||'autre')===cat.key).map(o=>o.id);
-        const catLinks=tempLinks.filter(t=>catOfferIds.includes(t.offer_id));
-        if(catLinks.length===0)return;
-        html+='<div style="margin-bottom:16px"><div onclick="toggleCat(\'admtemp-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catLinks.length+' demande(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-admtemp-cat-'+cat.key+'">▸</span></div>';
-        html+='<div id="admtemp-cat-'+cat.key+'" style="display:none;padding-top:12px">';
-        catLinks.forEach(t=>{
-          html+='<div class="card" style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px"><div class="avatar" style="width:40px;height:40px;font-size:16px">'+(t.users?.name||'?')[0]+'</div><div><div style="font-weight:700">'+(t.users?.name||'?')+'</div><div style="font-size:12px;color:var(--muted)">'+(t.offers?.name||'?')+' • '+fmt(t.created_at)+'</div></div></div>'+(t.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
-            +(t.status==='approved'?'<div style="margin-top:12px;background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+t.custom_link+'</code><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>'
-            :'<div style="margin-top:12px;display:flex;gap:8px;align-items:center"><input type="text" id="tl-'+t.id+'" placeholder="URL de destination Adunlock (le suivi est ajouté automatiquement)..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendTempLink('+t.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteTempLink('+t.id+')">🗑</button></div>')
-            +'</div>';
-        });
-        html+='</div></div>';
-      });
-    }
-    return html;
-  }
-
   if(page==='admin-logs'){
     const logs=await api('GET','/api/logs');
     if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
@@ -1221,7 +1148,6 @@ async function renderPage(page){
   if(page==='admin-settings'){
     const currentLogo=localStorage.getItem('affihub_logo')||'';
     const settings=await api('GET','/api/settings/all');
-    const tempEnabled=settings.temp_links_enabled;
     const maintenance=settings.maintenance_mode;
     const welcomeMsg=settings.welcome_message||'';
     const catRows=CATS.map(cat=>{
@@ -1232,8 +1158,7 @@ async function renderPage(page){
     +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première inscription</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉" style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
-    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button></div>'
-    +'<div class="settings-section"><div class="settings-section-title">⏳ Liens temporaires</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Système temporaire en attendant le postback Adunlock. Désactive cette page une fois le postback actif.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Page visible pour les affiliés</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(tempEnabled?'var(--green)':'var(--red)')+'">'+(tempEnabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(tempEnabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleTempLinks('+(tempEnabled?'false':'true')+')">'+(tempEnabled?'Désactiver':'Activer')+'</button></div></div></div>';
+    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button></div>';
   }
 
   return '';
@@ -1373,9 +1298,6 @@ function filterConv(btn,f,convs){
 async function toggleCategorySetting(category,enable){
   try{await api('PATCH','/api/settings/category',{category,enabled:enable});toast(enable?'Activé ✅':'Désactivé 🔒',enable?'s':'i');goPage('admin-settings');}catch(e){toast(e.message,'e');}
 }
-async function toggleTempLinks(enable){
-  try{await api('PATCH','/api/settings/temp-links',{enabled:enable});toast(enable?'Activé ✅':'Désactivé 🔒',enable?'s':'i');goPage('admin-settings');}catch(e){toast(e.message,'e');}
-}
 async function savePostback(){
   const url=document.getElementById('pb-url').value.trim();
   try{await api('PATCH','/api/me/postback',{postback_url:url});ME.postback_url=url;localStorage.setItem('affihub_user',JSON.stringify(ME));toast('Postback enregistré ✓','s');}catch(e){toast(e.message,'e');}
@@ -1463,17 +1385,6 @@ async function deleteTicket(id){try{await api('DELETE','/api/tickets/'+id);close
 async function closeTicket(id,status){try{await api('PATCH','/api/tickets/'+id+'/status',{status});toast(status==='resolved'?'Ticket résolu ✅':'Ticket fermé 🔴','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
 
 // ── CUSTOM LINK REQUESTS ──
-async function requestTempLink(offerId){
-  try{await api('POST','/api/temp-links',{offer_id:offerId});toast('Demande envoyée ✓','s');goPage('aff-temp');}catch(e){toast(e.message,'e');}
-}
-async function sendTempLink(id){
-  const link=document.getElementById('tl-'+id)?.value.trim();
-  if(!link){toast('Entre le lien','e');return;}
-  try{await api('PATCH','/api/temp-links/'+id+'/link',{custom_link:link});toast('Lien envoyé ✓','s');goPage('admin-temp');}catch(e){toast(e.message,'e');}
-}
-async function deleteTempLink(id){
-  try{await api('DELETE','/api/temp-links/'+id);toast('Supprimé','s');goPage(curPage);}catch(e){toast(e.message,'e');}
-}
 async function openCustomRequest(offerId,offerName){
   // Route to correct questionnaire based on offer ID
   if(offerId===55){openStarOFRequest(offerId,offerName);return;}
@@ -1705,7 +1616,7 @@ async function openPermissions(userId, userName){
   if(u?.admin_permissions&&u.admin_permissions!=='all'){
     try{currentPerms=JSON.parse(u.admin_permissions);}catch(e){currentPerms=[];}
   } else {
-    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
+    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-settings'];
   }
   const pages=[
     {page:'admin-dash',label:'📊 Dashboard'},
@@ -1719,7 +1630,6 @@ async function openPermissions(userId, userName){
     {page:'aff-top',label:'🏆 TOP Affiliés'},
     {page:'admin-offers',label:'🎯 Offres'},
     {page:'admin-links',label:'🔗 Liens'},
-    {page:'admin-temp',label:'⏳ Liens temporaires'},
     {page:'admin-logs',label:'📋 Logs d\'activité'},
     {page:'admin-settings',label:'⚙️ Paramètres'},
   ];
@@ -1729,7 +1639,7 @@ async function openPermissions(userId, userName){
   document.getElementById('mo').classList.add('open');
 }
 async function savePermissions(userId){
-  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-temp','admin-logs','admin-settings'];
+  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-settings'];
   const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
   try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
 }
