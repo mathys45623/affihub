@@ -390,6 +390,7 @@ app.get('/api/postback', async (req, res) => {
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', link.user_id).single();
   if (user) {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
+    await supabase.from('notifications').insert({ user_id: link.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + convAmount + ' (' + (link.offers?.name || '?') + ')', read: false });
     // DM privé à l'affilié
     await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
       { name: '🎯 Offre', value: link.offers?.name || '?', inline: true },
@@ -431,6 +432,7 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
     if (user) {
       await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
       const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
+      await supabase.from('notifications').insert({ user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + amount + ' (' + (offer?.name || '?') + ')', read: false });
       await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
         { name: '🎯 Offre', value: offer?.name || '?', inline: true },
         { name: '💵 Montant', value: '$' + amount, inline: true }
@@ -471,6 +473,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   log(req.user.id, 'conversion-approuvée', 'Conversion #'+req.params.id+' approuvée ($'+conv.amount+')', req);
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', conv.user_id).single();
   await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
+  await supabase.from('notifications').insert({ user_id: conv.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + conv.amount + ' (' + (conv.offers?.name || '?') + ')', read: false });
   // DM privé à l'affilié
   await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
     { name: '🎯 Offre', value: conv.offers?.name || '?', inline: true },
@@ -664,6 +667,7 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
   // Discord notification
   log(req.user.id, 'retrait-payé', 'Retrait #'+req.params.id+' de $'+wd.amount+' payé à '+(wd.users?.name||'?'), req);
+  await supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_paid', message: '💸 Ton retrait de $' + wd.amount + ' a été payé !', read: false });
   await notifyDiscord2(DISCORD_PAYMENT, '✅ Retrait payé !', 0x00D68F, [
     { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
     { name: '💰 Montant', value: '$' + wd.amount, inline: true },
@@ -680,6 +684,7 @@ app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
   // Discord notification
   log(req.user.id, 'retrait-rejeté', 'Retrait #'+req.params.id+' de '+(wd.users?.name||'?')+' rejeté', req);
+  await supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_rejected', message: '❌ Ton retrait de $' + wd.amount + ' a été rejeté' + (reason ? ' : ' + reason : '') + '. Le montant a été remis sur ton solde.', read: false });
   await notifyDiscord2(DISCORD_PAYMENT, '❌ Retrait rejeté', 0xFF4757, [
     { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
     { name: '💰 Montant', value: '$' + wd.amount, inline: true },
