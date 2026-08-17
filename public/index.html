@@ -892,6 +892,7 @@ async function renderPage(page){
         +'</div>';
     }).join('');
     return '<div class="card" style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="card-title">🎴 Ta collection</div><div style="font-weight:900;font-size:14px">'+unlockedCount+'/'+coll.length+'</div></div><div style="background:#111;border-radius:20px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:var(--grad);border-radius:20px;transition:width .3s"></div></div><div style="font-size:11px;color:var(--muted);margin-top:8px">Débloque une carte à chaque première vente sur une nouvelle offre.</div></div>'
+      +(pct===100&&coll.length?'<div style="background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.12));border:1px solid rgba(245,200,66,.35);border-radius:16px;padding:20px;text-align:center;margin-bottom:22px"><div style="font-size:32px;margin-bottom:8px">🏆</div><div style="font-weight:900;font-size:15px;margin-bottom:4px">Collection complète !</div><div style="font-size:12px;color:var(--muted)">Bravo, tu as débloqué toutes les cartes — $50 de bonus ajoutés à ton solde 🎉</div></div>':'')
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px">'+cards+'</div>';
   }
   if(page==='aff-discord'){
@@ -1554,7 +1555,7 @@ async function loadNotifs(){
     const list=document.getElementById('notif-list');
     if(list){
       if(notifs.length===0){list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';return;}
-      const icons={'withdrawal_paid':'💸','withdrawal_rejected':'❌','commission':'💰','custom_link':'🎨'};
+      const icons={'withdrawal_paid':'💸','withdrawal_rejected':'❌','commission':'💰','custom_link':'🎨','collection_complete':'🎴'};
       list.innerHTML=notifs.map(n=>'<div style="padding:12px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-start;gap:10px;background:'+(n.read?'transparent':'rgba(245,200,66,.04)')+';cursor:pointer" onclick="deleteNotif('+n.id+',this)"><div style="font-size:18px;flex-shrink:0">'+(icons[n.type]||'📌')+'</div><div style="flex:1"><div style="font-size:12px;line-height:1.5">'+(n.message||'')+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+fmt(n.created_at)+'</div></div>'+(n.read?'':'<div style="width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:4px"></div>')+'</div>').join('');
     }
   }catch(e){}
