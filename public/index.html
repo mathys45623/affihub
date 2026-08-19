@@ -264,7 +264,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
       <div class="land-feat" style="--feat-color:rgba(245,200,66,.15)">
         <div class="land-feat-icon">🔗</div>
         <div class="land-feat-title">Liens trackés</div>
-        <div class="land-feat-desc">Chaque clic et conversion enregistrés automatiquement.</div>
+        <div class="land-feat-desc">Chaque clic et conversion enregistrés automatiquement. Postback Adunlock intégré.</div>
       </div>
       <div class="land-feat" style="--feat-color:rgba(0,214,143,.15)">
         <div class="land-feat-icon">💰</div>
@@ -324,7 +324,51 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
     </div>
   </div>
 
+  <div style="text-align:center;padding:30px 20px 40px;font-size:12px;color:var(--muted)"><span onclick="showCGU()" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px">Conditions générales</span></div>
+
   <!-- end landing -->
+</div>
+
+<div id="cgu-page" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:2">
+  <div style="max-width:760px;margin:0 auto;padding:40px 24px 80px">
+    <button onclick="hideCGU()" style="background:var(--bg3);border:1px solid #2a2a2a;color:#aaa;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;gap:6px;margin-bottom:30px;padding:8px 16px;border-radius:10px">← Retour à l'accueil</button>
+    <h1 style="font-size:28px;font-weight:900;margin-bottom:6px">Conditions générales d'utilisation</h1>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:32px">Dernière mise à jour : <span id="cgu-date"></span></p>
+
+    <div style="font-size:14px;line-height:1.8;color:#d5d5d5">
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">1. Présentation</h3>
+      <p>AffiHub ("la Plateforme") est une plateforme d'affiliation privée qui met en relation des affiliés avec des offres partenaires (casino en ligne, dating, IA, influenceurs, et autres). L'affilié génère des liens de suivi personnalisés, les partage auprès de son audience, et perçoit une commission sur les conversions générées.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">2. Éligibilité</h3>
+      <p>L'inscription est réservée aux personnes âgées d'au moins 18 ans. Certaines offres promues sur la Plateforme (notamment les offres de jeux d'argent) sont elles-mêmes réservées à un public majeur conformément à la réglementation en vigueur dans le pays de résidence de l'audience visée. L'affilié est seul responsable de s'assurer que sa promotion respecte les lois applicables à son audience et à son pays d'exercice.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">3. Compte affilié</h3>
+      <p>Chaque affilié est responsable de la confidentialité de ses identifiants de connexion. Un seul compte est autorisé par personne physique. La création de comptes multiples dans le but de générer des parrainages ou des commissions frauduleuses entraîne la suspension immédiate des comptes concernés et l'annulation des gains associés.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">4. Commissions et parrainage</h3>
+      <p>Les commissions sont calculées automatiquement à partir des conversions validées sur les liens de l'affilié, selon le taux affiché pour chaque offre au moment de la conversion. Le programme de parrainage verse 10% de commission sur les ventes générées par les filleuls, tant que la relation de parrainage reste active. AffiHub se réserve le droit de suspendre une commission de parrainage en cas de comportement frauduleux détecté (notamment inscription depuis une même adresse IP que le parrain).</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">5. Retraits</h3>
+      <p>Le retrait minimum est de $25 (sauf PayPal : $50 minimum), avec des frais de 5% appliqués quel que soit le moyen de paiement choisi. L'affilié est seul responsable de l'exactitude des coordonnées de paiement fournies ; AffiHub ne pourra être tenu responsable en cas d'erreur de saisie entraînant une perte de fonds. Les délais de traitement des retraits sont indicatifs et peuvent varier.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">6. Pratiques interdites</h3>
+      <p>Sont notamment interdits : la génération de clics ou conversions frauduleuses (bots, auto-clics), la publicité mensongère sur les offres promues, l'utilisation de marques déposées sans autorisation, et toute pratique visant à contourner les mécanismes de suivi de la Plateforme. Tout manquement peut entraîner la suspension du compte et l'annulation des gains non retirés.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">7. Résiliation</h3>
+      <p>AffiHub se réserve le droit de suspendre ou résilier un compte affilié à tout moment en cas de violation des présentes conditions. L'affilié peut demander la suppression de son compte à tout moment en contactant son manager.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">8. Responsabilité</h3>
+      <p>AffiHub agit en tant qu'intermédiaire entre l'affilié et les offres partenaires. AffiHub ne saurait être tenu responsable des actions, contenus ou pratiques des annonceurs partenaires, ni des pertes indirectes liées à l'utilisation de la Plateforme.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">9. Modification des conditions</h3>
+      <p>AffiHub peut modifier les présentes conditions à tout moment. Les affiliés seront informés des changements significatifs. La poursuite de l'utilisation de la Plateforme après modification vaut acceptation des nouvelles conditions.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">10. Contact</h3>
+      <p>Pour toute question relative à ces conditions, contacte ton manager directement sur Discord.</p>
+
+    </div>
+  </div>
 </div>
 
 <div id="auth-screen" style="position:relative;overflow:hidden">
@@ -1697,11 +1741,22 @@ function toggleFaq(el){
   document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
   if(!isOpen)el.classList.add('open');
 }
+function showCGU(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('cgu-page').style.display='block';
+  document.getElementById('cgu-date').textContent='19 août 2026';
+  window.scrollTo(0,0);
+}
+function hideCGU(){
+  document.getElementById('cgu-page').style.display='none';
+  document.getElementById('landing').style.display='block';
+}
 function showLanding(){
   const hasRef=new URLSearchParams(window.location.search).get('ref');
   if(hasRef){showAuthRegister();return;}
   document.getElementById('landing').style.display='block';
   document.getElementById('auth-screen').style.display='none';
+  document.getElementById('cgu-page').style.display='none';
   history.pushState({page:'landing'},'','');
   setTimeout(()=>updateLogoLanding(),200);
 }
