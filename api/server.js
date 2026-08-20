@@ -945,16 +945,6 @@ app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
   res.json({ url: urlData.publicUrl });
 });
 
-// Filet de sécurité : jamais de HTML renvoyé à une requête /api (évite les erreurs "Unexpected token '<'" côté site),
-// et redirection simple (pas de sendFile, peu fiable en environnement serverless) pour le reste
-app.use((req, res) => {
-  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route introuvable' });
-  res.redirect('/');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
-
 // ── CUSTOM LINK REQUESTS ──
 app.get('/api/custom-requests', auth, async (req, res) => {
   let query = supabase.from('custom_link_requests').select('*, users(name,email), offers(name)').order('created_at', { ascending: false });
@@ -1172,3 +1162,13 @@ app.get('/api/export/withdrawals', auth, adminOnly, async (req, res) => {
   res.setHeader('Content-Disposition', 'attachment; filename="retraits.csv"');
   res.send(csv);
 });
+
+// Filet de sécurité (placé tout en dernier, après TOUTES les routes) : jamais de HTML renvoyé à une requête /api,
+// et redirection simple vers l'accueil pour toute autre page inconnue
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route introuvable' });
+  res.redirect('/');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
