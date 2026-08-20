@@ -771,12 +771,12 @@ async function renderPage(page){
             bottomHtml+='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 '+(approvedList.length?'Demander un autre lien':'Personnaliser & Demander')+'</button>';
           }
         } else if(el){
-          const linkUrl=el.short_url||origin+'/go/'+el.id;
-          const fullUrl=origin+'/go/'+el.id;
+          const linkUrl=el.custom_slug?(origin+'/'+el.custom_slug):(origin+'/go/'+el.id);
           const regenBtn=el.active?'<button class="btn btn-gst btn-sm" onclick="regenLink(\''+el.id+'\','+o.id+')" style="font-size:10px">🔄</button>':'';
           const previewBtn='<button class="btn btn-gst btn-sm" title="Aperçu (ne compte pas comme un clic)" onclick="previewLink(\''+el.id+'\')" style="font-size:10px">👁️</button>';
+          const slugBtn='<button class="btn btn-gst btn-sm" title="Personnaliser le lien" onclick="editSlug(\''+el.id+'\',\''+(el.custom_slug||'')+'\')" style="font-size:10px">✏️</button>';
           const statusBadge=el.active?'<span class="badge bg2">✓ Actif</span>':'<span class="badge br2">🚫 Désactivé</span>';
-          bottomHtml='<div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px"><code style="flex:1;font-family:monospace;font-size:11px;color:'+(el.active?cat.color:'var(--muted)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+linkUrl+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+linkUrl+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div><div style="display:flex;align-items:center;justify-content:space-between"><div style="text-align:center"><div style="font-size:16px;font-weight:800">'+el.clicks+'</div><div style="font-size:10px;color:var(--muted)">CLICS</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+statusBadge+previewBtn+regenBtn+'</div></div>';
+          bottomHtml='<div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px"><code style="flex:1;font-family:monospace;font-size:11px;color:'+(el.active?cat.color:'var(--muted)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+linkUrl+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+linkUrl+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div><div style="display:flex;align-items:center;justify-content:space-between"><div style="text-align:center"><div style="font-size:16px;font-weight:800">'+el.clicks+'</div><div style="font-size:10px;color:var(--muted)">CLICS</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+statusBadge+previewBtn+slugBtn+regenBtn+'</div></div>';
         } else {
           bottomHtml='<button class="btn btn-grad" onclick="genLink('+o.id+')" style="width:100%;justify-content:center">🔗 Générer mon lien</button>';
         }
@@ -1220,6 +1220,15 @@ async function previewLink(id){
     const r=await api('GET','/api/links/'+id+'/preview');
     if(win)win.location.href=r.url; else window.open(r.url,'_blank');
   }catch(e){if(win)win.close();toast(e.message,'e');}
+}
+function editSlug(linkId,current){
+  document.getElementById('m-title').textContent='✏️ Personnaliser le lien';
+  document.getElementById('m-body').innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Choisis un texte court et unique (lettres, chiffres, tirets). Laisse vide pour revenir au lien par défaut.</div><div class="fi"><label>'+window.location.origin+'/</label><input type="text" id="slug-input" value="'+(current||'')+'" placeholder="ex: mathys-casino"></div><div style="display:flex;gap:10px;margin-top:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveSlug(\''+linkId+'\')" style="flex:1">Enregistrer</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function saveSlug(linkId){
+  const slug=document.getElementById('slug-input').value.trim();
+  try{await api('PATCH','/api/links/'+linkId+'/slug',{slug});closeMo();toast('Lien mis à jour ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}
 }
 function confirmDmAll(){
   const msg=document.getElementById('dm-all-msg').value.trim();
