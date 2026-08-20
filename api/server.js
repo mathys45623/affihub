@@ -945,6 +945,11 @@ app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
   res.json({ url: urlData.publicUrl });
 });
 
+// Filet de sécurité : toute page qui ne correspond à rien d'autre (ni fichier statique, ni /api, ni /go, ni lien perso) sert le site normalement
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../public/index.html'));
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
 
