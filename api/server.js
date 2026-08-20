@@ -945,9 +945,11 @@ app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
   res.json({ url: urlData.publicUrl });
 });
 
-// Filet de sécurité : toute page qui ne correspond à rien d'autre (ni fichier statique, ni /api, ni /go, ni lien perso) sert le site normalement
+// Filet de sécurité : jamais de HTML renvoyé à une requête /api (évite les erreurs "Unexpected token '<'" côté site),
+// et redirection simple (pas de sendFile, peu fiable en environnement serverless) pour le reste
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, '../public/index.html'));
+  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route introuvable' });
+  res.redirect('/');
 });
 
 const PORT = process.env.PORT || 3000;
