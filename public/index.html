@@ -764,7 +764,10 @@ async function renderPage(page){
           const crList=customReqs.filter(r=>r.offer_id===o.id);
           const approvedList=crList.filter(r=>r.status==='approved'&&r.custom_link);
           const pendingReq=crList.find(r=>r.status==='pending');
-          bottomHtml=approvedList.map(cr=>'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+cr.custom_link+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+cr.custom_link+'\');toast(\'Lien copié !\',\'s\')">📋</button></div>').join('');
+          bottomHtml=approvedList.map(cr=>{
+            const crUrl=cr.links?.custom_slug?(origin+'/'+cr.links.custom_slug):cr.custom_link;
+            return '<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:8px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+crUrl+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+crUrl+'\');toast(\'Lien copié !\',\'s\')">📋</button><button class="copy-btn" title="Personnaliser le lien" onclick="editSlug(\''+cr.link_id+'\',\''+(cr.links?.custom_slug||'')+'\')">✏️</button></div>';
+          }).join('');
           if(pendingReq){
             bottomHtml+='<span class="badge by2">⏳ Nouvelle demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
           } else {
