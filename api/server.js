@@ -346,14 +346,44 @@ app.post('/api/admin/dm-all', auth, adminOnly, async (req, res) => {
 });
 
 // ── TRACKING CLIC ──
-app.get('/go/:linkId', async (req, res) => {
-  const { linkId } = req.params;
-  const { data: link } = await supabase.from('links').select('*, offers(url)').eq('id', linkId).single();
-  if (!link || !link.active) return res.status(404).send('Lien invalide ou désactivé');
-  await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', linkId);
+async function doRedirect(link, res) {
+  await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', link.id);
   const destination = link.custom_url || link.offers.url;
   const separator = destination.includes('?') ? '&' : '?';
-  res.redirect(destination + separator + 'sub=' + linkId);
+  res.redirect(destination + separator + 'sub=' + link.id);
+}
+app.get('/go/:linkId', async (req, res) => {
+  const { data: link } = await supabase.from('links').select('*, offers(url)').eq('id', req.params.linkId).single();
+  if (!link || !link.active) return res.status(404).send('Lien invalide ou désactivé');
+  await doRedirect(link, res);
+});
+// Liens vanity personnalisés (ex: /mathys-casino) — même suivi/postback que /go/:linkId, juste une autre porte d'entrée
+const RESERVED_SLUGS = ['go', 'api', 'admin', 'login', 'register'];
+app.get('/:slug', async (req, res, next) => {
+  const slug = req.params.slug;
+  if (RESERVED_SLUGS.includes(slug) || slug.startsWith('api')) return next();
+  const { data: link } = await supabase.from('links').select('*, offers(url)').eq('custom_slug', slug).single();
+  if (!link) return next();
+  if (!link.active) return res.status(404).send('Lien invalide ou désactivé');
+  await doRedirect(link, res);
+});
+app.patch('/api/links/:id/slug', auth, async (req, res) => {
+  let { slug } = req.body;
+  const { data: link } = await supabase.from('links').select('user_id').eq('id', req.params.id).single();
+  if (!link) return res.status(404).json({ error: 'Lien introuvable' });
+  if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
+  if (!slug || !slug.trim()) {
+    await supabase.from('links').update({ custom_slug: null }).eq('id', req.params.id);
+    return res.json({ success: true, slug: null });
+  }
+  slug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+  if (!slug) return res.status(400).json({ error: 'Texte invalide' });
+  if (RESERVED_SLUGS.includes(slug)) return res.status(400).json({ error: 'Ce texte est réservé, choisis-en un autre' });
+  const { data: taken } = await supabase.from('links').select('id').eq('custom_slug', slug).neq('id', req.params.id).single();
+  if (taken) return res.status(400).json({ error: 'Ce lien personnalisé est déjà pris' });
+  const { error } = await supabase.from('links').update({ custom_slug: slug }).eq('id', req.params.id);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ success: true, slug });
 });
 
 // Aperçu de la destination d'un lien, sans compter comme un clic
