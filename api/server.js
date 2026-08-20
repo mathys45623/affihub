@@ -947,7 +947,7 @@ app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
 
 // ── CUSTOM LINK REQUESTS ──
 app.get('/api/custom-requests', auth, async (req, res) => {
-  let query = supabase.from('custom_link_requests').select('*, users(name,email), offers(name)').order('created_at', { ascending: false });
+  let query = supabase.from('custom_link_requests').select('*, users(name,email), offers(name), links(custom_slug)').order('created_at', { ascending: false });
   if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
   const { data } = await query;
   res.json(data || []);
@@ -977,7 +977,7 @@ app.patch('/api/custom-requests/:id/link', auth, adminOnly, async (req, res) => 
   const { error: linkErr } = await supabase.from('links').insert({ id: linkId, user_id: reqRow.user_id, offer_id: reqRow.offer_id, custom_url: custom_link.trim(), clicks: 0, active: true });
   if (linkErr) return res.status(500).json({ error: linkErr.message });
   const trackedUrl = req.protocol + '://' + req.get('host') + '/go/' + linkId;
-  const { data, error } = await supabase.from('custom_link_requests').update({ custom_link: trackedUrl, status: 'approved', updated_at: new Date() }).eq('id', req.params.id).select().single();
+  const { data, error } = await supabase.from('custom_link_requests').update({ custom_link: trackedUrl, link_id: linkId, status: 'approved', updated_at: new Date() }).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   const { data: offer } = await supabase.from('offers').select('name').eq('id', reqRow.offer_id).single();
   await supabase.from('notifications').insert({ user_id: reqRow.user_id, type: 'custom_link', message: '🎨 Ton lien personnalisé pour "' + (offer?.name || 'une offre') + '" a été envoyé, va le récupérer dans Mes liens !', read: false });
