@@ -947,7 +947,7 @@ app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
 
 // ── CUSTOM LINK REQUESTS ──
 app.get('/api/custom-requests', auth, async (req, res) => {
-  let query = supabase.from('custom_link_requests').select('*, users(name,email), offers(name), links(custom_slug)').order('created_at', { ascending: false });
+  let query = supabase.from('custom_link_requests').select('*, users(name,email), offers(name), links(custom_slug,clicks)').order('created_at', { ascending: false });
   if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
   const { data } = await query;
   res.json(data || []);
