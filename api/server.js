@@ -460,12 +460,13 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id, user_id, offer_id, amount: parseFloat(amount), status: status || 'pending' }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   if (status === 'approved') {
-    const { data: user } = await supabase.from('users').select('balance,referred_by,discord_id').eq('id', user_id).single();
+    const { data: user } = await supabase.from('users').select('name,balance,referred_by,discord_id').eq('id', user_id).single();
     if (user) {
       await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
       const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
       await supabase.from('notifications').insert({ user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + amount + ' (' + (offer?.name || '?') + ')', read: false });
       await checkCollectionComplete(user_id);
+      await notifyDiscord(user.name || '?', offer?.name || '?', amount);
       await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
         { name: '🎯 Offre', value: offer?.name || '?', inline: true },
         { name: '💵 Montant', value: '$' + amount, inline: true }
