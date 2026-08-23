@@ -82,6 +82,18 @@ async function sendDiscordDM(discordId, title, color, fields) {
   } catch (e) { console.error('Discord DM error:', e.message); }
 }
 
+// Poste un message directement dans un salon (via son ID) en utilisant le bot déjà configuré
+async function sendDiscordChannelMsg(channelId, title, color, fields, mention) {
+  if (!channelId || !process.env.DISCORD_BOT_TOKEN) return;
+  try {
+    await fetch('https://discord.com/api/v10/channels/' + channelId + '/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: mention || undefined, embeds: [{ title, color, fields, timestamp: new Date().toISOString(), footer: { text: 'AffiHub' } }] })
+    });
+  } catch (e) { console.error('Discord channel msg error:', e.message); }
+}
+
 // DM texte brut (pour les envois groupés), renvoie true/false
 async function sendDiscordDMPlain(discordId, content) {
   if (!discordId || !process.env.DISCORD_BOT_TOKEN) return false;
@@ -956,15 +968,26 @@ app.get('/api/custom-requests', auth, async (req, res) => {
 
 app.post('/api/custom-requests', auth, async (req, res) => {
   const { offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text } = req.body;
+  const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
   // Ne fusionne qu'avec une demande encore EN ATTENTE (pas déjà approuvée), pour permettre plusieurs liens perso au fil du temps
   const { data: existing } = await supabase.from('custom_link_requests').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).eq('status', 'pending').single();
   if (existing) {
     const { data, error } = await supabase.from('custom_link_requests').update({ server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text, status: 'pending', updated_at: new Date() }).eq('id', existing.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    await sendDiscordChannelMsg('1541198868019159051', '🎨 Demande de lien perso (mise à jour)', 0xa855f7, [
+      { name: '👤 Affilié', value: req.user.name, inline: true },
+      { name: '🎯 Offre', value: offer?.name || '?', inline: true },
+      { name: '🖥️ Serveur', value: server_name || '—', inline: true }
+    ], '<@1504481208266915861>');
     return res.json(data);
   }
   const { data, error } = await supabase.from('custom_link_requests').insert({ user_id: req.user.id, offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  await sendDiscordChannelMsg('1541198868019159051', '🎨 Nouvelle demande de lien perso !', 0xa855f7, [
+    { name: '👤 Affilié', value: req.user.name, inline: true },
+    { name: '🎯 Offre', value: offer?.name || '?', inline: true },
+    { name: '🖥️ Serveur', value: server_name || '—', inline: true }
+  ], '<@1504481208266915861>');
   res.json(data);
 });
 
