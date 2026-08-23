@@ -126,6 +126,13 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 .modal-close{background:var(--bg3);border:1px solid #2a2a2a;color:var(--muted);cursor:pointer;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
 .loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:13px;gap:10px}
 .spinner{width:20px;height:20px;border:2px solid #333;border-top-color:var(--yellow);border-right-color:var(--pink);border-radius:50%;animation:spin .7s linear infinite}
+.sk{background:var(--bg3);border-radius:8px;position:relative;overflow:hidden}
+.sk::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);animation:sk-shimmer 1.4s infinite}
+@keyframes sk-shimmer{100%{transform:translateX(100%)}}
+.sk-wrap{padding:2px}
+.sk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px}
+.sk-stat{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px}
+.sk-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px}
 .ref-hero{background:var(--grad);border-radius:18px;padding:26px 28px;margin-bottom:20px;background-size:200% 200%;animation:gradient-shift 6s ease infinite;box-shadow:0 8px 40px rgba(240,66,122,.35)}
 .ref-link-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:11px 14px;margin-top:14px}
 .ref-link-box code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:#000}
@@ -688,7 +695,7 @@ async function goPage(page){
   content.classList.add('page-out');
   await new Promise(r=>setTimeout(r,120));
   content.classList.remove('page-out');
-  content.innerHTML='<div class="loading"><div class="spinner"></div> Chargement...</div>';
+  content.innerHTML='<div class="sk-wrap"><div class="sk" style="height:90px;border-radius:18px;margin-bottom:20px"></div><div class="sk-stats"><div class="sk-stat"><div class="sk" style="height:11px;width:60%;margin-bottom:10px"></div><div class="sk" style="height:22px;width:40%"></div></div><div class="sk-stat"><div class="sk" style="height:11px;width:60%;margin-bottom:10px"></div><div class="sk" style="height:22px;width:40%"></div></div><div class="sk-stat"><div class="sk" style="height:11px;width:60%;margin-bottom:10px"></div><div class="sk" style="height:22px;width:40%"></div></div></div><div class="sk-card"><div class="sk" style="height:14px;width:30%;margin-bottom:16px"></div><div class="sk" style="height:38px;margin-bottom:10px"></div><div class="sk" style="height:38px;margin-bottom:10px"></div><div class="sk" style="height:38px;width:80%"></div></div></div>';
   try{
     const html=await renderPage(page);
     content.innerHTML=html;
