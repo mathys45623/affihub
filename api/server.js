@@ -283,7 +283,7 @@ app.post('/api/login', async (req, res) => {
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
-  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id').eq('id', req.user.id).single();
+  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate').eq('id', req.user.id).single();
   if (error) {
     console.error('/api/me erreur (colonne manquante ?):', error.message);
     const fallback = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
@@ -444,9 +444,10 @@ app.get('/api/postback', async (req, res) => {
     if (user.referred_by) {
       const { data: referee } = await supabase.from('users').select('referral_active').eq('id', link.user_id).single();
       if (referee && referee.referral_active !== false) {
-        const commission = parseFloat((convAmount * 0.10).toFixed(2));
-        const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+        const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
         if (referrer) {
+          const rate = (referrer.referral_rate ?? 10) / 100;
+          const commission = parseFloat((convAmount * rate).toFixed(2));
           await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
           await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
         }
@@ -486,9 +487,10 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
       if (user.referred_by) {
         const { data: referee } = await supabase.from('users').select('referral_active').eq('id', user_id).single();
         if (referee && referee.referral_active !== false) {
-          const commission = parseFloat((parseFloat(amount) * 0.10).toFixed(2));
-          const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+          const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
           if (referrer) {
+            const rate = (referrer.referral_rate ?? 10) / 100;
+            const commission = parseFloat((parseFloat(amount) * rate).toFixed(2));
             await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
             await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: user_id, conversion_id: conv.id, amount: commission });
           }
@@ -531,9 +533,10 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   if (user.referred_by) {
     const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
     if (referee && referee.referral_active !== false) {
-      const commission = parseFloat((conv.amount * 0.10).toFixed(2));
-      const { data: referrer } = await supabase.from('users').select('balance').eq('id', user.referred_by).single();
+      const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
       if (referrer) {
+        const rate = (referrer.referral_rate ?? 10) / 100;
+        const commission = parseFloat((conv.amount * rate).toFixed(2));
         await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
         await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: conv.user_id, conversion_id: conv.id, amount: commission });
       }
@@ -827,7 +830,7 @@ app.get('/api/stats', auth, adminOnly, async (req, res) => {
 
 // ── ADMIN REFERRALS ──
 app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
-  const { data: affiliates } = await supabase.from('users').select('id,name,email,balance,created_at,referral_code').eq('role','affiliate');
+  const { data: affiliates } = await supabase.from('users').select('id,name,email,balance,created_at,referral_code,referral_rate').eq('role','affiliate');
   const result = await Promise.all((affiliates||[]).map(async aff => {
     const { data: filleules } = await supabase.from('users').select('id,name,created_at,referral_active,referral_same_ip').eq('referred_by', aff.id);
     const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', aff.id).order('created_at',{ascending:false});
@@ -840,6 +843,25 @@ app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
 app.patch('/api/admin/referral/:userId/toggle', auth, adminOnly, async (req, res) => {
   const { active } = req.body;
   await supabase.from('users').update({ referral_active: active }).eq('id', req.params.userId);
+  res.json({ success: true });
+});
+
+app.patch('/api/admin/referral/:userId/rate', auth, adminOnly, async (req, res) => {
+  const { rate } = req.body;
+  if (rate !== null && (isNaN(rate) || rate < 0 || rate > 100)) return res.status(400).json({ error: 'Taux invalide (0 à 100)' });
+  await supabase.from('users').update({ referral_rate: rate === null || rate === '' ? null : parseFloat(rate) }).eq('id', req.params.userId);
+  res.json({ success: true });
+});
+
+app.post('/api/admin/referrals/link', auth, adminOnly, async (req, res) => {
+  const { referrer_id, referee_id } = req.body;
+  if (!referrer_id || !referee_id) return res.status(400).json({ error: 'Parrain et filleul requis' });
+  if (referrer_id === referee_id) return res.status(400).json({ error: 'Un affilié ne peut pas être son propre parrain' });
+  const { data: referrer } = await supabase.from('users').select('id,name').eq('id', referrer_id).single();
+  const { data: referee } = await supabase.from('users').select('id,name,referred_by').eq('id', referee_id).single();
+  if (!referrer || !referee) return res.status(404).json({ error: 'Affilié introuvable' });
+  await supabase.from('users').update({ referred_by: referrer_id, referral_active: true }).eq('id', referee_id);
+  log(req.user.id, 'parrainage-lié-manuellement', referrer.name + ' devient le parrain de ' + referee.name, req);
   res.json({ success: true });
 });
 
