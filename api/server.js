@@ -343,6 +343,20 @@ app.patch('/api/me/discord-id', auth, async (req, res) => {
   res.json({ success: true });
 });
 
+app.patch('/api/admin/users/:id/discord-id', auth, adminOnly, async (req, res) => {
+  const { discord_id } = req.body;
+  if (discord_id && !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord invalide' });
+  const { data: target } = await supabase.from('users').select('name,discord_id').eq('id', req.params.id).single();
+  if (!target) return res.status(404).json({ error: 'Affilié introuvable' });
+  await supabase.from('users').update({ discord_id: discord_id || null }).eq('id', req.params.id);
+  if (discord_id) {
+    log(req.user.id, 'id-discord-ajouté', 'ID Discord ' + (target.discord_id ? 'modifié' : 'ajouté') + ' pour ' + target.name, req);
+  } else {
+    log(req.user.id, 'id-discord-supprimé', 'ID Discord supprimé pour ' + target.name, req);
+  }
+  res.json({ success: true });
+});
+
 app.post('/api/admin/dm-all', auth, adminOnly, async (req, res) => {
   const { message } = req.body;
   if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
@@ -772,7 +786,7 @@ app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
 // ── USERS ──
 app.get('/api/users', auth, adminOnly, async (req, res) => {
   const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
-  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin');
+  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin,discord_id');
   if (!me?.is_super_admin) {
     query = query.eq('role', 'affiliate');
   } else {
