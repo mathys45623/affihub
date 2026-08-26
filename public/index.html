@@ -829,9 +829,10 @@ async function renderPage(page){
 
   if(page==='aff-conv'){
     const convs=await api('GET','/api/conversions');
+    AFF_CONVS_CACHE=convs;
     const mkRows=list=>list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
     const tabs=[['all','Toutes',convs.length],['approved','✅ Approuvées',convs.filter(c=>c.status==='approved').length],['pending','⏳ En attente',convs.filter(c=>c.status==='pending').length],['rejected','❌ Rejetées',convs.filter(c=>c.status==='rejected').length]];
-    const tabHtml=tabs.map(([f,l,n])=>'<button class="tab'+(f==='all'?' active':'\"')+'" onclick="filterConv(this,\''+f+'\','+JSON.stringify(convs).replace(/'/g,"\\'")+')">'+l+' ('+n+')</button>').join('');
+    const tabHtml=tabs.map(([f,l,n])=>'<button class="tab'+(f==='all'?' active':'\"')+'" onclick="filterConv(this,\''+f+'\')">'+l+' ('+n+')</button>').join('');
     return '<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs">'+tabHtml+'</div><div id="ctable"><div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div></div></div>';
   }
 
@@ -1378,9 +1379,10 @@ function doSortTop(by){
   if(tbody)tbody.innerHTML=sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
 }
 async function toggleRanking(show){try{await api('PATCH','/api/me/ranking',{show});ME.show_ranking=show;localStorage.setItem('affihub_user',JSON.stringify(ME));toast(show?'Visible ✅':'Masqué 🚫',show?'s':'i');goPage('aff-settings');}catch(e){toast(e.message,'e');}}
-function filterConv(btn,f,convs){
+let AFF_CONVS_CACHE=[];
+function filterConv(btn,f){
   document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
-  const list=f==='all'?convs:convs.filter(c=>c.status===f);
+  const list=f==='all'?AFF_CONVS_CACHE:AFF_CONVS_CACHE.filter(c=>c.status===f);
   const rows=list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
   document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';
 }
