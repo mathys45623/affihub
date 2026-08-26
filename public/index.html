@@ -1207,16 +1207,21 @@ async function renderPage(page){
 
   if(page==='admin-logs'){
     const logs=await api('GET','/api/logs');
+    ADMIN_LOGS_CACHE=logs;
     if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
-    const actionIcon={'login':'🔐','inscription':'🆕','logout':'👋'};
-    const fmtLocal=d=>{if(!d)return '—';const dt=new Date(new Date(d).getTime()+2*60*60*1000);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
-    const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap;font-size:12px">'+fmtLocal(l.created_at)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td><td><button class="btn btn-red btn-sm" onclick="deleteLog('+l.id+')">🗑</button></td></tr>').join('');
-    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><button class="btn btn-red btn-sm" onclick="clearAllLogs()">🗑 Tout effacer</button></div><div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+    const actions=[...new Set(logs.map(l=>l.action))].sort();
+    const admins=[...new Map(logs.filter(l=>l.users?.role==='admin').map(l=>[l.user_id,l.users.name])).entries()];
+    const actionOptions='<option value="">Toutes les actions</option>'+actions.map(a=>'<option value="'+a+'">'+a+'</option>').join('');
+    const adminOptions='<option value="">Tous les admins</option>'+admins.map(([id,name])=>'<option value="'+id+'">'+name+'</option>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><button class="btn btn-red btn-sm" onclick="clearAllLogs()">🗑 Tout effacer</button></div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"><select id="log-filter-action" onchange="filterLogs()" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:12px">'+actionOptions+'</select><select id="log-filter-admin" onchange="filterLogs()" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:12px">'+adminOptions+'</select></div>'
+      +'<div id="logs-table-wrap">'+renderLogsTable(logs)+'</div></div>';
   }
 
   if(page==='admin-settings'){
     const currentLogo=localStorage.getItem('affihub_logo')||'';
     const settings=await api('GET','/api/settings/all');
+    const dmHistory=await api('GET','/api/admin/dm-broadcasts');
     const maintenance=settings.maintenance_mode;
     const welcomeMsg=settings.welcome_message||'';
     const catRows=CATS.map(cat=>{
@@ -1227,7 +1232,10 @@ async function renderPage(page){
     +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première inscription</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉" style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
-    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><div class="fi"><label>Image (optionnel)</label><input type="file" id="dm-all-img" accept="image/*" onchange="previewDmAllImg(this)"><div id="dm-all-img-preview" style="margin-top:10px"></div></div><div style="display:flex;gap:8px"><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button><button class="btn btn-gst" onclick="openDmAllCustom()">🎯 Personnalisé</button></div></div>';
+    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><div class="fi"><label>Image (optionnel)</label><input type="file" id="dm-all-img" accept="image/*" onchange="previewDmAllImg(this)"><div id="dm-all-img-preview" style="margin-top:10px"></div></div><div style="display:flex;gap:8px;margin-bottom:16px"><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button><button class="btn btn-gst" onclick="openDmAllCustom()">🎯 Personnalisé</button></div>'
+      +'<div onclick="toggleDmHistory()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding-top:12px;border-top:1px solid #222"><span style="font-size:12px;font-weight:700;color:var(--muted)">📜 Historique des envois ('+dmHistory.length+')</span><span id="dm-hist-chev" style="font-size:11px;color:var(--muted);transition:transform .2s">▸</span></div>'
+      +'<div id="dm-history-list" style="display:none;margin-top:12px">'+(dmHistory.length===0?'<div style="font-size:12px;color:var(--muted)">Aucun envoi pour le moment</div>':dmHistory.map(h=>'<div style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px"><span style="font-size:11px;color:var(--muted)">'+fmt(h.created_at)+' • par '+(h.users?.name||'?')+'</span><span style="font-size:11px;color:var(--green)">✅ '+h.sent_count+'/'+h.target_count+(h.failed_count?' <span style="color:var(--red)">('+h.failed_count+' échec)</span>':'')+'</span></div><div style="font-size:13px;line-height:1.5">'+h.message.replace(/</g,'&lt;')+'</div>'+(h.image_url?'<img src="'+h.image_url+'" style="max-width:120px;max-height:80px;border-radius:6px;margin-top:8px">':'')+(h.custom_selection?'<div style="font-size:10px;color:var(--yellow);margin-top:6px">🎯 Sélection personnalisée</div>':'')+'</div>').join(''))+'</div>'
+      +'</div>';
   }
 
   return '';
@@ -1253,6 +1261,13 @@ function editSlug(linkId,current){
 async function saveSlug(linkId){
   const slug=document.getElementById('slug-input').value.trim();
   try{await api('PATCH','/api/links/'+linkId+'/slug',{slug});closeMo();toast('Lien mis à jour ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}
+}
+function toggleDmHistory(){
+  const el=document.getElementById('dm-history-list');
+  const chev=document.getElementById('dm-hist-chev');
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  chev.style.transform=open?'rotate(0deg)':'rotate(90deg)';
 }
 function previewDmAllImg(input){
   const prev=document.getElementById('dm-all-img-preview');
@@ -1805,6 +1820,22 @@ async function toggleOffer(id,active){
 }
 
 // ── LOGS ──
+let ADMIN_LOGS_CACHE=[];
+function renderLogsTable(logs){
+  if(logs.length===0)return '<div class="empty"><p>Aucun résultat pour ce filtre</p></div>';
+  const actionIcon={'login':'🔐','inscription':'🆕','logout':'👋'};
+  const fmtLocal=d=>{if(!d)return '—';const dt=new Date(new Date(d).getTime()+2*60*60*1000);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
+  const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap;font-size:12px">'+fmtLocal(l.created_at)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td><td><button class="btn btn-red btn-sm" onclick="deleteLog('+l.id+')">🗑</button></td></tr>').join('');
+  return '<div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function filterLogs(){
+  const action=document.getElementById('log-filter-action').value;
+  const adminId=document.getElementById('log-filter-admin').value;
+  let list=ADMIN_LOGS_CACHE;
+  if(action)list=list.filter(l=>l.action===action);
+  if(adminId)list=list.filter(l=>l.user_id===adminId);
+  document.getElementById('logs-table-wrap').innerHTML=renderLogsTable(list);
+}
 async function deleteLog(id){
   try{await api('DELETE','/api/logs/'+id);goPage('admin-logs');}catch(e){toast(e.message,'e');}
 }
