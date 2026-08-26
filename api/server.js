@@ -386,7 +386,17 @@ app.post('/api/admin/dm-all', auth, adminOnly, async (req, res) => {
     if (ok) sent++; else failed++;
   }
   log(req.user.id, 'dm-groupé-discord', 'DM envoyé à ' + sent + '/' + targets.length + ' affiliés' + (image_url ? ' (avec image)' : '') + (Array.isArray(user_ids) && user_ids.length ? ' (sélection personnalisée)' : ''), req);
+  await supabase.from('dm_broadcasts').insert({
+    admin_id: req.user.id, message: message.trim(), image_url: image_url || null,
+    target_count: targets.length, sent_count: sent, failed_count: failed,
+    custom_selection: Array.isArray(user_ids) && user_ids.length > 0
+  });
   res.json({ total: targets.length, sent, failed });
+});
+
+app.get('/api/admin/dm-broadcasts', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('dm_broadcasts').select('*, users(name)').order('created_at', { ascending: false }).limit(50);
+  res.json(data || []);
 });
 
 // ── TRACKING CLIC ──
