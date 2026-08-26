@@ -1227,7 +1227,7 @@ async function renderPage(page){
     +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première inscription</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉" style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
-    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button></div>';
+    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><div class="fi"><label>Image (optionnel)</label><input type="file" id="dm-all-img" accept="image/*" onchange="previewDmAllImg(this)"><div id="dm-all-img-preview" style="margin-top:10px"></div></div><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button></div>';
   }
 
   return '';
@@ -1254,6 +1254,12 @@ async function saveSlug(linkId){
   const slug=document.getElementById('slug-input').value.trim();
   try{await api('PATCH','/api/links/'+linkId+'/slug',{slug});closeMo();toast('Lien mis à jour ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}
 }
+function previewDmAllImg(input){
+  const prev=document.getElementById('dm-all-img-preview');
+  if(!input.files[0]){prev.innerHTML='';return;}
+  const url=URL.createObjectURL(input.files[0]);
+  prev.innerHTML='<img src="'+url+'" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid #2a2a2a">';
+}
 function confirmDmAll(){
   const msg=document.getElementById('dm-all-msg').value.trim();
   if(!msg){toast('Écris un message','e');return;}
@@ -1263,10 +1269,13 @@ function confirmDmAll(){
 }
 async function doDmAll(){
   const msg=document.getElementById('dm-all-msg').value.trim();
+  const f=document.getElementById('dm-all-img').files[0];
   closeMo();
   toast('Envoi en cours...','s');
   try{
-    const r=await api('POST','/api/admin/dm-all',{message:msg});
+    let image_url=null;
+    if(f)image_url=await uploadImg(f,'offers');
+    const r=await api('POST','/api/admin/dm-all',{message:msg,image_url});
     toast('Envoyé à '+r.sent+'/'+r.total+' affilié(s)'+(r.failed?(' — '+r.failed+' échec(s)'):''),'s');
   }catch(e){toast(e.message,'e');}
 }
