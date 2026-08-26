@@ -504,6 +504,7 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
   const link_id = link ? link.id : null;
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id, user_id, offer_id, amount: parseFloat(amount), status: status || 'pending' }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'conversion-ajoutée', 'Conversion manuelle de $' + amount + ' ajoutée (statut: ' + (status || 'pending') + ')', req);
   if (status === 'approved') {
     const { data: user } = await supabase.from('users').select('name,balance,referred_by,discord_id').eq('id', user_id).single();
     if (user) {
@@ -542,6 +543,7 @@ app.delete('/api/conversions/:id', auth, adminOnly, async (req, res) => {
     if (user) await supabase.from('users').update({ balance: Math.max(0, user.balance - conv.amount) }).eq('id', conv.user_id);
   }
   await supabase.from('conversions').delete().eq('id', req.params.id);
+  log(req.user.id, 'conversion-supprimée', 'Conversion #' + req.params.id + ' supprimée ($' + conv.amount + ')', req);
   res.json({ success: true });
 });
 
@@ -672,6 +674,7 @@ app.post('/api/offers', auth, adminOnly, async (req, res) => {
   const cat = validCats.includes(category) ? category : 'autre';
   const { data, error } = await supabase.from('offers').insert({ name, description, url, commission: commission || 10, category: cat, image_url: image_url || null }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'offre-créée', 'Offre "' + name + '" créée', req);
   res.json(data);
 });
 app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
@@ -690,6 +693,7 @@ app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
 });
 app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
   const id = req.params.id;
+  const { data: offer } = await supabase.from('offers').select('name').eq('id', id).single();
   const { data: links } = await supabase.from('links').select('id').eq('offer_id', id);
   if (links && links.length > 0) {
     const linkIds = links.map(l => l.id);
@@ -697,6 +701,7 @@ app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
     await supabase.from('links').delete().eq('offer_id', id);
   }
   await supabase.from('offers').delete().eq('id', id);
+  log(req.user.id, 'offre-supprimée', 'Offre "' + (offer?.name || '#' + id) + '" supprimée', req);
   res.json({ success: true });
 });
 
@@ -798,6 +803,7 @@ app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
     if (user) await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
   }
   await supabase.from('withdrawals').delete().eq('id', req.params.id);
+  log(req.user.id, 'retrait-supprimé', 'Retrait de $' + wd.amount + ' supprimé', req);
   res.json({ success: true });
 });
 
@@ -880,14 +886,18 @@ app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
 
 app.patch('/api/admin/referral/:userId/toggle', auth, adminOnly, async (req, res) => {
   const { active } = req.body;
+  const { data: u } = await supabase.from('users').select('name').eq('id', req.params.userId).single();
   await supabase.from('users').update({ referral_active: active }).eq('id', req.params.userId);
+  log(req.user.id, 'parrainage-' + (active ? 'réactivé' : 'arrêté'), 'Parrainage ' + (active ? 'réactivé' : 'arrêté') + ' pour ' + (u?.name || '#' + req.params.userId), req);
   res.json({ success: true });
 });
 
 app.patch('/api/admin/referral/:userId/rate', auth, adminOnly, async (req, res) => {
   const { rate } = req.body;
   if (rate !== null && (isNaN(rate) || rate < 0 || rate > 100)) return res.status(400).json({ error: 'Taux invalide (0 à 100)' });
+  const { data: u } = await supabase.from('users').select('name').eq('id', req.params.userId).single();
   await supabase.from('users').update({ referral_rate: rate === null || rate === '' ? null : parseFloat(rate) }).eq('id', req.params.userId);
+  log(req.user.id, 'taux-parrainage-modifié', 'Taux de commission de ' + (u?.name || '#' + req.params.userId) + ' fixé à ' + (rate === null || rate === '' ? '10% (défaut)' : rate + '%'), req);
   res.json({ success: true });
 });
 
@@ -1001,8 +1011,10 @@ app.patch('/api/tickets/:id/status', auth, async (req, res) => {
 });
 
 app.delete('/api/tickets/:id', auth, adminOnly, async (req, res) => {
+  const { data: t } = await supabase.from('tickets').select('reason,users(name)').eq('id', req.params.id).single();
   await supabase.from('ticket_messages').delete().eq('ticket_id', req.params.id);
   await supabase.from('tickets').delete().eq('id', req.params.id);
+  log(req.user.id, 'ticket-supprimé', 'Ticket "' + (t?.reason || '?') + '" de ' + (t?.users?.name || '?') + ' supprimé', req);
   res.json({ success: true });
 });
 
@@ -1015,6 +1027,7 @@ app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
   const { data, error } = await supabase.storage.from('offers').upload(uniqueName, buffer, { contentType: mimeType || 'image/jpeg', upsert: false });
   if (error) return res.status(500).json({ error: error.message });
   const { data: urlData } = supabase.storage.from('offers').getPublicUrl(uniqueName);
+  log(req.user.id, 'image-uploadée', 'Image "' + fileName + '" uploadée', req);
   res.json({ url: urlData.publicUrl });
 });
 
@@ -1065,11 +1078,14 @@ app.patch('/api/custom-requests/:id/link', auth, adminOnly, async (req, res) => 
   if (error) return res.status(500).json({ error: error.message });
   const { data: offer } = await supabase.from('offers').select('name').eq('id', reqRow.offer_id).single();
   await supabase.from('notifications').insert({ user_id: reqRow.user_id, type: 'custom_link', message: '🎨 Ton lien personnalisé pour "' + (offer?.name || 'une offre') + '" a été envoyé, va le récupérer dans Mes liens !', read: false });
+  log(req.user.id, 'lien-perso-envoyé', 'Lien personnalisé envoyé pour l\'offre "' + (offer?.name || '?') + '"', req);
   res.json(data);
 });
 
 app.delete('/api/custom-requests/:id', auth, adminOnly, async (req, res) => {
+  const { data: r } = await supabase.from('custom_link_requests').select('server_name,users(name)').eq('id', req.params.id).single();
   await supabase.from('custom_link_requests').delete().eq('id', req.params.id);
+  log(req.user.id, 'lien-perso-demande-supprimée', 'Demande de lien perso "' + (r?.server_name || '?') + '" de ' + (r?.users?.name || '?') + ' supprimée', req);
   res.json({ success: true });
 });
 
@@ -1100,12 +1116,14 @@ app.patch('/api/settings/maintenance', auth, adminOnly, async (req, res) => {
 app.patch('/api/settings/welcome', auth, adminOnly, async (req, res) => {
   const { message } = req.body;
   await supabase.from('settings').upsert({ key: 'welcome_message', value: message || '' }, { onConflict: 'key' });
+  log(req.user.id, 'message-bienvenue-modifié', 'Message de bienvenue modifié', req);
   res.json({ success: true });
 });
 
 app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
   const { enabled } = req.body;
   await supabase.from('settings').upsert({ key: 'aff_links_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  log(req.user.id, 'reglage-mes-liens', 'Page "Mes liens" ' + (enabled ? 'activée' : 'désactivée'), req);
   res.json({ success: true });
 });
 
@@ -1114,6 +1132,7 @@ app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
   const valid = ['casino', 'dating', 'ia', 'autre', 'influenceuse'];
   if (!valid.includes(category)) return res.status(400).json({ error: 'Catégorie invalide' });
   await supabase.from('settings').upsert({ key: 'cat_' + category + '_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
+  log(req.user.id, 'reglage-categorie', 'Catégorie "' + category + '" ' + (enabled ? 'activée' : 'désactivée'), req);
   res.json({ success: true });
 });
 
@@ -1157,10 +1176,12 @@ app.get('/api/logs', auth, adminOnly, async (req, res) => {
 });
 app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
   await supabase.from('activity_logs').delete().eq('id', req.params.id);
+  log(req.user.id, 'log-supprimé', 'Entrée de log #' + req.params.id + ' supprimée', req);
   res.json({ success: true });
 });
 app.delete('/api/logs', auth, adminOnly, async (req, res) => {
   await supabase.from('activity_logs').delete().neq('id', 0);
+  log(req.user.id, 'logs-purgés', 'Historique des logs entièrement vidé', req);
   res.json({ success: true });
 });
 
@@ -1188,10 +1209,13 @@ app.patch('/api/discord-servers/:id', auth, adminOnly, async (req, res) => {
   if (categories !== undefined) update.categories = Array.isArray(categories) ? categories.join(',') : categories;
   const { data, error } = await supabase.from('discord_servers').update(update).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'discord-serveur-modifié', 'Serveur Discord "' + (data?.name || '?') + '" modifié', req);
   res.json(data);
 });
 app.delete('/api/discord-servers/:id', auth, adminOnly, async (req, res) => {
+  const { data: s } = await supabase.from('discord_servers').select('name').eq('id', req.params.id).single();
   await supabase.from('discord_servers').delete().eq('id', req.params.id);
+  log(req.user.id, 'discord-serveur-supprimé', 'Serveur Discord "' + (s?.name || '?') + '" supprimé', req);
   res.json({ success: true });
 });
 
@@ -1212,7 +1236,9 @@ app.delete('/api/notifications/:id', auth, async (req, res) => {
 // ── NOTES AFFILIÉS ──
 app.patch('/api/users/:id/note', auth, adminOnly, async (req, res) => {
   const { note } = req.body;
+  const { data: u } = await supabase.from('users').select('name').eq('id', req.params.id).single();
   await supabase.from('users').update({ admin_note: note }).eq('id', req.params.id);
+  log(req.user.id, 'note-admin-modifiée', 'Note admin ' + (note ? 'mise à jour' : 'supprimée') + ' pour ' + (u?.name || '#' + req.params.id), req);
   res.json({ success: true });
 });
 
