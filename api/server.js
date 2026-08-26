@@ -358,16 +358,17 @@ app.patch('/api/admin/users/:id/discord-id', auth, adminOnly, async (req, res) =
 });
 
 app.post('/api/admin/dm-all', auth, adminOnly, async (req, res) => {
-  const { message } = req.body;
+  const { message, image_url } = req.body;
   if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
+  const fullMessage = message.trim() + (image_url ? '\n' + image_url : '');
   const { data: users } = await supabase.from('users').select('id,discord_id').eq('role', 'affiliate').not('discord_id', 'is', null);
   const targets = (users || []).filter(u => u.discord_id);
   let sent = 0, failed = 0;
   for (const u of targets) {
-    const ok = await sendDiscordDMPlain(u.discord_id, message.trim());
+    const ok = await sendDiscordDMPlain(u.discord_id, fullMessage);
     if (ok) sent++; else failed++;
   }
-  log(req.user.id, 'dm-groupé-discord', 'DM envoyé à ' + sent + '/' + targets.length + ' affiliés', req);
+  log(req.user.id, 'dm-groupé-discord', 'DM envoyé à ' + sent + '/' + targets.length + ' affiliés' + (image_url ? ' (avec image)' : ''), req);
   res.json({ total: targets.length, sent, failed });
 });
 
