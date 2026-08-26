@@ -95,7 +95,7 @@ async function sendDiscordChannelMsg(channelId, title, color, fields, mention) {
 }
 
 // DM texte brut (pour les envois groupés), renvoie true/false
-async function sendDiscordDMPlain(discordId, content) {
+async function sendDiscordDMPlain(discordId, content, image_url) {
   if (!discordId || !process.env.DISCORD_BOT_TOKEN) return false;
   try {
     const chanRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
@@ -105,11 +105,27 @@ async function sendDiscordDMPlain(discordId, content) {
     });
     const chan = await chanRes.json();
     if (!chan.id) return false;
-    const msgRes = await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content })
-    });
+    let msgRes;
+    if (image_url) {
+      // Télécharge l'image puis l'envoie comme vraie pièce jointe (pas de lien visible)
+      const imgRes = await fetch(image_url);
+      const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
+      const ext = (image_url.split('.').pop() || 'png').split('?')[0].slice(0, 4);
+      const form = new FormData();
+      form.append('payload_json', JSON.stringify({ content }));
+      form.append('files[0]', new Blob([imgBuffer]), 'image.' + ext);
+      msgRes = await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN },
+        body: form
+      });
+    } else {
+      msgRes = await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
+        method: 'POST',
+        headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content })
+      });
+    }
     return msgRes.ok;
   } catch (e) { console.error('Discord DM plain error:', e.message); return false; }
 }
@@ -360,14 +376,13 @@ app.patch('/api/admin/users/:id/discord-id', auth, adminOnly, async (req, res) =
 app.post('/api/admin/dm-all', auth, adminOnly, async (req, res) => {
   const { message, image_url, user_ids } = req.body;
   if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
-  const fullMessage = message.trim() + (image_url ? '\n' + image_url : '');
   let query = supabase.from('users').select('id,discord_id').eq('role', 'affiliate').not('discord_id', 'is', null);
   if (Array.isArray(user_ids) && user_ids.length > 0) query = query.in('id', user_ids);
   const { data: users } = await query;
   const targets = (users || []).filter(u => u.discord_id);
   let sent = 0, failed = 0;
   for (const u of targets) {
-    const ok = await sendDiscordDMPlain(u.discord_id, fullMessage);
+    const ok = await sendDiscordDMPlain(u.discord_id, message.trim(), image_url);
     if (ok) sent++; else failed++;
   }
   log(req.user.id, 'dm-groupé-discord', 'DM envoyé à ' + sent + '/' + targets.length + ' affiliés' + (image_url ? ' (avec image)' : '') + (Array.isArray(user_ids) && user_ids.length ? ' (sélection personnalisée)' : ''), req);
