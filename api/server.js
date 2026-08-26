@@ -745,10 +745,9 @@ app.delete('/api/links/:id', auth, async (req, res) => {
   const { data: link } = await supabase.from('links').select('user_id').eq('id', req.params.id).single();
   if (!link) return res.status(404).json({ error: 'Lien introuvable' });
   if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
-  const { data: convs } = await supabase.from('conversions').select('id').eq('link_id', req.params.id).limit(1);
-  if (convs && convs.length > 0) {
-    return res.status(400).json({ error: 'Impossible de supprimer ce lien : il a déjà des conversions enregistrées. Désactive-le plutôt.' });
-  }
+  // Détache les conversions existantes (garde l'historique + l'argent déjà crédité intact) avant de supprimer le lien
+  const { error: detachErr } = await supabase.from('conversions').update({ link_id: null }).eq('link_id', req.params.id);
+  if (detachErr) return res.status(500).json({ error: 'Suppression impossible : ' + detachErr.message });
   const { error } = await supabase.from('links').delete().eq('id', req.params.id);
   if (error) return res.status(500).json({ error: 'Suppression impossible : ' + error.message });
   log(req.user.id, 'lien-supprimé', 'Lien '+req.params.id+' supprimé', req);
