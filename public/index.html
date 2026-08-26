@@ -537,7 +537,7 @@ async function startApp(){
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
     {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'💬',label:'Serveurs Discord',page:'admin-discord'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
+    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'🆔',label:'ID Discord',page:'admin-discordid'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
   const affNav=[
     {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},
@@ -573,6 +573,7 @@ async function startApp(){
         {icon:'🔗',label:'Liens',page:'admin-links'},
         {icon:'🎨',label:'Liens perso',page:'admin-custom'},
         {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
+        {icon:'🆔',label:'ID Discord',page:'admin-discordid'},
         {icon:'⚙️',label:'Paramètres',page:'admin-settings'}
       ].filter(i=>canSee(i.page))}
     ];
@@ -679,7 +680,7 @@ const TITLES={
   'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
-  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité'
+  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité','admin-discordid':'🆔 ID Discord'
 };
 
 async function goPage(page){
@@ -1195,6 +1196,15 @@ async function renderPage(page){
     return html;
   }
 
+  if(page==='admin-discordid'){
+    const users=await api('GET','/api/users');
+    const affs=users.filter(u=>u.role==='affiliate');
+    const rows=affs.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+u.email+'</td><td><div style="display:flex;gap:8px;align-items:center"><input type="text" id="did-'+u.id+'" value="'+(u.discord_id||'')+'" placeholder="Aucun ID renseigné" style="width:180px;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:monospace;font-size:12px"><button class="btn btn-grad btn-sm" onclick="saveAdminDiscordId(\''+u.id+'\')">💾</button>'+(u.discord_id?'<button class="btn btn-red btn-sm" onclick="removeAdminDiscordId(\''+u.id+'\')">🗑</button>':'')+'</div></td></tr>').join('');
+    return '<div class="card"><div class="card-title" style="margin-bottom:8px">🆔 ID Discord des affiliés</div><div style="font-size:12px;color:var(--muted);margin-bottom:16px">Ajoute ou modifie manuellement l\'ID Discord de n\'importe quel affilié — utile s\'il n\'a pas renseigné le sien.</div>'
+      +(affs.length===0?'<div class="empty"><div class="empty-icon">🆔</div><p>Aucun affilié</p></div>':'<div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>🆔 ID Discord</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+      +'</div>';
+  }
+
   if(page==='admin-logs'){
     const logs=await api('GET','/api/logs');
     if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
@@ -1397,6 +1407,14 @@ async function saveDiscordId(){
   const discordId=document.getElementById('discord-id-input').value.trim();
   if(discordId && !/^\d{15,25}$/.test(discordId)){toast('ID Discord invalide (uniquement des chiffres)','e');return;}
   try{await api('PATCH','/api/me/discord-id',{discord_id:discordId});ME.discord_id=discordId;localStorage.setItem('affihub_user',JSON.stringify(ME));toast('ID Discord enregistré ✓','s');}catch(e){toast(e.message,'e');}
+}
+async function saveAdminDiscordId(userId){
+  const discordId=document.getElementById('did-'+userId).value.trim();
+  if(discordId && !/^\d{15,25}$/.test(discordId)){toast('ID Discord invalide (uniquement des chiffres)','e');return;}
+  try{await api('PATCH','/api/admin/users/'+userId+'/discord-id',{discord_id:discordId});toast('ID Discord enregistré ✓','s');goPage('admin-discordid');}catch(e){toast(e.message,'e');}
+}
+async function removeAdminDiscordId(userId){
+  try{await api('PATCH','/api/admin/users/'+userId+'/discord-id',{discord_id:null});toast('ID Discord supprimé','s');goPage('admin-discordid');}catch(e){toast(e.message,'e');}
 }
 async function changePass(){
   const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;
@@ -1707,7 +1725,7 @@ async function openPermissions(userId, userName){
   if(u?.admin_permissions&&u.admin_permissions!=='all'){
     try{currentPerms=JSON.parse(u.admin_permissions);}catch(e){currentPerms=[];}
   } else {
-    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-settings'];
+    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-discordid','admin-settings'];
   }
   const pages=[
     {page:'admin-dash',label:'📊 Dashboard'},
@@ -1722,6 +1740,7 @@ async function openPermissions(userId, userName){
     {page:'admin-offers',label:'🎯 Offres'},
     {page:'admin-links',label:'🔗 Liens'},
     {page:'admin-logs',label:'📋 Logs d\'activité'},
+    {page:'admin-discordid',label:'🆔 ID Discord'},
     {page:'admin-settings',label:'⚙️ Paramètres'},
   ];
   const checkboxes=pages.map(p=>'<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:10px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="perm-'+p.page+'" '+(currentPerms.includes(p.page)?'checked':'')+' style="width:16px;height:16px;accent-color:var(--yellow)"><span style="font-size:13px">'+p.label+'</span></label>').join('');
@@ -1730,7 +1749,7 @@ async function openPermissions(userId, userName){
   document.getElementById('mo').classList.add('open');
 }
 async function savePermissions(userId){
-  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-settings'];
+  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-discordid','admin-settings'];
   const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
   try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
 }
