@@ -779,7 +779,13 @@ app.get('/api/users', auth, adminOnly, async (req, res) => {
     query = query.neq('id', req.user.id); // don't show yourself
   }
   const { data } = await query.order('created_at', { ascending: false });
-  res.json(data || []);
+  const withGains = await Promise.all((data || []).map(async u => {
+    const { data: convs } = await supabase.from('conversions').select('amount').eq('user_id', u.id).eq('status', 'approved');
+    const { data: commissions } = await supabase.from('referral_commissions').select('amount').eq('referrer_id', u.id);
+    const totalGains = (convs || []).reduce((s, c) => s + c.amount, 0) + (commissions || []).reduce((s, c) => s + c.amount, 0);
+    return { ...u, totalGains: parseFloat(totalGains.toFixed(2)) };
+  }));
+  res.json(withGains);
 });
 app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
   const uid = req.params.id;
