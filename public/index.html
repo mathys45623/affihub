@@ -1120,7 +1120,7 @@ async function renderPage(page){
     const pending=requests.filter(r=>r.status==='pending');
     if(requests.length===0)return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎨 Liens personnalisés</div></div><div class="card"><div class="empty"><div class="empty-icon">🎨</div><p>Aucune demande</p></div></div>';
     const rows=requests.map(r=>{
-      const photoHtml=[r.photo1_url,r.photo2_url,r.photo3_url,r.photo4_url,r.photo5_url,r.photo6_url].filter(Boolean).map(p=>'<img src="'+p+'" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;'+(r.photos_blurred?'filter:blur(4px)':'')+'" onclick="window.open(\''+p+'\',\'_blank\')">').join('');
+      const photoHtml=[r.photo1_url,r.photo2_url,r.photo3_url,r.photo4_url,r.photo5_url,r.photo6_url].filter(Boolean).map(p=>'<img src="'+p+'" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;'+(r.photos_blurred?'filter:blur(4px)':'')+'" onclick="window.open(\''+p+'\',\'_blank\')" onerror="this.outerHTML=\'<div style=&quot;width:80px;height:80px;border-radius:8px;background:#1a1a1a;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;padding:4px&quot;>⚠️ Format non supporté (HEIC ?)</div>\'">').join('');
       const isStarOF=r.offer_id===55;
       const tags=isStarOF?[]:[r.tag1,r.tag2,r.tag3].filter(Boolean).map(t=>'<span class="badge bp2">'+t+'</span>').join('');
       const linkSection=r.status==='approved'
@@ -1616,7 +1616,15 @@ async function openCustomRequest(offerId,offerName){
     </div>`;
   document.getElementById('mo').classList.add('open');
 }
-function previewCRFile(input,previewId){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{const prev=document.getElementById(previewId);if(prev)prev.innerHTML='<img src="'+e.target.result+'" style="width:100%;max-height:80px;object-fit:cover;border-radius:6px">';};reader.readAsDataURL(file);}
+function previewCRFile(input,previewId){
+  const file=input.files[0];if(!file)return;
+  if(/\.heic$|\.heif$/i.test(file.name)||file.type==='image/heic'||file.type==='image/heif'){
+    toast('⚠️ Photo au format HEIC (iPhone) — elle ne s\'affichera pas correctement. Va dans Réglages > Appareil photo > Formats > choisis "Le plus compatible", puis reprends la photo.','e');
+    input.value='';
+    return;
+  }
+  const reader=new FileReader();reader.onload=e=>{const prev=document.getElementById(previewId);if(prev)prev.innerHTML='<img src="'+e.target.result+'" style="width:100%;max-height:80px;object-fit:cover;border-radius:6px">';};reader.readAsDataURL(file);
+}
 async function openStarOFRequest(offerId,offerName){
   const requests=await api('GET','/api/custom-requests');
   const existing=requests.find(r=>r.offer_id===offerId&&r.status==='pending');const v=existing||{};
