@@ -1055,6 +1055,19 @@ app.get('/api/custom-requests', auth, async (req, res) => {
 
 app.post('/api/custom-requests', auth, async (req, res) => {
   const { offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text } = req.body;
+  if (!server_name || !slogan || !tag1 || !tag2 || !tag3 || !salons) {
+    return res.status(400).json({ error: 'Tous les champs texte sont obligatoires' });
+  }
+  if (Number(offer_id) === 54) {
+    if (!logo_url || !photo_text) return res.status(400).json({ error: 'Logo et texte des photos obligatoires' });
+    if (!photo1_url || !photo2_url || !photo3_url || !photo4_url || !photo5_url || !photo6_url) {
+      return res.status(400).json({ error: 'Les 6 photos sont obligatoires' });
+    }
+  } else if (Number(offer_id) === 55) {
+    if (!photo1_url || !photo2_url || !photo3_url || !photo4_url || !photo5_url) {
+      return res.status(400).json({ error: 'Les 5 photos sont obligatoires' });
+    }
+  }
   const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
   // Ne fusionne qu'avec une demande encore EN ATTENTE (pas déjà approuvée), pour permettre plusieurs liens perso au fil du temps
   const { data: existing } = await supabase.from('custom_link_requests').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).eq('status', 'pending').single();
