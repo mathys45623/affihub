@@ -1648,21 +1648,36 @@ async function openStarOFRequest(offerId,offerName){
 }
 
 async function submitStarOFRequest(offerId){
+  const prenom=document.getElementById('sf-prenom').value.trim();
+  const nom=document.getElementById('sf-nom').value.trim();
+  const bio=document.getElementById('sf-bio').value.trim();
+  const contenus=document.getElementById('sf-contenus').value.trim();
+  const videos=document.getElementById('sf-videos').value.trim();
+  const likes=document.getElementById('sf-likes').value.trim();
+  if(!prenom||!nom||!bio||!contenus||!videos||!likes){toast('Merci de remplir tous les champs texte','e');return;}
+  for(let i=1;i<=5;i++){
+    const hasPhoto=document.getElementById('sf-photo'+i).files[0]||document.getElementById('sf-photo'+i+'-prev').querySelector('img');
+    if(!hasPhoto){toast('Les 5 photos sont obligatoires (photo '+i+' manquante)','e');return;}
+  }
   const btn=document.querySelector('#m-body .btn-grad');
   if(btn){btn.disabled=true;btn.textContent='⏳ Upload en cours... Ne quittez pas la page';}
   toast('📤 Upload des photos en cours, ne quittez pas la page...','i');
   try{
     const photoUrls={};let uploaded=0;
-    for(let i=1;i<=5;i++){const f=document.getElementById('sf-photo'+i).files[0];if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}}
+    for(let i=1;i<=5;i++){
+      const f=document.getElementById('sf-photo'+i).files[0];
+      if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}
+      else{const pi=document.getElementById('sf-photo'+i+'-prev').querySelector('img');if(pi)photoUrls['photo'+i+'_url']=pi.src;}
+    }
     toast('📨 Envoi de la demande...','i');
     await api('POST','/api/custom-requests',{
       offer_id:offerId,
-      server_name:document.getElementById('sf-prenom').value.trim(),
-      slogan:document.getElementById('sf-nom').value.trim(),
-      salons:document.getElementById('sf-bio').value.trim(),
-      tag1:document.getElementById('sf-contenus').value.trim(),
-      tag2:document.getElementById('sf-videos').value.trim(),
-      tag3:document.getElementById('sf-likes').value.trim(),
+      server_name:prenom,
+      slogan:nom,
+      salons:bio,
+      tag1:contenus,
+      tag2:videos,
+      tag3:likes,
       photos_blurred:false,
       ...photoUrls
     });
@@ -1671,16 +1686,36 @@ async function submitStarOFRequest(offerId){
 }
 
 async function submitCustomRequest(offerId){
+  const name=document.getElementById('cr-name').value.trim();
+  const slogan=document.getElementById('cr-slogan').value.trim();
+  const tag1=document.getElementById('cr-tag1').value.trim();
+  const tag2=document.getElementById('cr-tag2').value.trim();
+  const tag3=document.getElementById('cr-tag3').value.trim();
+  const salons=document.getElementById('cr-salons').value.trim();
+  const phototext=document.getElementById('cr-phototext').value.trim();
+  if(!name||!slogan||!tag1||!tag2||!tag3||!salons||!phototext){toast('Merci de remplir tous les champs texte','e');return;}
+  const hasLogo=document.getElementById('cr-logo-file').files[0]||document.getElementById('cr-logo-prev').querySelector('img');
+  if(!hasLogo){toast('Le logo du serveur est obligatoire','e');return;}
+  for(let i=1;i<=6;i++){
+    const hasPhoto=document.getElementById('cr-photo'+i).files[0]||document.getElementById('cr-photo'+i+'-prev').querySelector('img');
+    if(!hasPhoto){toast('Les 6 photos sont obligatoires (photo '+i+' manquante)','e');return;}
+  }
   // Show upload progress
   const btn=document.querySelector('#m-body .btn-grad');
   if(btn){btn.disabled=true;btn.textContent='⏳ Upload en cours... Ne quittez pas la page';}
   toast('📤 Upload des photos en cours, ne quittez pas la page...','i');
   try{
-    let logoUrl=null;const lf=document.getElementById('cr-logo-file').files[0];if(lf){toast('📤 Upload logo...','i');logoUrl=await uploadImg(lf,'tickets');}
+    let logoUrl=null;const lf=document.getElementById('cr-logo-file').files[0];
+    if(lf){toast('📤 Upload logo...','i');logoUrl=await uploadImg(lf,'tickets');}
+    else{const li=document.getElementById('cr-logo-prev').querySelector('img');if(li)logoUrl=li.src;}
     const photoUrls={};let uploaded=0;
-    for(let i=1;i<=6;i++){const f=document.getElementById('cr-photo'+i).files[0];if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}}
+    for(let i=1;i<=6;i++){
+      const f=document.getElementById('cr-photo'+i).files[0];
+      if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}
+      else{const pi=document.getElementById('cr-photo'+i+'-prev').querySelector('img');if(pi)photoUrls['photo'+i+'_url']=pi.src;}
+    }
     toast('📨 Envoi de la demande...','i');
-    await api('POST','/api/custom-requests',{offer_id:offerId,server_name:document.getElementById('cr-name').value.trim(),slogan:document.getElementById('cr-slogan').value.trim(),tag1:document.getElementById('cr-tag1').value.trim(),tag2:document.getElementById('cr-tag2').value.trim(),tag3:document.getElementById('cr-tag3').value.trim(),logo_url:logoUrl,salons:document.getElementById('cr-salons').value.trim(),photo_text:document.getElementById('cr-phototext').value.trim(),photos_blurred:document.getElementById('cr-blur').checked,...photoUrls});
+    await api('POST','/api/custom-requests',{offer_id:offerId,server_name:name,slogan,tag1,tag2,tag3,logo_url:logoUrl,salons,photo_text:phototext,photos_blurred:document.getElementById('cr-blur').checked,...photoUrls});
     closeMo();goPage('aff-links');setTimeout(()=>toast('✅ Demande envoyée ! Notre équipe va la traiter rapidement.','s'),300);
   }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='📨 Envoyer';}}
 }
