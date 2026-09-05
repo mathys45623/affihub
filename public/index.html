@@ -401,6 +401,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
     </div>
     <div id="register-form" style="display:none">
       <div class="fg"><label>Pseudo Discord</label><input type="text" id="r-name" placeholder="Votre pseudo Discord"></div>
+      <div class="fg"><label>ID Discord</label><input type="text" id="r-discord-id" placeholder="Ex: 123456789012345678"><div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">Pour le trouver : Discord → Réglages → Avancés → active le "Mode développeur", puis clic droit sur ton profil → "Copier l'identifiant".</div></div>
       <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="email@exemple.com"></div>
       <div class="fg"><label>Mot de passe</label><input type="password" id="r-pass" placeholder="Choisir un mot de passe"></div>
       <div class="fg"><label>Code de parrainage (optionnel)</label><input type="text" id="r-ref" placeholder="Code d'un affilié"></div>
@@ -500,8 +501,17 @@ async function doLogin(){
 }
 
 async function doRegister(){
+  const name=document.getElementById('r-name').value.trim();
+  const discordId=document.getElementById('r-discord-id').value.trim();
+  const email=document.getElementById('r-email').value.trim();
+  const password=document.getElementById('r-pass').value.trim();
+  if(!name){toast('Pseudo Discord requis','e');return;}
+  if(!discordId){toast('ID Discord requis','e');return;}
+  if(!/^\d{15,25}$/.test(discordId)){toast('ID Discord invalide (uniquement des chiffres, 15 à 25)','e');return;}
+  if(!email){toast('Email requis','e');return;}
+  if(!password){toast('Mot de passe requis','e');return;}
   try{
-    const r=await api('POST','/api/register',{name:document.getElementById('r-name').value.trim(),email:document.getElementById('r-email').value.trim(),password:document.getElementById('r-pass').value.trim(),referral_code:document.getElementById('r-ref').value.trim()});
+    const r=await api('POST','/api/register',{name,email,password,discord_id:discordId,referral_code:document.getElementById('r-ref').value.trim()});
     TOKEN=r.token;ME=r.user;
     localStorage.setItem('affihub_token',TOKEN);
     localStorage.setItem('affihub_user',JSON.stringify(ME));
@@ -848,7 +858,7 @@ async function renderPage(page){
     +(!ME.discord_id ?
       '<div style="text-align:center;padding:30px 10px"><div style="font-size:40px;margin-bottom:12px">🔔</div><div style="font-weight:800;font-size:15px;margin-bottom:8px">ID Discord requis pour retirer</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Renseigne ton ID Discord dans tes paramètres avant de pouvoir demander un retrait (pour recevoir tes alertes de vente en DM).</div><button class="btn btn-grad" onclick="goPage(\'aff-settings\')">⚙️ Aller dans Paramètres</button></div>'
       :
-      '<div class="fi"><label>Montant ($)</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1" oninput="updateWdCalc()"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+';updateWdCalc()">MAX $'+bal+'</button></div><div id="wd-net-calc" style="font-size:12px;color:var(--muted);margin-top:8px"></div></div>'
+      '<div class="fi" id="wd-amt-field"><label>Montant ($)</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1" oninput="updateWdCalc()"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+';updateWdCalc()">MAX $'+bal+'</button></div><div id="wd-net-calc" style="font-size:12px;color:var(--muted);margin-top:8px"></div></div>'
     +'<div class="fi"><label>Moyen de paiement</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">'
     +'<div class="crypto-opt" onclick="pickCrypto(\'BTC\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg>Bitcoin</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'SOL\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="url(#solGrad)"/><defs><linearGradient id="solGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#9945FF"/><stop offset="100%" style="stop-color:#14F195"/></linearGradient></defs><path d="M10 21.5h12.5l-2 1.8H8L10 21.5zm0-6h12.5l-2 1.8H8L10 15.5zm2-6h12.5l-2 1.8H10L12 9.5z" fill="white"/></svg>Solana</div>'
@@ -862,9 +872,17 @@ async function renderPage(page){
     +'</div></div>'
     +'<div class="fi" id="addr-field"><label id="addr-label">Adresse / Coordonnées</label><input type="text" id="wd-addr" placeholder="Selon le moyen choisi"></div>'
     +'<div class="fi" id="virement-name-field" style="display:none"><label id="virement-name-label">Nom & Prénom (titulaire du compte)</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
+    +'<div class="fi" id="giftcard-field" style="display:none">'
+      +'<label>Choisis ta carte cadeau</label>'
+      +'<select id="gc-provider" onchange="onGiftProviderChange('+bal+')" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:10px;background:var(--bg3);border:1px solid #2a2a2a;color:#fff;font-family:inherit;margin-bottom:14px">'
+        +'<option value="">— Choisir —</option>'
+        +Object.entries(GIFT_CARDS_FRONT).map(([k,v])=>'<option value="'+k+'">'+v.icon+' '+v.label+'</option>').join('')
+      +'</select>'
+      +'<div id="gc-amounts" style="display:none"><label style="font-size:11px;font-weight:700;color:rgba(245,200,66,.8);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px">Montant disponible</label><div id="gc-amounts-list" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>'
+    +'</div>'
     +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre</button>')
     +'</div>'
-    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement, TapTap Send — dès $25</div><div>✅ Carte cadeau, PaysafeCard — dès $25</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
+    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement, TapTap Send — dès $25</div><div>✅ PaysafeCard — dès $25</div><div>🎁 Carte cadeau — montants fixes selon la carte choisie</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Historique</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
   }
 
@@ -1327,12 +1345,31 @@ async function doDmAll(){
     toast('Envoyé à '+r.sent+'/'+r.total+' affilié(s)'+(r.failed?(' — '+r.failed+' échec(s)'):''),'s');
   }catch(e){toast(e.message,'e');}
 }
+const GIFT_CARDS_FRONT={
+  playstation:{icon:'🎮',label:'PlayStation',amounts:[20,50]},
+  xbox:{icon:'🎮',label:'Xbox',amounts:[10,25,50]},
+  roblox:{icon:'🎮',label:'Roblox',amounts:[10,20,50]},
+  nintendo:{icon:'🎮',label:'Nintendo',amounts:[15,25,50,75,100]},
+  twitch:{icon:'📺',label:'Twitch',amounts:[15,25,50]},
+  amazon:{icon:'📦',label:'Amazon',amounts:[10,25,50]},
+  zalando:{icon:'👗',label:'Zalando',amounts:[20,50,100]},
+  airbnb:{icon:'🏠',label:'Airbnb',amounts:[50]},
+  footlocker:{icon:'👟',label:'Footlocker',amounts:[25,50]},
+  netflix:{icon:'🎬',label:'Netflix',amounts:[25,50,100]},
+  adidas:{icon:'👟',label:'Adidas',amounts:[25]},
+  primark:{icon:'🛍️',label:'Primark',amounts:[15,25]},
+  flixbus:{icon:'🚌',label:'FlixBus',amounts:[20,50,100]},
+  safemoni:{icon:'💳',label:'Safemoni',amounts:[10,20,50]},
+  tripgift:{icon:'✈️',label:'Tripgift',amounts:[50,100,250]},
+  hotelsgift:{icon:'🏨',label:'Hotelsgift',amounts:[50,100,250]}
+};
+let selGiftAmount=null;
 function pickCrypto(c,el){
-  selCrypto=c;
+  selCrypto=c;selGiftAmount=null;
   document.querySelectorAll('.crypto-opt').forEach(e=>e.classList.remove('sel'));
   el.classList.add('sel');
-  const labels={'BTC':'Adresse Bitcoin','SOL':'Adresse Solana','LTC':'Adresse Litecoin','REVOLUT':'Tag Revolut (ex: @pseudo)','VIREMENT':'IBAN','PAYPAL':'Email PayPal','CADEAU':'Préciser (ex: Amazon, Google Play...)','TAPTAP':'Numéro de téléphone','PSC':'Email (pour recevoir le code PaysafeCard)'};
-  const placeholders={'BTC':'bc1q...','SOL':'...','LTC':'L...','REVOLUT':'@votrepseudo','VIREMENT':'FR76 ...','PAYPAL':'email@paypal.com','CADEAU':'Ex: Amazon France, 50$','TAPTAP':'+33 6 12 34 56 78','PSC':'email@exemple.com'};
+  const labels={'BTC':'Adresse Bitcoin','SOL':'Adresse Solana','LTC':'Adresse Litecoin','REVOLUT':'Tag Revolut (ex: @pseudo)','VIREMENT':'IBAN','PAYPAL':'Email PayPal','TAPTAP':'Numéro de téléphone','PSC':'Email (pour recevoir le code PaysafeCard)'};
+  const placeholders={'BTC':'bc1q...','SOL':'...','LTC':'L...','REVOLUT':'@votrepseudo','VIREMENT':'FR76 ...','PAYPAL':'email@paypal.com','TAPTAP':'+33 6 12 34 56 78','PSC':'email@exemple.com'};
   const lbl=document.getElementById('addr-label');const inp=document.getElementById('wd-addr');
   if(lbl)lbl.textContent=labels[c]||'Adresse';
   if(inp)inp.placeholder=placeholders[c]||'';
@@ -1341,11 +1378,38 @@ function pickCrypto(c,el){
   const nameLabel=document.getElementById('virement-name-label');
   if(nameField)nameField.style.display=(c==='VIREMENT'||c==='TAPTAP')?'block':'none';
   if(nameLabel)nameLabel.textContent=c==='TAPTAP'?'Nom & Prénom (destinataire TapTap Send)':'Nom & Prénom (titulaire du compte)';
+  // Carte cadeau : logique dédiée, on masque le montant libre + l'adresse classique
+  const isGift=c==='CADEAU';
+  document.getElementById('giftcard-field').style.display=isGift?'block':'none';
+  document.getElementById('addr-field').style.display=isGift?'none':'block';
+  document.getElementById('wd-amt-field').style.display=isGift?'none':'block';
+  if(isGift){document.getElementById('gc-provider').value='';document.getElementById('gc-amounts').style.display='none';}
   updateWdCalc();
+}
+function onGiftProviderChange(bal){
+  const key=document.getElementById('gc-provider').value;
+  const wrap=document.getElementById('gc-amounts');const list=document.getElementById('gc-amounts-list');
+  selGiftAmount=null;
+  if(!key){wrap.style.display='none';return;}
+  const card=GIFT_CARDS_FRONT[key];
+  wrap.style.display='block';
+  list.innerHTML=card.amounts.map(a=>{
+    const afford=a<=bal;
+    return '<button type="button" class="btn '+(afford?'btn-gst':'')+' btn-sm" '+(afford?'onclick="selectGiftAmount('+a+',this)"':'disabled title="Solde insuffisant"')+' style="'+(afford?'':'opacity:.35;cursor:not-allowed')+'">$'+a+'</button>';
+  }).join('');
+}
+function selectGiftAmount(amount,btn){
+  selGiftAmount=amount;
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('btn-grad'));
+  btn.classList.add('btn-grad');
+  const out=document.getElementById('wd-net-calc');
+  const net=(amount*0.95).toFixed(2);
+  if(out)out.innerHTML='Tu recevras <b style="color:var(--green)">$'+net+'</b> après 5% de frais';
 }
 function updateWdCalc(){
   const out=document.getElementById('wd-net-calc');
   if(!out)return;
+  if(selCrypto==='CADEAU'){out.textContent='';return;}
   const amt=parseFloat(document.getElementById('wd-amt')?.value);
   if(!amt||amt<=0){out.textContent='';return;}
   const min=selCrypto==='PAYPAL'?50:25;
@@ -1354,8 +1418,20 @@ function updateWdCalc(){
   out.innerHTML='Tu recevras <b style="color:var(--green)">$'+net+'</b> après 5% de frais';
 }
 async function doWd(){
+  if(!selCrypto){toast('Choisissez un moyen de paiement','e');return;}
+  if(selCrypto==='CADEAU'){
+    const provider=document.getElementById('gc-provider').value;
+    if(!provider){toast('Choisis une carte cadeau','e');return;}
+    if(!selGiftAmount){toast('Choisis un montant','e');return;}
+    if(selGiftAmount>(ME.balance||0)){toast('Solde insuffisant','e');return;}
+    try{
+      await api('POST','/api/withdrawals',{amount:selGiftAmount,crypto:'CADEAU',gift_provider:provider});
+      toast('Demande envoyée !','s');selCrypto=null;selGiftAmount=null;goPage('aff-pay');
+    }catch(e){toast(e.message,'e');}
+    return;
+  }
   const amt=parseFloat(document.getElementById('wd-amt').value);const addr=document.getElementById('wd-addr').value.trim();
-  if(!amt||amt<25){toast('Minimum $25','e');return;}if(selCrypto==='PAYPAL'&&amt<50){toast('PayPal : minimum $50','e');return;}if(!selCrypto){toast('Choisissez une crypto','e');return;}if(!addr){toast(selCrypto==='TAPTAP'?'Entrez votre numéro de téléphone':'Entrez votre adresse','e');return;}
+  if(!amt||amt<25){toast('Minimum $25','e');return;}if(selCrypto==='PAYPAL'&&amt<50){toast('PayPal : minimum $50','e');return;}if(!addr){toast(selCrypto==='TAPTAP'?'Entrez votre numéro de téléphone':'Entrez votre adresse','e');return;}
   if(amt>(ME.balance||0)){toast('Solde insuffisant','e');return;}
   try{
     let finalAddr=addr;
