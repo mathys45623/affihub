@@ -401,7 +401,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
     </div>
     <div id="register-form" style="display:none">
       <div class="fg"><label>Pseudo Discord</label><input type="text" id="r-name" placeholder="Votre pseudo Discord"></div>
-      <div class="fg"><label>ID Discord</label><input type="text" id="r-discord-id" placeholder="Ex: 123456789012345678"><div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">Pour le trouver : Discord → Réglages → Avancés → active le "Mode développeur", puis clic droit sur ton profil → "Copier l'identifiant".</div></div>
+      <div class="fg"><label>ID Discord</label><div style="display:flex;gap:8px"><input type="text" id="r-discord-id" placeholder="Ex: 123456789012345678" oninput="discordIdVerified=false;document.getElementById('r-discord-verify-status').textContent='';" style="flex:1"><button type="button" class="btn btn-gst btn-sm" onclick="verifyDiscordId()" id="r-discord-verify-btn">✅ Vérifier</button></div><div id="r-discord-verify-status" style="font-size:11px;margin-top:6px"></div><div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">Pour le trouver : Discord → Réglages → Avancés → active le "Mode développeur", puis clic droit sur ton profil → "Copier l'identifiant".</div></div>
       <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="email@exemple.com"></div>
       <div class="fg"><label>Mot de passe</label><input type="password" id="r-pass" placeholder="Choisir un mot de passe"></div>
       <div class="fg"><label>Code de parrainage (optionnel)</label><input type="text" id="r-ref" placeholder="Code d'un affilié"></div>
@@ -500,6 +500,23 @@ async function doLogin(){
   catch(e){toast(e.message,'e');}
 }
 
+let discordIdVerified=false;
+async function verifyDiscordId(){
+  const discordId=document.getElementById('r-discord-id').value.trim();
+  const status=document.getElementById('r-discord-verify-status');
+  const btn=document.getElementById('r-discord-verify-btn');
+  if(!discordId||!/^\d{15,25}$/.test(discordId)){status.innerHTML='<span style="color:var(--red)">ID invalide (uniquement des chiffres)</span>';return;}
+  btn.disabled=true;btn.textContent='⏳...';
+  try{
+    await api('POST','/api/verify-discord-id',{discord_id:discordId});
+    discordIdVerified=true;
+    status.innerHTML='<span style="color:var(--green)">✅ Vérifié ! Regarde tes DM Discord.</span>';
+  }catch(e){
+    discordIdVerified=false;
+    status.innerHTML='<span style="color:var(--red)">❌ '+e.message+'</span>';
+  }
+  btn.disabled=false;btn.textContent='✅ Vérifier';
+}
 async function doRegister(){
   const name=document.getElementById('r-name').value.trim();
   const discordId=document.getElementById('r-discord-id').value.trim();
@@ -508,6 +525,7 @@ async function doRegister(){
   if(!name){toast('Pseudo Discord requis','e');return;}
   if(!discordId){toast('ID Discord requis','e');return;}
   if(!/^\d{15,25}$/.test(discordId)){toast('ID Discord invalide (uniquement des chiffres, 15 à 25)','e');return;}
+  if(!discordIdVerified){toast('Clique sur "Vérifier" à côté de ton ID Discord avant de continuer','e');return;}
   if(!email){toast('Email requis','e');return;}
   if(!password){toast('Mot de passe requis','e');return;}
   try{
@@ -804,7 +822,8 @@ async function renderPage(page){
         }
         const imgHtml=o.image_url?'<div style="width:100%;height:155px;overflow:hidden"><img src="'+o.image_url+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"></div>':'';
         const borderColor=o.active?cat.border:'rgba(255,71,87,.2)';
-        html+='<div class="aff-offer-card" data-name="'+o.name.toLowerCase().replace(/"/g,'&quot;')+'" style="background:#111;border:1px solid '+borderColor+';border-radius:14px;overflow:hidden;position:relative'+(o.active?'':';opacity:.7')+'"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+(o.active?cat.color:'var(--red)')+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
+        const isNew=o.created_at&&(Date.now()-new Date(o.created_at).getTime())<7*24*60*60*1000;
+        html+='<div class="aff-offer-card" data-name="'+o.name.toLowerCase().replace(/"/g,'&quot;')+'" style="background:#111;border:1px solid '+borderColor+';border-radius:14px;overflow:hidden;position:relative'+(o.active?'':';opacity:.7')+'"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+(o.active?cat.color:'var(--red)')+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px">'+o.name+(isNew?'<span style="background:var(--grad);color:#000;font-size:9px;font-weight:900;padding:2px 7px;border-radius:20px;letter-spacing:.3px">🆕 NOUVEAU</span>':'')+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
       });
       html+='</div></div></div>';
     });
@@ -874,10 +893,10 @@ async function renderPage(page){
     +'<div class="fi" id="virement-name-field" style="display:none"><label id="virement-name-label">Nom & Prénom (titulaire du compte)</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
     +'<div class="fi" id="giftcard-field" style="display:none">'
       +'<label>Choisis ta carte cadeau</label>'
-      +'<select id="gc-provider" onchange="onGiftProviderChange('+bal+')" style="width:100%;box-sizing:border-box;padding:11px 14px;border-radius:10px;background:var(--bg3);border:1px solid #2a2a2a;color:#fff;font-family:inherit;margin-bottom:14px">'
-        +'<option value="">— Choisir —</option>'
-        +Object.entries(GIFT_CARDS_FRONT).map(([k,v])=>'<option value="'+k+'">'+v.icon+' '+v.label+'</option>').join('')
-      +'</select>'
+      +'<input type="hidden" id="gc-provider" value="">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin-bottom:16px">'
+        +Object.entries(GIFT_CARDS_FRONT).map(([k,v])=>'<div class="gc-provider-card" data-key="'+k+'" onclick="selectGiftProvider(\''+k+'\','+bal+',this)" style="background:var(--bg3);border:1.5px solid #2a2a2a;border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:border-color .15s"><div style="width:36px;height:36px;border-radius:50%;background:'+v.color+'22;border:1.5px solid '+v.color+';display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 6px">'+v.icon+'</div><div style="font-size:10px;font-weight:700;line-height:1.2">'+v.label+'</div></div>').join('')
+      +'</div>'
       +'<div id="gc-amounts" style="display:none"><label style="font-size:11px;font-weight:700;color:rgba(245,200,66,.8);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px">Montant disponible</label><div id="gc-amounts-list" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>'
     +'</div>'
     +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre</button>')
@@ -1346,22 +1365,22 @@ async function doDmAll(){
   }catch(e){toast(e.message,'e');}
 }
 const GIFT_CARDS_FRONT={
-  playstation:{icon:'🎮',label:'PlayStation',amounts:[20,50]},
-  xbox:{icon:'🎮',label:'Xbox',amounts:[10,25,50]},
-  roblox:{icon:'🎮',label:'Roblox',amounts:[10,20,50]},
-  nintendo:{icon:'🎮',label:'Nintendo',amounts:[15,25,50,75,100]},
-  twitch:{icon:'📺',label:'Twitch',amounts:[15,25,50]},
-  amazon:{icon:'📦',label:'Amazon',amounts:[10,25,50]},
-  zalando:{icon:'👗',label:'Zalando',amounts:[20,50,100]},
-  airbnb:{icon:'🏠',label:'Airbnb',amounts:[50]},
-  footlocker:{icon:'👟',label:'Footlocker',amounts:[25,50]},
-  netflix:{icon:'🎬',label:'Netflix',amounts:[25,50,100]},
-  adidas:{icon:'👟',label:'Adidas',amounts:[25]},
-  primark:{icon:'🛍️',label:'Primark',amounts:[15,25]},
-  flixbus:{icon:'🚌',label:'FlixBus',amounts:[20,50,100]},
-  safemoni:{icon:'💳',label:'Safemoni',amounts:[10,20,50]},
-  tripgift:{icon:'✈️',label:'Tripgift',amounts:[50,100,250]},
-  hotelsgift:{icon:'🏨',label:'Hotelsgift',amounts:[50,100,250]}
+  playstation:{icon:'🎮',label:'PlayStation',color:'#0070D1',amounts:[20,50]},
+  xbox:{icon:'🎮',label:'Xbox',color:'#107C10',amounts:[10,25,50]},
+  roblox:{icon:'🎮',label:'Roblox',color:'#888888',amounts:[10,20,50]},
+  nintendo:{icon:'🎮',label:'Nintendo',color:'#E60012',amounts:[15,25,50,75,100]},
+  twitch:{icon:'📺',label:'Twitch',color:'#9146FF',amounts:[15,25,50]},
+  amazon:{icon:'📦',label:'Amazon',color:'#FF9900',amounts:[10,25,50]},
+  zalando:{icon:'👗',label:'Zalando',color:'#FF6900',amounts:[20,50,100]},
+  airbnb:{icon:'🏠',label:'Airbnb',color:'#FF5A5F',amounts:[50]},
+  footlocker:{icon:'👟',label:'Footlocker',color:'#ED1C24',amounts:[25,50]},
+  netflix:{icon:'🎬',label:'Netflix',color:'#E50914',amounts:[25,50,100]},
+  adidas:{icon:'👟',label:'Adidas',color:'#555555',amounts:[25]},
+  primark:{icon:'🛍️',label:'Primark',color:'#00AEEF',amounts:[15,25]},
+  flixbus:{icon:'🚌',label:'FlixBus',color:'#73D700',amounts:[20,50,100]},
+  safemoni:{icon:'💳',label:'Safemoni',color:'#6C5CE7',amounts:[10,20,50]},
+  tripgift:{icon:'✈️',label:'Tripgift',color:'#00B8A9',amounts:[50,100,250]},
+  hotelsgift:{icon:'🏨',label:'Hotelsgift',color:'#F7B32B',amounts:[50,100,250]}
 };
 let selGiftAmount=null;
 function pickCrypto(c,el){
@@ -1383,8 +1402,14 @@ function pickCrypto(c,el){
   document.getElementById('giftcard-field').style.display=isGift?'block':'none';
   document.getElementById('addr-field').style.display=isGift?'none':'block';
   document.getElementById('wd-amt-field').style.display=isGift?'none':'block';
-  if(isGift){document.getElementById('gc-provider').value='';document.getElementById('gc-amounts').style.display='none';}
+  if(isGift){document.getElementById('gc-provider').value='';document.getElementById('gc-amounts').style.display='none';document.querySelectorAll('.gc-provider-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});}
   updateWdCalc();
+}
+function selectGiftProvider(key,bal,el){
+  document.getElementById('gc-provider').value=key;
+  document.querySelectorAll('.gc-provider-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});
+  el.style.borderColor='var(--yellow)';el.style.background='rgba(245,200,66,.08)';
+  onGiftProviderChange(bal);
 }
 function onGiftProviderChange(bal){
   const key=document.getElementById('gc-provider').value;
