@@ -791,6 +791,7 @@ app.post('/api/withdrawals', auth, async (req, res) => {
     const card = GIFT_CARDS[gift_provider];
     if (!card) return res.status(400).json({ error: 'Carte cadeau invalide' });
     if (!card.amounts.includes(Number(amount))) return res.status(400).json({ error: 'Montant invalide pour cette carte' });
+    if (amount < 25) return res.status(400).json({ error: 'Retrait minimum $25' });
     if (amount > user.balance) return res.status(400).json({ error: 'Solde insuffisant pour cette carte cadeau' });
     finalAddress = card.label + ' - $' + amount;
   } else {
