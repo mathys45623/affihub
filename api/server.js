@@ -202,8 +202,9 @@ function adminOnly(req, res, next) {
 
 // ── REGISTER ──
 app.post('/api/register', async (req, res) => {
-  const { name, email, password, referral_code } = req.body;
+  const { name, email, password, referral_code, discord_id } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Champs requis' });
+  if (!discord_id || !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord requis et valide' });
   // Check maintenance mode
   const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
   if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
@@ -229,7 +230,7 @@ app.post('/api/register', async (req, res) => {
       if (signupIp && referrer.signup_ip && signupIp === referrer.signup_ip) referral_same_ip = true;
     }
   }
-  const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, referral_same_ip, signup_ip: signupIp, show_ranking: true }).select().single();
+  const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, referral_same_ip, signup_ip: signupIp, show_ranking: true, discord_id }).select().single();
   if (error) return res.status(400).json({ error: 'Email déjà utilisé' });
   // Notify referrer on Discord if referred
   if (referred_by) {
@@ -761,20 +762,49 @@ app.get('/api/withdrawals', auth, async (req, res) => {
   const { data } = await query;
   res.json(data || []);
 });
+const GIFT_CARDS = {
+  playstation: { label: 'PlayStation', amounts: [20, 50] },
+  xbox: { label: 'Xbox', amounts: [10, 25, 50] },
+  roblox: { label: 'Roblox', amounts: [10, 20, 50] },
+  nintendo: { label: 'Nintendo', amounts: [15, 25, 50, 75, 100] },
+  twitch: { label: 'Twitch', amounts: [15, 25, 50] },
+  amazon: { label: 'Amazon', amounts: [10, 25, 50] },
+  zalando: { label: 'Zalando', amounts: [20, 50, 100] },
+  airbnb: { label: 'Airbnb', amounts: [50] },
+  footlocker: { label: 'Footlocker', amounts: [25, 50] },
+  netflix: { label: 'Netflix', amounts: [25, 50, 100] },
+  adidas: { label: 'Adidas', amounts: [25] },
+  primark: { label: 'Primark', amounts: [15, 25] },
+  flixbus: { label: 'FlixBus', amounts: [20, 50, 100] },
+  safemoni: { label: 'Safemoni', amounts: [10, 20, 50] },
+  tripgift: { label: 'Tripgift', amounts: [50, 100, 250] },
+  hotelsgift: { label: 'Hotelsgift', amounts: [50, 100, 250] }
+};
+
 app.post('/api/withdrawals', auth, async (req, res) => {
-  const { amount, crypto, address } = req.body;
+  const { amount, crypto, address, gift_provider } = req.body;
   const { data: user } = await supabase.from('users').select('balance,name,discord_id').eq('id', req.user.id).single();
-  if (!user || user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
+  if (!user) return res.status(400).json({ error: 'Utilisateur introuvable' });
   if (!user.discord_id) return res.status(400).json({ error: 'Renseigne ton ID Discord dans Paramètres avant de demander un retrait' });
-  if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
+  let finalAddress = address;
+  if (crypto === 'CADEAU') {
+    const card = GIFT_CARDS[gift_provider];
+    if (!card) return res.status(400).json({ error: 'Carte cadeau invalide' });
+    if (!card.amounts.includes(Number(amount))) return res.status(400).json({ error: 'Montant invalide pour cette carte' });
+    if (amount > user.balance) return res.status(400).json({ error: 'Solde insuffisant pour cette carte cadeau' });
+    finalAddress = card.label + ' - $' + amount;
+  } else {
+    if (user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
+    if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
+  }
   await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
-  const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address, status: 'pending' }).select().single();
+  const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address: finalAddress, status: 'pending' }).select().single();
   // Discord notification
   await notifyDiscord2(DISCORD_WITHDRAWAL, '💸 Demande de retrait !', 0xF0427A, [
     { name: '👤 Affilié', value: user.name, inline: true },
     { name: '💰 Montant', value: '$' + amount, inline: true },
-    { name: '💳 Moyen', value: crypto, inline: true }
-  ], '<@1504481208266915861> <@1475752325174788118>');
+    { name: '💳 Moyen', value: crypto === 'CADEAU' ? finalAddress : crypto, inline: true }
+  ], '<@1504481208266915861>');
   log(req.user.id, 'retrait-demandé', 'Demande de $'+amount+' en '+crypto, req);
   res.json(data);
 });
