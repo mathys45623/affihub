@@ -201,6 +201,15 @@ function adminOnly(req, res, next) {
 }
 
 // ── REGISTER ──
+// Vérifie qu'un ID Discord est valide en y envoyant un vrai message de test, avant même l'inscription
+app.post('/api/verify-discord-id', async (req, res) => {
+  const { discord_id } = req.body;
+  if (!discord_id || !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'Format invalide (uniquement des chiffres)' });
+  const ok = await sendDiscordDMPlain(discord_id, '✅ Ton ID Discord fonctionne bien sur AffiHub ! Tu recevras tes alertes de vente ici.');
+  if (!ok) return res.status(400).json({ error: 'Impossible d\'envoyer un message à cet ID. Vérifie qu\'il est correct et que tu partages bien un serveur avec le bot AffiHub.' });
+  res.json({ success: true });
+});
+
 app.post('/api/register', async (req, res) => {
   const { name, email, password, referral_code, discord_id } = req.body;
   if (!name || !email || !password) return res.status(400).json({ error: 'Champs requis' });
