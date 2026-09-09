@@ -21,6 +21,10 @@ const DISCORD_PAYMENT = 'https://discord.com/api/webhooks/1526535272437780600/RL
 const DISCORD_TICKET = 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
 const DISCORD_REFERRAL = 'https://discord.com/api/webhooks/1526536467168493658/SJ-Et9ONIpTC_YmCd7Ow_VZbOrO5FIGHB8MNaV9FcxolheQFmtf2pdou4za8UA8r73OD';
 
+// ── Rôle auto attribué à l'inscription ──
+const DISCORD_GUILD_ID = '1520172933815730227';
+const DISCORD_AFFILIATE_ROLE_ID = '1520173497048105170';
+
 async function notifyDiscord(affiliateName, offerName, amount) {
   try {
     await fetch(DISCORD_WEBHOOK, {
@@ -80,6 +84,25 @@ async function sendDiscordDM(discordId, title, color, fields) {
       body: JSON.stringify({ embeds: [{ title, color, fields, timestamp: new Date().toISOString(), footer: { text: 'AffiHub' } }] })
     });
   } catch (e) { console.error('Discord DM error:', e.message); }
+}
+
+// Attribue un rôle à un membre du serveur Discord (nécessite DISCORD_BOT_TOKEN + que le bot
+// ait la permission "Gérer les rôles" et soit positionné au-dessus du rôle ciblé)
+async function assignDiscordRole(guildId, discordId, roleId) {
+  if (!guildId || !discordId || !roleId || !process.env.DISCORD_BOT_TOKEN) return false;
+  try {
+    const res = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`, {
+      method: 'PUT',
+      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN }
+    });
+    // 204 No Content = succès. Si le membre n'est pas (encore) sur le serveur, Discord renvoie 404.
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('Discord role assign error:', res.status, body);
+      return false;
+    }
+    return true;
+  } catch (e) { console.error('Discord role assign error:', e.message); return false; }
 }
 
 // Poste un message directement dans un salon (via son ID) en utilisant le bot déjà configuré
@@ -287,6 +310,10 @@ app.post('/api/register', async (req, res) => {
     { name: '📧 Email', value: email, inline: true },
     { name: '🔗 Code parrainage', value: newCode, inline: true }
   ]);
+  // Attribution automatique du rôle Discord (en arrière-plan, ne bloque pas la réponse)
+  assignDiscordRole(DISCORD_GUILD_ID, discord_id, DISCORD_AFFILIATE_ROLE_ID).then(ok => {
+    if (!ok) console.error(`Rôle non attribué pour ${name} (discord_id: ${discord_id}) — vérifie qu'il est bien sur le serveur et que le bot a la permission requise.`);
+  });
   res.json({ token, user: { id: data.id, name: data.name, email: data.email, role: data.role, balance: data.balance, referral_code: data.referral_code }, welcome_message: wmsg?.value || '' });
 });
 
