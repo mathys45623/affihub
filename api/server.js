@@ -479,31 +479,64 @@ app.get('/api/postback', async (req, res) => {
   const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
   if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
   const convAmount = link.offers?.commission || parseFloat(amount) || 10;
+
+  // ── ANTI-DOUBLON ──
+  // addunlock (ou tout autre réseau) peut renvoyer le même postback plusieurs fois
+  // (retry automatique si la réponse HTTP tarde, double envoi, etc.).
+  // On vérifie donc si une conversion identique (même lien + même montant) vient
+  // d'être créée il y a moins de 2 minutes avant d'en créer une nouvelle.
+  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+  const { data: recentDuplicate } = await supabase
+    .from('conversions')
+    .select('id')
+    .eq('link_id', ref)
+    .eq('amount', convAmount)
+    .gte('created_at', twoMinutesAgo)
+    .limit(1)
+    .maybeSingle();
+
+  if (recentDuplicate) {
+    // On répond "success" (pour qu'addunlock arrête de réessayer) sans rien recréditer
+    return res.json({ success: true, conversion_id: recentDuplicate.id, duplicate: true });
+  }
+
   const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
   if (error) return res.status(500).json({ error: 'Erreur création conversion' });
+
   // Créditer le solde
   const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', link.user_id).single();
   if (user) {
     await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
-    await supabase.from('notifications').insert({ user_id: link.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + convAmount + ' (' + (link.offers?.name || '?') + ')', read: false });
-    await checkCollectionComplete(link.user_id);
+  }
+
+  // ── On répond IMMÉDIATEMENT à addunlock une fois la conversion créditée. ──
+  // Tout ce qui suit (Discord, notifications, parrainage, postback vers l'affilié)
+  // ne doit plus bloquer la réponse HTTP : sinon, si Discord répond lentement,
+  // addunlock peut timeout et renvoyer le postback -> doublon.
+  res.json({ success: true, conversion_id: conv.id });
+
+  // ── Tout ce qui suit s'exécute en arrière-plan, après la réponse ──
+  if (user) {
+    supabase.from('notifications').insert({ user_id: link.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + convAmount + ' (' + (link.offers?.name || '?') + ')', read: false }).then(()=>{}).catch(()=>{});
+    checkCollectionComplete(link.user_id).catch(()=>{});
     // DM privé à l'affilié
-    await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
+    sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
       { name: '🎯 Offre', value: link.offers?.name || '?', inline: true },
       { name: '💵 Montant', value: '$' + convAmount, inline: true }
-    ]);
+    ]).catch(()=>{});
     // Commission parrainage
     if (user.referred_by) {
-      const { data: referee } = await supabase.from('users').select('referral_active').eq('id', link.user_id).single();
-      if (referee && referee.referral_active !== false) {
-        const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
-        if (referrer) {
-          const rate = (referrer.referral_rate ?? 10) / 100;
-          const commission = parseFloat((convAmount * rate).toFixed(2));
-          await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-          await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
+      supabase.from('users').select('referral_active').eq('id', link.user_id).single().then(async ({ data: referee }) => {
+        if (referee && referee.referral_active !== false) {
+          const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
+          if (referrer) {
+            const rate = (referrer.referral_rate ?? 10) / 100;
+            const commission = parseFloat((convAmount * rate).toFixed(2));
+            await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
+            await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
+          }
         }
-      }
+      }).catch(()=>{});
     }
     // Postback affilié
     if (user.postback_url) {
@@ -512,8 +545,7 @@ app.get('/api/postback', async (req, res) => {
     }
   }
   // Notify Discord
-  await notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount);
-  res.json({ success: true, conversion_id: conv.id });
+  notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount).catch(()=>{});
 });
 
 app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
