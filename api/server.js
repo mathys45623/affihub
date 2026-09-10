@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 const dns = require('dns').promises;
@@ -10,16 +11,31 @@ const net = require('net');
 const app = express();
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
-const JWT_SECRET = process.env.JWT_SECRET || 'affihub_secret_2024';
+// ⚠️ Si JWT_SECRET n'est pas défini dans les variables d'environnement, on génère un secret
+// aléatoire à chaque démarrage plutôt que d'utiliser une valeur fixe en dur dans le code
+// (l'ancienne valeur par défaut est désormais connue et donc invalidée pour de bon).
+// CONSÉQUENCE si tu ne configures pas JWT_SECRET toi-même : tous les utilisateurs seront
+// déconnectés à chaque redémarrage/déploiement du serveur (le secret change à chaque fois).
+// Pour l'éviter, définis une vraie variable d'environnement JWT_SECRET sur ton hébergeur
+// (une longue chaîne aléatoire, ex: générée avec `openssl rand -hex 32`), une seule fois.
+if (!process.env.JWT_SECRET) {
+  console.warn('⚠️  JWT_SECRET non défini : un secret temporaire a été généré pour ce démarrage. Configure JWT_SECRET dans tes variables d\'environnement pour éviter que tous les utilisateurs soient déconnectés à chaque redéploiement.');
+}
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString('hex');
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // ── EMAIL ──
-const DISCORD_WEBHOOK = 'https://discord.com/api/webhooks/1526526889756332134/lCByUUSbUigvyW0TfTarZ14LxziWL6k_5iLbq_jwG8ecC9qHpFTOLFPbE9gKdqnbD_hX';
-const DISCORD_REGISTER = 'https://discord.com/api/webhooks/1526534674317316106/DVjEe1IQmTYt7Xnyy37gyiJcABJoks4hpc5Z2v6dUSF3LYqXN0XJsfVRD7TnvwBKYvVo';
-const DISCORD_WITHDRAWAL = 'https://discord.com/api/webhooks/1526535135003148411/T36o_LZh8U-GxnIJUEBPpagDCc52f5l00qX6va8fgj-lzUQacn3r1dtY5yh4FguLk3OX';
-const DISCORD_PAYMENT = 'https://discord.com/api/webhooks/1526535272437780600/RLIxROgmO64UPycLUJgbDN31kCuDIt7VpJmTgSSouYHolByFqZNeAB59k7ZjOm0u2qHa';
-const DISCORD_TICKET = 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
-const DISCORD_REFERRAL = 'https://discord.com/api/webhooks/1526536467168493658/SJ-Et9ONIpTC_YmCd7Ow_VZbOrO5FIGHB8MNaV9FcxolheQFmtf2pdou4za8UA8r73OD';
+// Ces webhooks peuvent être surchargés via variables d'environnement (recommandé).
+// Les valeurs en dur restent en fallback pour ne rien casser tant que tu n'as pas
+// configuré les variables d'environnement — mais comme ces URLs ont déjà été vues/partagées,
+// il vaut mieux les régénérer sur Discord (Paramètres du serveur → Intégrations → Webhooks
+// → "Nouvelle URL de webhook") puis mettre les nouvelles dans tes variables d'environnement.
+const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_SALES || 'https://discord.com/api/webhooks/1526526889756332134/lCByUUSbUigvyW0TfTarZ14LxziWL6k_5iLbq_jwG8ecC9qHpFTOLFPbE9gKdqnbD_hX';
+const DISCORD_REGISTER = process.env.DISCORD_WEBHOOK_REGISTER || 'https://discord.com/api/webhooks/1526534674317316106/DVjEe1IQmTYt7Xnyy37gyiJcABJoks4hpc5Z2v6dUSF3LYqXN0XJsfVRD7TnvwBKYvVo';
+const DISCORD_WITHDRAWAL = process.env.DISCORD_WEBHOOK_WITHDRAWAL || 'https://discord.com/api/webhooks/1526535135003148411/T36o_LZh8U-GxnIJUEBPpagDCc52f5l00qX6va8fgj-lzUQacn3r1dtY5yh4FguLk3OX';
+const DISCORD_PAYMENT = process.env.DISCORD_WEBHOOK_PAYMENT || 'https://discord.com/api/webhooks/1526535272437780600/RLIxROgmO64UPycLUJgbDN31kCuDIt7VpJmTgSSouYHolByFqZNeAB59k7ZjOm0u2qHa';
+const DISCORD_TICKET = process.env.DISCORD_WEBHOOK_TICKET || 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
+const DISCORD_REFERRAL = process.env.DISCORD_WEBHOOK_REFERRAL || 'https://discord.com/api/webhooks/1526536467168493658/SJ-Et9ONIpTC_YmCd7Ow_VZbOrO5FIGHB8MNaV9FcxolheQFmtf2pdou4za8UA8r73OD';
 
 // ── Rôle auto attribué à l'inscription ──
 const DISCORD_GUILD_ID = '1520172933815730227';
@@ -316,7 +332,7 @@ app.post('/api/register', async (req, res) => {
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
     </div>
   `);
-  const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET);
+  const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET, { expiresIn: '30d' });
   log(data.id, 'inscription', 'Nouveau compte créé : '+name, req);
   // Discord notification
   await notifyDiscord2(DISCORD_REGISTER, '👤 Nouvel affilié !', 0x00D68F, [
@@ -332,19 +348,60 @@ app.post('/api/register', async (req, res) => {
 });
 
 // ── LOGIN ──
-app.post('/api/login', async (req, res) => {
+// Anti brute-force simple sur le login, sans dépendance externe (donc rien à installer,
+// zéro risque de casser le déploiement). Bloque une IP après trop de tentatives échouées.
+// Note: en mémoire, donc reset si le serveur redémarre, et pas partagé entre plusieurs
+// instances si jamais tu scales horizontalement un jour.
+const loginAttempts = new Map(); // ip -> { count, firstAttempt }
+const LOGIN_MAX_ATTEMPTS = 8;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+function loginRateLimit(req, res, next) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (entry && now - entry.firstAttempt < LOGIN_WINDOW_MS && entry.count >= LOGIN_MAX_ATTEMPTS) {
+    const waitMin = Math.ceil((LOGIN_WINDOW_MS - (now - entry.firstAttempt)) / 60000);
+    return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${waitMin} min.` });
+  }
+  next();
+}
+function recordFailedLogin(req) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const now = Date.now();
+  const entry = loginAttempts.get(ip);
+  if (!entry || now - entry.firstAttempt > LOGIN_WINDOW_MS) {
+    loginAttempts.set(ip, { count: 1, firstAttempt: now });
+  } else {
+    entry.count++;
+  }
+}
+function clearFailedLogin(req) {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  loginAttempts.delete(ip);
+}
+
+app.post('/api/login', loginRateLimit, async (req, res) => {
   const { email, password } = req.body;
   const { data: user } = await supabase.from('users').select('*').eq('email', email).single();
-  if (!user) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
-  const valid = user.password === password || await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+  if (!user) { recordFailedLogin(req); return res.status(401).json({ error: 'Email ou mot de passe incorrect' }); }
+  let valid = false;
+  try { valid = await bcrypt.compare(password, user.password); } catch (e) { valid = false; }
+  if (!valid && user.password === password) {
+    // Compte legacy avec mot de passe stocké en clair : on l'accepte une dernière fois,
+    // puis on le migre immédiatement en bcrypt pour fermer la faille sur ce compte.
+    valid = true;
+    const migratedHash = await bcrypt.hash(password, 10);
+    await supabase.from('users').update({ password: migratedHash }).eq('id', user.id);
+  }
+  if (!valid) { recordFailedLogin(req); return res.status(401).json({ error: 'Email ou mot de passe incorrect' }); }
+  clearFailedLogin(req);
   // Check maintenance mode for non-admin
   if (user.role !== 'admin') {
     const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
     if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
   }
   log(user.id, 'login', 'Connexion de '+user.name+' ('+user.role+')', req);
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET);
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
   res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, is_super_admin: user.is_super_admin || false, admin_permissions: user.admin_permissions || 'all' } });
 });
 
@@ -385,7 +442,9 @@ app.patch('/api/users/:id/permissions', auth, async (req, res) => {
 app.post('/api/change-password', auth, async (req, res) => {
   const { current_password, new_password } = req.body;
   const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
-  const valid = user.password === current_password || await bcrypt.compare(current_password, user.password);
+  let valid = false;
+  try { valid = await bcrypt.compare(current_password, user.password); } catch (e) { valid = false; }
+  if (!valid && user.password === current_password) valid = true; // compte legacy en clair — sera migré ci-dessous
   if (!valid) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
   const hash = await bcrypt.hash(new_password, 10);
   await supabase.from('users').update({ password: hash }).eq('id', req.user.id);
