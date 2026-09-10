@@ -412,14 +412,19 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 </div>
 <div id="force-pw-screen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);position:relative;z-index:2">
   <div class="auth-box" style="position:relative">
-    <div style="text-align:center;margin-bottom:24px">
+    <div style="text-align:center;margin-bottom:20px">
       <div style="font-size:44px;margin-bottom:10px">🔑</div>
       <div style="font-size:18px;font-weight:800">Nouveau mot de passe requis</div>
-      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Ton mot de passe a été réinitialisé par un admin. Choisis-en un nouveau pour continuer.</p>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Un admin a réinitialisé ton mot de passe. Choisis-en un nouveau, rien qu'à toi, pour continuer.</p>
     </div>
-    <div class="fg"><label>Mot de passe temporaire reçu</label><input type="password" id="fpw-current" placeholder="Celui qu'on t'a communiqué" onkeydown="if(event.key==='Enter')document.getElementById('fpw-new').focus()"></div>
-    <div class="fg"><label>Nouveau mot de passe</label><input type="password" id="fpw-new" placeholder="Au moins 6 caractères" onkeydown="if(event.key==='Enter')document.getElementById('fpw-confirm').focus()"></div>
-    <div class="fg"><label>Confirme le nouveau mot de passe</label><input type="password" id="fpw-confirm" placeholder="Retape-le" onkeydown="if(event.key==='Enter')submitForcedPasswordChange()"></div>
+    <div style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;margin-bottom:20px;font-size:12px;line-height:1.9;color:#ccc">
+      <div><b style="color:var(--yellow)">1.</b> Entre le mot de passe que l'admin t'a communiqué (Discord ou autre)</div>
+      <div><b style="color:var(--yellow)">2.</b> Choisis ton nouveau mot de passe personnel (6 caractères minimum)</div>
+      <div><b style="color:var(--yellow)">3.</b> Retape-le pour confirmer, puis valide</div>
+    </div>
+    <div class="fg"><label>1️⃣ Mot de passe reçu de l'admin</label><input type="password" id="fpw-current" placeholder="Celui qu'on t'a communiqué" onkeydown="if(event.key==='Enter')document.getElementById('fpw-new').focus()"></div>
+    <div class="fg"><label>2️⃣ Ton nouveau mot de passe</label><input type="password" id="fpw-new" placeholder="Au moins 6 caractères" onkeydown="if(event.key==='Enter')document.getElementById('fpw-confirm').focus()"></div>
+    <div class="fg"><label>3️⃣ Confirme ton nouveau mot de passe</label><input type="password" id="fpw-confirm" placeholder="Retape-le" onkeydown="if(event.key==='Enter')submitForcedPasswordChange()"></div>
     <button class="btn-primary" onclick="submitForcedPasswordChange()">Valider et continuer →</button>
     <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;margin-top:14px;font-family:inherit">Se déconnecter</button>
   </div>
