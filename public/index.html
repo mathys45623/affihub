@@ -1656,7 +1656,10 @@ function openAddConv(){
 async function doAddConv(){
   const user_id=document.getElementById('mc-user').value;const offer_id=document.getElementById('mc-offer').value;const amount=parseFloat(document.getElementById('mc-amount').value);const status=document.getElementById('mc-status').value;
   if(!user_id){toast('Choisissez un affilié','e');return;}if(!offer_id){toast('Choisissez une offre','e');return;}if(!amount||amount<=0){toast('Montant invalide','e');return;}
-  try{await api('POST','/api/conversions/manual',{user_id,offer_id,amount,status});closeMo();toast('Conversion ajoutée ✓','s');goPage('admin-conv');}catch(e){toast(e.message,'e');}
+  const btn=document.querySelector('#m-body .btn-grad');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='⏳ Ajout en cours...';}
+  try{await api('POST','/api/conversions/manual',{user_id,offer_id,amount,status});closeMo();toast('Conversion ajoutée ✓','s');goPage('admin-conv');}
+  catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='➕ Ajouter';}}
 }
 function doSortTop(by){
   ['gains','conv','clicks','date'].forEach(k=>{const el=document.getElementById('sort-'+k);if(el)el.className='btn btn-'+(k===by?'grad':'gst')+' btn-sm';});
