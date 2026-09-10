@@ -271,9 +271,49 @@ function adminOnly(req, res, next) {
   next();
 }
 
+// Anti brute-force générique, sans dépendance externe (donc rien à installer,
+// zéro risque de casser le déploiement). Bloque une IP après trop de requêtes.
+// Note: en mémoire, donc reset si le serveur redémarre, et pas partagé entre plusieurs
+// instances si jamais tu scales horizontalement un jour.
+function makeRateLimiter(maxAttempts, windowMs) {
+  const attempts = new Map(); // ip -> { count, firstAttempt }
+  function middleware(req, res, next) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    const now = Date.now();
+    const entry = attempts.get(ip);
+    if (entry && now - entry.firstAttempt < windowMs && entry.count >= maxAttempts) {
+      const waitMin = Math.ceil((windowMs - (now - entry.firstAttempt)) / 60000);
+      return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${waitMin} min.` });
+    }
+    next();
+  }
+  function record(req) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    const now = Date.now();
+    const entry = attempts.get(ip);
+    if (!entry || now - entry.firstAttempt > windowMs) attempts.set(ip, { count: 1, firstAttempt: now });
+    else entry.count++;
+  }
+  function clear(req) {
+    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+    attempts.delete(ip);
+  }
+  return { middleware, record, clear };
+}
+
+const loginLimiter = makeRateLimiter(8, 15 * 60 * 1000); // 8 tentatives / 15 min
+const loginRateLimit = loginLimiter.middleware;
+const recordFailedLogin = loginLimiter.record;
+const clearFailedLogin = loginLimiter.clear;
+
+// Limite l'envoi de DM Discord de vérification à 5 par IP toutes les 10 minutes,
+// pour empêcher que cette route publique soit utilisée pour spammer des gens via le bot.
+const discordVerifyLimiter = makeRateLimiter(5, 10 * 60 * 1000);
+const discordVerifyRateLimit = discordVerifyLimiter.middleware;
+
 // ── REGISTER ──
 // Vérifie qu'un ID Discord est valide en y envoyant un vrai message de test, avant même l'inscription
-app.post('/api/verify-discord-id', async (req, res) => {
+app.post('/api/verify-discord-id', discordVerifyRateLimit, async (req, res) => {
   const { discord_id } = req.body;
   if (!discord_id || !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'Format invalide (uniquement des chiffres)' });
   const ok = await sendDiscordDMPlain(discord_id, '✅ Ton ID Discord fonctionne bien sur AffiHub ! Tu recevras tes alertes de vente ici.');
@@ -366,38 +406,6 @@ app.post('/api/register', async (req, res) => {
 });
 
 // ── LOGIN ──
-// Anti brute-force simple sur le login, sans dépendance externe (donc rien à installer,
-// zéro risque de casser le déploiement). Bloque une IP après trop de tentatives échouées.
-// Note: en mémoire, donc reset si le serveur redémarre, et pas partagé entre plusieurs
-// instances si jamais tu scales horizontalement un jour.
-const loginAttempts = new Map(); // ip -> { count, firstAttempt }
-const LOGIN_MAX_ATTEMPTS = 8;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
-function loginRateLimit(req, res, next) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
-  if (entry && now - entry.firstAttempt < LOGIN_WINDOW_MS && entry.count >= LOGIN_MAX_ATTEMPTS) {
-    const waitMin = Math.ceil((LOGIN_WINDOW_MS - (now - entry.firstAttempt)) / 60000);
-    return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${waitMin} min.` });
-  }
-  next();
-}
-function recordFailedLogin(req) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-  const now = Date.now();
-  const entry = loginAttempts.get(ip);
-  if (!entry || now - entry.firstAttempt > LOGIN_WINDOW_MS) {
-    loginAttempts.set(ip, { count: 1, firstAttempt: now });
-  } else {
-    entry.count++;
-  }
-}
-function clearFailedLogin(req) {
-  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-  loginAttempts.delete(ip);
-}
-
 app.post('/api/login', loginRateLimit, async (req, res) => {
   const { email, password } = req.body;
   const { data: user } = await supabase.from('users').select('*').eq('email', email).single();
