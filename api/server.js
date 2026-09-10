@@ -668,6 +668,11 @@ app.get('/api/postback', async (req, res) => {
 app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
   const { user_id, offer_id, amount, status } = req.body;
   if (!user_id || !offer_id || !amount) return res.status(400).json({ error: 'Champs requis' });
+  // Anti-doublon : évite qu'un double-clic ou un double envoi réseau crée deux fois
+  // la même conversion manuelle (même affilié + même offre + même montant à quelques secondes d'écart).
+  const tenSecondsAgo = new Date(Date.now() - 10 * 1000).toISOString();
+  const { data: recentDuplicate } = await supabase.from('conversions').select('id').eq('user_id', user_id).eq('offer_id', offer_id).eq('amount', parseFloat(amount)).gte('created_at', tenSecondsAgo).limit(1).maybeSingle();
+  if (recentDuplicate) return res.status(409).json({ error: 'Conversion identique déjà ajoutée il y a quelques secondes (doublon évité)' });
   // Find existing link or use null for manual conversions
   const { data: link } = await supabase.from('links').select('id').eq('user_id', user_id).eq('offer_id', offer_id).single();
   const link_id = link ? link.id : null;
@@ -952,6 +957,7 @@ app.post('/api/withdrawals', auth, async (req, res) => {
 app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
   const { data: wd } = await supabase.from('withdrawals').select('*, users(name)').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
+  if (wd.status !== 'pending') return res.status(409).json({ error: 'Ce retrait a déjà été traité (statut actuel : ' + wd.status + ')' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
   // Discord notification
   log(req.user.id, 'retrait-payé', 'Retrait #'+req.params.id+' de $'+wd.amount+' payé à '+(wd.users?.name||'?'), req);
@@ -967,6 +973,7 @@ app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
   const { reason } = req.body;
   const { data: wd } = await supabase.from('withdrawals').select('*, users(name)').eq('id', req.params.id).single();
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
+  if (wd.status !== 'pending') return res.status(409).json({ error: 'Ce retrait a déjà été traité (statut actuel : ' + wd.status + ') — pas de remboursement en double.' });
   await supabase.from('withdrawals').update({ status: 'rejected', reason }).eq('id', req.params.id);
   const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
   await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
