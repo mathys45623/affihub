@@ -410,6 +410,20 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
     </div>
   </div>
 </div>
+<div id="force-pw-screen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);position:relative;z-index:2">
+  <div class="auth-box" style="position:relative">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:44px;margin-bottom:10px">🔑</div>
+      <div style="font-size:18px;font-weight:800">Nouveau mot de passe requis</div>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Ton mot de passe a été réinitialisé par un admin. Choisis-en un nouveau pour continuer.</p>
+    </div>
+    <div class="fg"><label>Mot de passe temporaire reçu</label><input type="password" id="fpw-current" placeholder="Celui qu'on t'a communiqué" onkeydown="if(event.key==='Enter')document.getElementById('fpw-new').focus()"></div>
+    <div class="fg"><label>Nouveau mot de passe</label><input type="password" id="fpw-new" placeholder="Au moins 6 caractères" onkeydown="if(event.key==='Enter')document.getElementById('fpw-confirm').focus()"></div>
+    <div class="fg"><label>Confirme le nouveau mot de passe</label><input type="password" id="fpw-confirm" placeholder="Retape-le" onkeydown="if(event.key==='Enter')submitForcedPasswordChange()"></div>
+    <button class="btn-primary" onclick="submitForcedPasswordChange()">Valider et continuer →</button>
+    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;margin-top:14px;font-family:inherit">Se déconnecter</button>
+  </div>
+</div>
 <div id="mobile-nav"></div>
 <div id="app">
   <div class="shell">
@@ -485,9 +499,35 @@ async function api(method,path,body){
   if(TOKEN)opts.headers['Authorization']='Bearer '+TOKEN;
   if(body)opts.body=JSON.stringify(body);
   const r=await fetch(API+path,opts);const data=await r.json();
-  if(!r.ok)throw new Error(data.error||'Erreur');return data;
+  if(!r.ok){
+    if(data.code==='MUST_CHANGE_PASSWORD'){showForcePasswordScreen();}
+    else if(r.status===401&&TOKEN){logout();toast(data.error||'Session expirée, reconnecte-toi.','i');}
+    throw new Error(data.error||'Erreur');
+  }
+  return data;
 }
 
+function showForcePasswordScreen(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='none';
+  document.getElementById('landing').style.display='none';
+  document.getElementById('force-pw-screen').style.display='flex';
+}
+async function submitForcedPasswordChange(){
+  const current=document.getElementById('fpw-current').value;
+  const pw1=document.getElementById('fpw-new').value;
+  const pw2=document.getElementById('fpw-confirm').value;
+  if(!current){toast('Renseigne le mot de passe temporaire reçu','e');return;}
+  if(pw1.length<6){toast('Le nouveau mot de passe doit faire au moins 6 caractères','e');return;}
+  if(pw1!==pw2){toast('Les deux mots de passe ne correspondent pas','e');return;}
+  try{
+    await api('POST','/api/change-password',{current_password:current,new_password:pw1});
+    toast('Mot de passe mis à jour ✓','s');
+    document.getElementById('force-pw-screen').style.display='none';
+    ME=await api('GET','/api/me');localStorage.setItem('affihub_user',JSON.stringify(ME));
+    startApp();
+  }catch(e){toast(e.message,'e');}
+}
 function switchTab(t){
   document.getElementById('tab-login').classList.toggle('active',t==='login');
   document.getElementById('tab-register').classList.toggle('active',t==='register');
@@ -497,7 +537,8 @@ function switchTab(t){
 
 async function doLogin(){
   try{const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
-  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));refreshSession();startApp();}
+  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));refreshSession();
+  if(ME.must_change_password){showForcePasswordScreen();}else{startApp();}}
   catch(e){toast(e.message,'e');}
 }
 
@@ -1107,7 +1148,7 @@ async function renderPage(page){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
     const isSuperAdmin=ME.is_super_admin===true;
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
     return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' utilisateur(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>💎 Gains totale</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
@@ -1521,6 +1562,21 @@ function confirmDeleteConv(id,amount,userName){document.getElementById('m-title'
 async function deleteConv(id){try{await api('DELETE','/api/conversions/'+id);closeMo();toast('Conversion supprimée','s');goPage('admin-conv');}catch(e){toast(e.message,'e');}}
 function confirmDeleteOffer(id,name){document.getElementById('m-title').textContent='Supprimer l\'offre';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Supprimer l\'offre</div><div style="font-weight:900;font-size:18px;margin-bottom:18px">'+name+'</div><div style="font-size:12px;color:var(--red);background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Tous les liens associés seront supprimés.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteOffer('+id+')" style="flex:1">Confirmer</button></div></div>';document.getElementById('mo').classList.add('open');}
 async function deleteOffer(id){try{await api('DELETE','/api/offers/'+id);closeMo();toast('Offre supprimée','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
+function confirmResetPassword(userId,userName){
+  const safeName=userName.replace(/'/g,"\\'");
+  document.getElementById('m-title').textContent='Réinitialiser le mot de passe';
+  document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px"><div style="font-size:13px;color:var(--muted);margin-bottom:16px">Définis le nouveau mot de passe de <b>'+userName+'</b>. Il sera déconnecté immédiatement et devra en choisir un autre dès sa prochaine connexion.</div><div class="fg"><label>Nouveau mot de passe</label><input type="text" id="rp-newpass" placeholder="Au moins 6 caractères"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doResetPassword(\''+userId+'\',\''+safeName+'\')" style="flex:1;justify-content:center">Réinitialiser</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doResetPassword(userId,userName){
+  const newPassword=document.getElementById('rp-newpass').value;
+  if(!newPassword||newPassword.length<6){toast('Le mot de passe doit faire au moins 6 caractères','e');return;}
+  try{
+    const r=await api('POST','/api/users/'+userId+'/reset-password',{newPassword});
+    document.getElementById('m-title').textContent='✅ Mot de passe réinitialisé';
+    document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px">'+(r.sentViaDiscord?'<div style="font-size:12px;color:var(--green);margin-bottom:14px">✅ '+userName+' a aussi reçu le mot de passe en DM Discord.</div>':'<div style="font-size:12px;color:var(--yellow);margin-bottom:14px">⚠️ DM Discord non envoyé (ID Discord manquant/invalide) — transmets-le lui-même.</div>')+'<div style="font-size:12px;color:var(--muted);margin-bottom:18px">Il a été déconnecté et devra définir un nouveau mot de passe personnel dès sa prochaine connexion.</div><button class="btn btn-grad" onclick="closeMo()" style="width:100%;justify-content:center">Fermer</button></div>';
+  }catch(e){toast(e.message,'e');}
+}
 function confirmDeleteAff(btn){
   const id=btn.dataset.id,name=btn.dataset.name,email=btn.dataset.email;
   document.getElementById('m-title').textContent='Supprimer le compte';
@@ -2083,7 +2139,7 @@ async function saveWelcomeMsg(){
 }
 
 // ── INIT ──
-if(TOKEN&&ME){startApp();}else{showLanding();}
+if(TOKEN&&ME){if(ME.must_change_password){showForcePasswordScreen();}else{startApp();}}else{showLanding();}
 const urlParams=new URLSearchParams(window.location.search);const refCode=urlParams.get('ref');
 if(refCode){switchTab('register');setTimeout(()=>{const el=document.getElementById('r-ref');if(el){el.value=refCode;el.style.borderColor='var(--yellow)';}},100);}
 
