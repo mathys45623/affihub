@@ -9,6 +9,7 @@ const dns = require('dns').promises;
 const net = require('net');
 
 const app = express();
+app.set('trust proxy', true);
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
 // ⚠️ Si JWT_SECRET n'est pas défini dans les variables d'environnement, on génère un secret
@@ -242,11 +243,28 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
-function auth(req, res, next) {
+async function auth(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Non autorisé' });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
-  catch { res.status(401).json({ error: 'Token invalide' }); }
+  let payload;
+  try { payload = jwt.verify(token, JWT_SECRET); }
+  catch { return res.status(401).json({ error: 'Token invalide' }); }
+  try {
+    // token_version permet de forcer une déconnexion à distance (ex: admin qui réinitialise
+    // un mot de passe) : si la version en base a changé depuis l'émission de ce token, on refuse.
+    const { data: u } = await supabase.from('users').select('token_version,must_change_password').eq('id', payload.id).single();
+    if (!u) return res.status(401).json({ error: 'Compte introuvable' });
+    if ((payload.tokenVersion || 0) !== (u.token_version || 0)) {
+      return res.status(401).json({ error: 'Session expirée, merci de te reconnecter.' });
+    }
+    req.user = payload;
+    // Si un changement de mot de passe est obligatoire (ex: réinitialisé par un admin),
+    // on bloque tout sauf la consultation du profil et le changement de mot de passe lui-même.
+    if (u.must_change_password && req.path !== '/api/change-password' && req.path !== '/api/me') {
+      return res.status(423).json({ error: 'Tu dois changer ton mot de passe avant de continuer.', code: 'MUST_CHANGE_PASSWORD' });
+    }
+    next();
+  } catch (e) { return res.status(401).json({ error: 'Erreur d\'authentification' }); }
 }
 function adminOnly(req, res, next) {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin seulement' });
@@ -332,7 +350,7 @@ app.post('/api/register', async (req, res) => {
       <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
     </div>
   `);
-  const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name }, JWT_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name, tokenVersion: data.token_version || 0 }, JWT_SECRET, { expiresIn: '30d' });
   log(data.id, 'inscription', 'Nouveau compte créé : '+name, req);
   // Discord notification
   await notifyDiscord2(DISCORD_REGISTER, '👤 Nouvel affilié !', 0x00D68F, [
@@ -401,13 +419,13 @@ app.post('/api/login', loginRateLimit, async (req, res) => {
     if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
   }
   log(user.id, 'login', 'Connexion de '+user.name+' ('+user.role+')', req);
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name }, JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, is_super_admin: user.is_super_admin || false, admin_permissions: user.admin_permissions || 'all' } });
+  const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name, tokenVersion: user.token_version || 0 }, JWT_SECRET, { expiresIn: '30d' });
+  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, is_super_admin: user.is_super_admin || false, admin_permissions: user.admin_permissions || 'all', must_change_password: user.must_change_password || false } });
 });
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
-  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate').eq('id', req.user.id).single();
+  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate,must_change_password').eq('id', req.user.id).single();
   if (error) {
     console.error('/api/me erreur (colonne manquante ?):', error.message);
     const fallback = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
@@ -441,13 +459,14 @@ app.patch('/api/users/:id/permissions', auth, async (req, res) => {
 // ── CHANGE PASSWORD ──
 app.post('/api/change-password', auth, async (req, res) => {
   const { current_password, new_password } = req.body;
+  if (!new_password || new_password.length < 6) return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 6 caractères' });
   const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
   let valid = false;
   try { valid = await bcrypt.compare(current_password, user.password); } catch (e) { valid = false; }
   if (!valid && user.password === current_password) valid = true; // compte legacy en clair — sera migré ci-dessous
   if (!valid) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
   const hash = await bcrypt.hash(new_password, 10);
-  await supabase.from('users').update({ password: hash }).eq('id', req.user.id);
+  await supabase.from('users').update({ password: hash, must_change_password: false }).eq('id', req.user.id);
   log(req.user.id, 'mot-de-passe-changé', 'Mot de passe modifié', req);
   res.json({ success: true });
 });
@@ -983,6 +1002,28 @@ app.get('/api/users', auth, adminOnly, async (req, res) => {
   }));
   res.json(withGains);
 });
+// Réinitialise le mot de passe d'un affilié avec celui choisi par l'admin.
+// Force la déconnexion de toute session active et l'oblige à passer par un écran
+// de changement de mot de passe dès sa prochaine connexion.
+app.post('/api/users/:id/reset-password', auth, adminOnly, async (req, res) => {
+  const { newPassword } = req.body;
+  if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Le mot de passe doit faire au moins 6 caractères' });
+  const { data: target } = await supabase.from('users').select('name,discord_id,token_version').eq('id', req.params.id).single();
+  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
+  const hash = await bcrypt.hash(newPassword, 10);
+  // On incrémente token_version pour invalider immédiatement toute session déjà ouverte
+  // (déconnexion forcée), et must_change_password pour l'obliger à en définir un nouveau
+  // dès sa prochaine connexion, avant de pouvoir faire quoi que ce soit d'autre sur le site.
+  await supabase.from('users').update({ password: hash, must_change_password: true, token_version: (target.token_version || 0) + 1 }).eq('id', req.params.id);
+  log(req.user.id, 'mot-de-passe-réinitialisé', 'Mot de passe réinitialisé (+ déconnexion forcée) pour ' + (target.name || '#' + req.params.id), req);
+  // Tentative d'envoi direct en DM Discord si l'affilié a un ID Discord renseigné
+  let sentViaDiscord = false;
+  if (target.discord_id) {
+    sentViaDiscord = await sendDiscordDMPlain(target.discord_id, '🔑 Ton mot de passe AffiHub a été réinitialisé par un admin.\nNouveau mot de passe : `' + newPassword + '`\nConnecte-toi avec ce mot de passe, il te sera demandé d\'en choisir un nouveau immédiatement.');
+  }
+  res.json({ success: true, sentViaDiscord });
+});
+
 app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
   const uid = req.params.id;
   try {
