@@ -165,6 +165,20 @@ async function sendEmail(to, subject, html) {
 }
 
 // ── LOG HELPER ──
+// Calcule et crédite la commission de parrainage pour une conversion donnée.
+// Priorité du taux appliqué : taux personnalisé du filleul (referral_rate_override)
+// > taux global du parrain (referral_rate) > 10% par défaut.
+async function creditReferralCommission(refereeId, convAmount, conversionId) {
+  const { data: referee } = await supabase.from('users').select('referred_by,referral_active,referral_rate_override').eq('id', refereeId).single();
+  if (!referee || !referee.referred_by || referee.referral_active === false) return;
+  const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', referee.referred_by).single();
+  if (!referrer) return;
+  const rate = (referee.referral_rate_override ?? referrer.referral_rate ?? 10) / 100;
+  const commission = parseFloat((convAmount * rate).toFixed(2));
+  await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', referee.referred_by);
+  await supabase.from('referral_commissions').insert({ referrer_id: referee.referred_by, referee_id: refereeId, conversion_id: conversionId, amount: commission });
+}
+
 function log(userId, action, details, req) {
   const ip = req?.headers?.['x-forwarded-for']?.split(',')[0] || req?.socket?.remoteAddress || '';
   supabase.from('activity_logs').insert({ user_id: userId, action, details, ip }).then(()=>{}).catch(()=>{});
@@ -553,17 +567,7 @@ app.get('/api/postback', async (req, res) => {
     ]).catch(()=>{});
     // Commission parrainage
     if (user.referred_by) {
-      supabase.from('users').select('referral_active').eq('id', link.user_id).single().then(async ({ data: referee }) => {
-        if (referee && referee.referral_active !== false) {
-          const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
-          if (referrer) {
-            const rate = (referrer.referral_rate ?? 10) / 100;
-            const commission = parseFloat((convAmount * rate).toFixed(2));
-            await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-            await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: link.user_id, conversion_id: conv.id, amount: commission });
-          }
-        }
-      }).catch(()=>{});
+      creditReferralCommission(link.user_id, convAmount, conv.id).catch(()=>{});
     }
     // Postback affilié
     if (user.postback_url) {
@@ -597,16 +601,7 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
         { name: '💵 Montant', value: '$' + amount, inline: true }
       ]);
       if (user.referred_by) {
-        const { data: referee } = await supabase.from('users').select('referral_active').eq('id', user_id).single();
-        if (referee && referee.referral_active !== false) {
-          const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
-          if (referrer) {
-            const rate = (referrer.referral_rate ?? 10) / 100;
-            const commission = parseFloat((parseFloat(amount) * rate).toFixed(2));
-            await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-            await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: user_id, conversion_id: conv.id, amount: commission });
-          }
-        }
+        await creditReferralCommission(user_id, parseFloat(amount), conv.id).catch(()=>{});
       }
     }
   }
@@ -644,16 +639,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   // Notify Discord
   await notifyDiscord(conv.users?.name || '?', conv.offers?.name || '?', conv.amount);
   if (user.referred_by) {
-    const { data: referee } = await supabase.from('users').select('referral_active').eq('id', conv.user_id).single();
-    if (referee && referee.referral_active !== false) {
-      const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', user.referred_by).single();
-      if (referrer) {
-        const rate = (referrer.referral_rate ?? 10) / 100;
-        const commission = parseFloat((conv.amount * rate).toFixed(2));
-        await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', user.referred_by);
-        await supabase.from('referral_commissions').insert({ referrer_id: user.referred_by, referee_id: conv.user_id, conversion_id: conv.id, amount: commission });
-      }
-    }
+    await creditReferralCommission(conv.user_id, conv.amount, conv.id).catch(()=>{});
   }
   // Send postback to affiliate's own system if configured
   if (user.postback_url) {
@@ -989,7 +975,7 @@ app.get('/api/stats', auth, adminOnly, async (req, res) => {
 app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
   const { data: affiliates } = await supabase.from('users').select('id,name,email,balance,created_at,referral_code,referral_rate').eq('role','affiliate');
   const result = await Promise.all((affiliates||[]).map(async aff => {
-    const { data: filleules } = await supabase.from('users').select('id,name,created_at,referral_active,referral_same_ip').eq('referred_by', aff.id);
+    const { data: filleules } = await supabase.from('users').select('id,name,created_at,referral_active,referral_same_ip,referral_rate_override').eq('referred_by', aff.id);
     const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', aff.id).order('created_at',{ascending:false});
     const totalEarned = (commissions||[]).reduce((s,c)=>s+c.amount,0);
     return { ...aff, filleules: filleules||[], commissions: commissions||[], totalEarned };
@@ -1011,6 +997,29 @@ app.patch('/api/admin/referral/:userId/rate', auth, adminOnly, async (req, res) 
   const { data: u } = await supabase.from('users').select('name').eq('id', req.params.userId).single();
   await supabase.from('users').update({ referral_rate: rate === null || rate === '' ? null : parseFloat(rate) }).eq('id', req.params.userId);
   log(req.user.id, 'taux-parrainage-modifié', 'Taux de commission de ' + (u?.name || '#' + req.params.userId) + ' fixé à ' + (rate === null || rate === '' ? '10% (défaut)' : rate + '%'), req);
+  res.json({ success: true });
+});
+
+// Taux personnalisé pour UN filleul précis (prend le dessus sur le taux global du parrain).
+// :filleulId = l'id du filleul, pas du parrain.
+app.patch('/api/admin/referral/filleul/:filleulId/rate', auth, adminOnly, async (req, res) => {
+  const { rate } = req.body;
+  if (rate !== null && rate !== '' && (isNaN(rate) || rate < 0 || rate > 100)) return res.status(400).json({ error: 'Taux invalide (0 à 100)' });
+  const { data: filleul } = await supabase.from('users').select('name,referred_by').eq('id', req.params.filleulId).single();
+  if (!filleul || !filleul.referred_by) return res.status(404).json({ error: 'Filleul introuvable ou non parrainé' });
+  await supabase.from('users').update({ referral_rate_override: rate === null || rate === '' ? null : parseFloat(rate) }).eq('id', req.params.filleulId);
+  log(req.user.id, 'taux-parrainage-filleul-modifié', 'Taux personnalisé de ' + (filleul.name || '#' + req.params.filleulId) + ' fixé à ' + (rate === null || rate === '' ? 'taux du parrain (par défaut)' : rate + '%'), req);
+  res.json({ success: true });
+});
+
+// Suppression COMPLÈTE d'un lien de parrainage (contrairement à /toggle qui ne fait que le mettre en pause).
+// Le filleul redevient "libre" (plus aucun parrain). L'historique des commissions déjà versées
+// est conservé pour la comptabilité, mais aucune nouvelle commission ne sera générée.
+app.delete('/api/admin/referral/:userId', auth, adminOnly, async (req, res) => {
+  const { data: filleul } = await supabase.from('users').select('name,referred_by').eq('id', req.params.userId).single();
+  if (!filleul || !filleul.referred_by) return res.status(404).json({ error: 'Ce parrainage n\'existe pas' });
+  await supabase.from('users').update({ referred_by: null, referral_active: null, referral_rate_override: null, referral_same_ip: null }).eq('id', req.params.userId);
+  log(req.user.id, 'parrainage-supprimé', 'Lien de parrainage supprimé pour ' + (filleul.name || '#' + req.params.userId), req);
   res.json({ success: true });
 });
 
