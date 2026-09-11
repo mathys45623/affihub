@@ -1534,8 +1534,65 @@ app.get('/api/export/withdrawals', auth, adminOnly, async (req, res) => {
   res.send(csv);
 });
 
-// Filet de sécurité (placé tout en dernier, après TOUTES les routes) : jamais de HTML renvoyé à une requête /api,
-// et redirection simple vers l'accueil pour toute autre page inconnue
+// Liste minimale des autres affiliés (id + nom uniquement), utilisée pour choisir
+// un destinataire de cadeau. Pas de données sensibles (email, solde, etc.) exposées.
+app.get('/api/affiliates-list', auth, async (req, res) => {
+  const { data } = await supabase.from('users').select('id,name').eq('role', 'affiliate').neq('id', req.user.id).order('name');
+  res.json(data || []);
+});
+
+// ── CADEAUX ENTRE AFFILIÉS ──
+// Anti-doublon (même principe que pour les conversions manuelles) : évite qu'un double-clic
+// ou un double envoi réseau envoie deux fois le même cadeau.
+app.post('/api/gifts', auth, async (req, res) => {
+  const { receiver_id, amount, message } = req.body;
+  const amt = parseFloat(amount);
+  if (!receiver_id) return res.status(400).json({ error: 'Choisis un destinataire' });
+  if (!amt || amt <= 0) return res.status(400).json({ error: 'Montant invalide' });
+  if (receiver_id === req.user.id) return res.status(400).json({ error: 'Tu ne peux pas t\'envoyer un cadeau à toi-même' });
+  if (message && message.length > 200) return res.status(400).json({ error: 'Message trop long (200 caractères max)' });
+
+  const { data: sender } = await supabase.from('users').select('name,balance').eq('id', req.user.id).single();
+  if (!sender) return res.status(404).json({ error: 'Compte introuvable' });
+  if (sender.balance < amt) return res.status(400).json({ error: 'Solde insuffisant' });
+
+  const { data: receiver } = await supabase.from('users').select('name,balance,discord_id,role').eq('id', receiver_id).single();
+  if (!receiver || receiver.role !== 'affiliate') return res.status(404).json({ error: 'Destinataire introuvable' });
+
+  const tenSecondsAgo = new Date(Date.now() - 10 * 1000).toISOString();
+  const { data: recentDuplicate } = await supabase.from('gifts').select('id').eq('sender_id', req.user.id).eq('receiver_id', receiver_id).eq('amount', amt).gte('created_at', tenSecondsAgo).limit(1).maybeSingle();
+  if (recentDuplicate) return res.status(409).json({ error: 'Cadeau identique déjà envoyé il y a quelques secondes (doublon évité)' });
+
+  await supabase.from('users').update({ balance: sender.balance - amt }).eq('id', req.user.id);
+  await supabase.from('users').update({ balance: receiver.balance + amt }).eq('id', receiver_id);
+  const { data: gift } = await supabase.from('gifts').insert({ sender_id: req.user.id, receiver_id, amount: amt, message: message || null }).select().single();
+
+  log(req.user.id, 'cadeau-envoyé', sender.name + ' a envoyé $' + amt + ' à ' + receiver.name, req);
+  await supabase.from('notifications').insert({ user_id: receiver_id, type: 'gift_received', message: '🎁 ' + sender.name + ' t\'a envoyé $' + amt + (message ? ' : "' + message + '"' : '') + ' !', read: false });
+  if (receiver.discord_id) {
+    await sendDiscordDM(receiver.discord_id, '🎁 Tu as reçu un cadeau !', 0xF0427A, [
+      { name: '👤 De la part de', value: sender.name, inline: true },
+      { name: '💰 Montant', value: '$' + amt, inline: true },
+      ...(message ? [{ name: '💬 Message', value: message, inline: false }] : [])
+    ]);
+  }
+  res.json(gift);
+});
+
+// Historique des cadeaux (envoyés + reçus) de l'utilisateur connecté
+app.get('/api/gifts', auth, async (req, res) => {
+  const { data: sent } = await supabase.from('gifts').select('*, receiver:receiver_id(name)').eq('sender_id', req.user.id).order('created_at', { ascending: false });
+  const { data: received } = await supabase.from('gifts').select('*, sender:sender_id(name)').eq('receiver_id', req.user.id).order('created_at', { ascending: false });
+  res.json({ sent: sent || [], received: received || [] });
+});
+
+// Journal complet de tous les cadeaux, pour l'admin
+app.get('/api/admin/gifts', auth, adminOnly, async (req, res) => {
+  const { data } = await supabase.from('gifts').select('*, sender:sender_id(name,email), receiver:receiver_id(name,email)').order('created_at', { ascending: false });
+  res.json(data || []);
+});
+
+
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route introuvable' });
   res.redirect('/');
