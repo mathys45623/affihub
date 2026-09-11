@@ -1163,9 +1163,10 @@ app.get('/api/ranking', auth, async (req, res) => {
   const result = await Promise.all((users||[]).map(async u => {
     const { data: convs } = await supabase.from('conversions').select('amount,status').eq('user_id',u.id);
     const { data: links } = await supabase.from('links').select('clicks').eq('user_id',u.id);
+    const { count: referralCount } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', u.id);
     const approved = (convs||[]).filter(c=>c.status==='approved');
     const totalClicks = (links||[]).reduce((s,l)=>s+l.clicks,0);
-    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0), totalClicks };
+    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0), totalClicks, referralCount: referralCount || 0 };
   }));
   res.json(result);
 });
