@@ -746,8 +746,35 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
 });
 
 app.patch('/api/conversions/:id/reject', auth, adminOnly, async (req, res) => {
-  await supabase.from('conversions').update({ status: 'rejected' }).eq('id', req.params.id);
-  log(req.user.id, 'conversion-rejetée', 'Conversion #'+req.params.id+' rejetée', req);
+  const { reason } = req.body;
+  const { data: conv } = await supabase.from('conversions').select('*, users(name,balance,discord_id), offers(name)').eq('id', req.params.id).single();
+  if (!conv) return res.status(404).json({ error: 'Conversion introuvable' });
+  if (conv.status === 'rejected') return res.status(409).json({ error: 'Cette conversion est déjà rejetée' });
+
+  const wasApproved = conv.status === 'approved';
+  let clawbackShortfall = 0;
+  if (wasApproved && conv.users) {
+    // Retire le montant du solde de l'affilié. S'il n'a plus assez (déjà retiré ailleurs),
+    // on plafonne à 0 et on le signale dans les logs plutôt que de mettre le solde en négatif.
+    const newBalance = conv.users.balance - conv.amount;
+    if (newBalance < 0) clawbackShortfall = -newBalance;
+    await supabase.from('users').update({ balance: Math.max(0, newBalance) }).eq('id', conv.user_id);
+  }
+
+  await supabase.from('conversions').update({ status: 'rejected', reason: reason || null }).eq('id', req.params.id);
+  log(req.user.id, 'conversion-rejetée', 'Conversion #'+req.params.id+' de $'+conv.amount+(wasApproved?' (était approuvée, solde retiré'+(clawbackShortfall>0?', manque $'+clawbackShortfall.toFixed(2)+' — solde déjà insuffisant':'')+')':'')+' rejetée'+(reason?' — raison : '+reason:''), req);
+
+  if (conv.users) {
+    await supabase.from('notifications').insert({ user_id: conv.user_id, type: 'conversion_rejected', message: '❌ Ta vente de $' + conv.amount + ' (' + (conv.offers?.name||'?') + ') a été rejetée' + (wasApproved?' et retirée de ton solde':'') + (reason ? ' : ' + reason : ''), read: false });
+    if (conv.users.discord_id) {
+      await sendDiscordDM(conv.users.discord_id, '❌ Conversion rejetée', 0xFF4757, [
+        { name: '🎯 Offre', value: conv.offers?.name || '?', inline: true },
+        { name: '💵 Montant', value: '$' + conv.amount, inline: true },
+        ...(wasApproved ? [{ name: '⚠️ Solde', value: 'Retiré de ton solde', inline: true }] : []),
+        ...(reason ? [{ name: '❓ Raison', value: reason, inline: false }] : [])
+      ]);
+    }
+  }
   res.json({ success: true });
 });
 
