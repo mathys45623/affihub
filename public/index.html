@@ -277,7 +277,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
       <div class="land-feat" style="--feat-color:rgba(0,214,143,.15)">
         <div class="land-feat-icon">💰</div>
         <div class="land-feat-title">Paiements flexibles</div>
-        <div class="land-feat-desc">BTC, Solana, Litecoin, Revolut, Virement, PayPal, TapTap Send, PaysafeCard, Carte cadeau — dès $25.</div>
+        <div class="land-feat-desc">Bitcoin, Solana, Litecoin, Ethereum, Revolut, Virement, PayPal, TapTap Send, PaysafeCard, Carte cadeau — dès $25.</div>
       </div>
       <div class="land-feat" style="--feat-color:rgba(77,158,255,.15)">
         <div class="land-feat-icon">📊</div>
@@ -962,9 +962,7 @@ async function renderPage(page){
       :
       '<div class="fi" id="wd-amt-field"><label>Montant ($)</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1" oninput="updateWdCalc()"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+';updateWdCalc()">MAX $'+bal+'</button></div><div id="wd-net-calc" style="font-size:12px;color:var(--muted);margin-top:8px"></div></div>'
     +'<div class="fi"><label>Moyen de paiement</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">'
-    +'<div class="crypto-opt" onclick="pickCrypto(\'BTC\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg>Bitcoin</div>'
-    +'<div class="crypto-opt" onclick="pickCrypto(\'SOL\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="url(#solGrad)"/><defs><linearGradient id="solGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#9945FF"/><stop offset="100%" style="stop-color:#14F195"/></linearGradient></defs><path d="M10 21.5h12.5l-2 1.8H8L10 21.5zm0-6h12.5l-2 1.8H8L10 15.5zm2-6h12.5l-2 1.8H10L12 9.5z" fill="white"/></svg>Solana</div>'
-    +'<div class="crypto-opt" onclick="pickCrypto(\'LTC\',this)"><svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto 6px"><circle cx="16" cy="16" r="16" fill="#BFBBBB"/><text x="16" y="23" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Ł</text></svg>Litecoin</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'CRYPTO\',this)"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#F7931A,#9945FF);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:14px">🪙</div>Crypto</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'REVOLUT\',this)"><div style="width:28px;height:28px;background:#191C20;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M14.5 2H6v20h3.5v-7H13l3.5 7H20l-3.8-7.4C18.3 13.5 19 11.8 19 9.5 19 5.4 17.1 2 14.5 2zm-.3 8.5H9.5V5.5h4.7c1.2 0 2.3.9 2.3 2.5s-1.1 2.5-2.3 2.5z"/></svg></div>Revolut</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'VIREMENT\',this)"><div style="font-size:22px;margin-bottom:6px">🏦</div>Virement</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'PAYPAL\',this)"><div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.99l-.094.596a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788l.038-.196.735-4.653.047-.256a.932.932 0 0 1 .92-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.44-4.536z" fill="#009cde"/><path d="M6.723 21.337H2.118a.641.641 0 0 1-.633-.74L4.592.901C4.675.382 5.123 0 5.647 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797H8.895c-.524 0-.968.382-1.05.9l-1.122 7.106z" fill="#012169"/></svg></div>PayPal<span style="font-size:9px;display:block;color:var(--muted)">min. $50</span></div>'
@@ -972,6 +970,13 @@ async function renderPage(page){
     +'<div class="crypto-opt" onclick="pickCrypto(\'TAPTAP\',this)"><div style="font-size:22px;margin-bottom:6px">📲</div>TapTap Send</div>'
     +'<div class="crypto-opt" onclick="pickCrypto(\'PSC\',this)"><div style="font-size:22px;margin-bottom:6px">💳</div>PaysafeCard</div>'
     +'</div></div>'
+    +'<div class="fi" id="crypto-sub-field" style="display:none">'
+      +'<label>Choisis ta cryptomonnaie</label>'
+      +'<input type="hidden" id="crypto-coin" value="">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px">'
+        +Object.entries(CRYPTO_COINS_FRONT).map(([k,v])=>'<div class="crypto-coin-card" data-key="'+k+'" onclick="selectCryptoCoin(\''+k+'\',this)" style="background:var(--bg3);border:1.5px solid #2a2a2a;border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:border-color .15s">'+v.svg+'<div style="font-size:11px;font-weight:700;margin-top:6px">'+v.label+'</div></div>').join('')
+      +'</div>'
+    +'</div>'
     +'<div class="fi" id="addr-field"><label id="addr-label">Adresse / Coordonnées</label><input type="text" id="wd-addr" placeholder="Selon le moyen choisi"></div>'
     +'<div class="fi" id="virement-name-field" style="display:none"><label id="virement-name-label">Nom & Prénom (titulaire du compte)</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
     +'<div class="fi" id="giftcard-field" style="display:none">'
@@ -984,7 +989,7 @@ async function renderPage(page){
     +'</div>'
     +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre</button>')
     +'</div>'
-    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ BTC, Solana, Litecoin — dès $25</div><div>✅ Revolut, Virement, TapTap Send — dès $25</div><div>✅ PaysafeCard — dès $25</div><div>🎁 Carte cadeau — montants fixes selon la carte choisie</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
+    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ Bitcoin, Solana, Litecoin, Ethereum — dès $25</div><div>✅ Revolut, Virement, TapTap Send — dès $25</div><div>✅ PaysafeCard — dès $25</div><div>🎁 Carte cadeau — montants fixes selon la carte choisie</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Historique</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
   }
 
@@ -1030,7 +1035,7 @@ async function renderPage(page){
       {id:'links',icon:'🔗',title:'Mes liens',html:'C\'est ici que tu <b>génères tes liens personnels</b>. Les offres sont classées par catégorie (🎰 Casino, 💕 Dating, 🤖 IA, 👑 Influenceuse...). Pour chaque offre : clique sur <b>"Générer mon lien"</b>, copie-le, et partage-le. Tu vois direct le nombre de clics sur chaque lien, et un bouton <b>👁️ aperçu</b> pour voir la page de destination sans que ça compte comme un clic.<br><br>Pour les <b>offres sur-mesure</b> (ta propre offre influenceuse ou une page VIP Discord), le bouton est différent : <b>"🎨 Personnaliser & Demander"</b> — tu remplis un formulaire (nom du serveur, slogan, logo, photos...) et l\'admin te prépare ton lien à la main. Tu peux en demander plusieurs.'},
       {id:'stats',icon:'📈',title:'Statistiques',html:'Le détail complet de tes performances : clics totaux, conversions, gains — <b>et le détail offre par offre</b>, pour voir quel lien performe le mieux.'},
       {id:'conv',icon:'🔁',title:'Conversions',html:'L\'historique de <b>toutes tes ventes</b>, avec un statut sur chacune :<br>✅ <b>Approuvée</b> → payée sur ton solde<br>⏳ <b>En attente</b> → en cours de vérification<br>❌ <b>Rejetée</b> → non comptabilisée<br><br>Tu peux filtrer par statut en haut de la page.'},
-      {id:'pay',icon:'💸',title:'Paiements',html:'Ta page pour <b>demander un retrait</b> :<br>• Minimum <b>$25</b> (BTC, Solana, Litecoin, Revolut, Virement, TapTap Send, PaysafeCard, Carte cadeau)<br>• Minimum <b>$50</b> pour PayPal<br>• 5% de frais, tous moyens confondus<br>• Historique de tous tes retraits passés avec leur statut<br><br>⚠️ Ton ID Discord doit être renseigné dans Paramètres avant de pouvoir retirer. Vérifie bien ton adresse crypto/coordonnées avant d\'envoyer — aucun remboursement en cas d\'erreur de ta part.'},
+      {id:'pay',icon:'💸',title:'Paiements',html:'Ta page pour <b>demander un retrait</b> :<br>• Minimum <b>$25</b> (Bitcoin, Solana, Litecoin, Ethereum, Revolut, Virement, TapTap Send, PaysafeCard, Carte cadeau)<br>• Minimum <b>$50</b> pour PayPal<br>• 5% de frais, tous moyens confondus<br>• Historique de tous tes retraits passés avec leur statut<br><br>⚠️ Ton ID Discord doit être renseigné dans Paramètres avant de pouvoir retirer. Vérifie bien ton adresse crypto/coordonnées avant d\'envoyer — aucun remboursement en cas d\'erreur de ta part.'},
       {id:'ref',icon:'👥',title:'Parrainage',html:'Ton lien personnel à partager pour ramener <b>d\'autres affiliés</b> sur AffiHub. Dès qu\'un filleul commence à vendre, tu touches <b>10% de chaque vente qu\'il génère</b>, à vie. Tu retrouves ici la liste de tes filleuls et l\'historique de toutes tes commissions de parrainage.'},
       {id:'top',icon:'🏆',title:'TOP Affiliés',html:'Le classement de tous les affiliés, triable par gains, conversions, clics ou date d\'inscription. Tu peux choisir de ne pas y apparaître dans tes <b>Paramètres</b> si tu préfères rester discret.'},
       {id:'collection',icon:'🎴',title:'Collection',html:'Chaque offre a sa propre carte à débloquer, façon carte à collectionner. Dès ta première vente sur une offre, sa carte apparaît — rareté selon la catégorie (Casino en Légendaire, Influenceuse en Épique, Dating et Meuf IA en Rare, le reste en Commune). Vise la collection complète !'},
@@ -1465,16 +1470,33 @@ const GIFT_CARDS_FRONT={
   tripgift:{icon:'✈️',label:'Tripgift',color:'#00B8A9',amounts:[50,100,250]},
   hotelsgift:{icon:'🏨',label:'Hotelsgift',color:'#F7B32B',amounts:[50,100,250]}
 };
+const CRYPTO_COINS_FRONT={
+  BTC:{label:'Bitcoin',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg>'},
+  SOL:{label:'Solana',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="url(#solGrad)"/><defs><linearGradient id="solGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#9945FF"/><stop offset="100%" style="stop-color:#14F195"/></linearGradient></defs><path d="M10 21.5h12.5l-2 1.8H8L10 21.5zm0-6h12.5l-2 1.8H8L10 15.5zm2-6h12.5l-2 1.8H10L12 9.5z" fill="white"/></svg>'},
+  LTC:{label:'Litecoin',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="#BFBBBB"/><text x="16" y="23" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Ł</text></svg>'},
+  ETH:{label:'Ethereum',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="#627EEA"/><path d="M16 4.8 9.6 16.3 16 20l6.4-3.7L16 4.8z" fill="#fff" opacity=".85"/><path d="M16 4.8 9.6 16.3 16 20V4.8z" fill="#fff"/><path d="M16 21.3 9.6 17.6 16 27.2l6.4-9.6-6.4 3.7z" fill="#fff" opacity=".85"/><path d="M16 27.2V21.3l-6.4-3.7L16 27.2z" fill="#fff"/></svg>'}
+};
+const CRYPTO_LABELS={BTC:'Adresse Bitcoin',SOL:'Adresse Solana',LTC:'Adresse Litecoin',ETH:'Adresse Ethereum',REVOLUT:'Tag Revolut (ex: @pseudo)',VIREMENT:'IBAN',PAYPAL:'Email PayPal',TAPTAP:'Numéro de téléphone',PSC:'Email (pour recevoir le code PaysafeCard)'};
+const CRYPTO_PLACEHOLDERS={BTC:'bc1q...',SOL:'...',LTC:'L...',ETH:'0x...',REVOLUT:'@votrepseudo',VIREMENT:'FR76 ...',PAYPAL:'email@paypal.com',TAPTAP:'+33 6 12 34 56 78',PSC:'email@exemple.com'};
+function selectCryptoCoin(coin,el){
+  selCrypto=coin;
+  document.getElementById('crypto-coin').value=coin;
+  document.querySelectorAll('.crypto-coin-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});
+  el.style.borderColor='var(--yellow)';el.style.background='rgba(245,200,66,.08)';
+  document.getElementById('addr-field').style.display='block';
+  const lbl=document.getElementById('addr-label');const inp=document.getElementById('wd-addr');
+  if(lbl)lbl.textContent=CRYPTO_LABELS[coin];
+  if(inp)inp.placeholder=CRYPTO_PLACEHOLDERS[coin];
+  updateWdCalc();
+}
 let selGiftAmount=null;
 function pickCrypto(c,el){
   selCrypto=c;selGiftAmount=null;
   document.querySelectorAll('.crypto-opt').forEach(e=>e.classList.remove('sel'));
   el.classList.add('sel');
-  const labels={'BTC':'Adresse Bitcoin','SOL':'Adresse Solana','LTC':'Adresse Litecoin','REVOLUT':'Tag Revolut (ex: @pseudo)','VIREMENT':'IBAN','PAYPAL':'Email PayPal','TAPTAP':'Numéro de téléphone','PSC':'Email (pour recevoir le code PaysafeCard)'};
-  const placeholders={'BTC':'bc1q...','SOL':'...','LTC':'L...','REVOLUT':'@votrepseudo','VIREMENT':'FR76 ...','PAYPAL':'email@paypal.com','TAPTAP':'+33 6 12 34 56 78','PSC':'email@exemple.com'};
   const lbl=document.getElementById('addr-label');const inp=document.getElementById('wd-addr');
-  if(lbl)lbl.textContent=labels[c]||'Adresse';
-  if(inp)inp.placeholder=placeholders[c]||'';
+  if(lbl)lbl.textContent=CRYPTO_LABELS[c]||'Adresse';
+  if(inp)inp.placeholder=CRYPTO_PLACEHOLDERS[c]||'';
   // Show name field for VIREMENT et TapTap Send
   const nameField=document.getElementById('virement-name-field');
   const nameLabel=document.getElementById('virement-name-label');
@@ -1482,10 +1504,14 @@ function pickCrypto(c,el){
   if(nameLabel)nameLabel.textContent=c==='TAPTAP'?'Nom & Prénom (destinataire TapTap Send)':'Nom & Prénom (titulaire du compte)';
   // Carte cadeau : logique dédiée, on masque le montant libre + l'adresse classique
   const isGift=c==='CADEAU';
+  // Crypto : on affiche d'abord le choix de la pièce (BTC/SOL/LTC/ETH), l'adresse apparaît après
+  const isCryptoGroup=c==='CRYPTO';
   document.getElementById('giftcard-field').style.display=isGift?'block':'none';
-  document.getElementById('addr-field').style.display=isGift?'none':'block';
+  document.getElementById('crypto-sub-field').style.display=isCryptoGroup?'block':'none';
+  document.getElementById('addr-field').style.display=(isGift||isCryptoGroup)?'none':'block';
   document.getElementById('wd-amt-field').style.display=isGift?'none':'block';
   if(isGift){document.getElementById('gc-provider').value='';document.getElementById('gc-amounts').style.display='none';document.querySelectorAll('.gc-provider-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});}
+  if(isCryptoGroup){document.getElementById('crypto-coin').value='';document.querySelectorAll('.crypto-coin-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});}
   updateWdCalc();
 }
 function selectGiftProvider(key,bal,el){
@@ -1522,7 +1548,7 @@ function selectGiftAmount(amount,btn){
 function updateWdCalc(){
   const out=document.getElementById('wd-net-calc');
   if(!out)return;
-  if(selCrypto==='CADEAU'){out.textContent='';return;}
+  if(selCrypto==='CADEAU'||selCrypto==='CRYPTO'){out.textContent='';return;}
   const amt=parseFloat(document.getElementById('wd-amt')?.value);
   if(!amt||amt<=0){out.textContent='';return;}
   const min=selCrypto==='PAYPAL'?50:25;
@@ -1532,6 +1558,7 @@ function updateWdCalc(){
 }
 async function doWd(){
   if(!selCrypto){toast('Choisissez un moyen de paiement','e');return;}
+  if(selCrypto==='CRYPTO'){toast('Choisis une cryptomonnaie (Bitcoin, Solana, Litecoin ou Ethereum)','e');return;}
   if(selCrypto==='CADEAU'){
     const provider=document.getElementById('gc-provider').value;
     if(!provider){toast('Choisis une carte cadeau','e');return;}
