@@ -1560,6 +1560,29 @@ app.post('/api/admin/tokens/backfill', auth, adminOnly, async (req, res) => {
   res.json({ success: true, conversionsUpdated: (convs || []).length, usersCredited: Object.keys(perUser).length, tokensPerSale: amount });
 });
 
+// Attribution manuelle de jetons à un affilié (pour tous les "moyens" listés qui ne
+// sont pas branchés automatiquement : parrainage, événement spécial, bonus ponctuel...).
+// Un montant négatif permet aussi de retirer des jetons si besoin.
+app.post('/api/admin/tokens/grant', auth, adminOnly, async (req, res) => {
+  const { user_id, amount, reason } = req.body;
+  const amt = parseInt(amount);
+  if (!user_id) return res.status(400).json({ error: 'Affilié requis' });
+  if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: 'Montant invalide' });
+  const { data: user } = await supabase.from('users').select('name,tokens,discord_id').eq('id', user_id).single();
+  if (!user) return res.status(404).json({ error: 'Affilié introuvable' });
+  const newTokens = Math.max(0, (user.tokens || 0) + amt);
+  await supabase.from('users').update({ tokens: newTokens }).eq('id', user_id);
+  log(req.user.id, 'jetons-attribués', (amt > 0 ? '+' : '') + amt + ' 🪙 pour ' + user.name + (reason ? ' — ' + reason : ''), req);
+  await supabase.from('notifications').insert({ user_id, type: 'tokens_grant', message: (amt > 0 ? '🪙 Tu as reçu ' + amt + ' jetons !' : '🪙 ' + Math.abs(amt) + ' jetons ont été retirés') + (reason ? ' : ' + reason : ''), read: false });
+  if (user.discord_id) {
+    await sendDiscordDM(user.discord_id, amt > 0 ? '🪙 Jetons reçus !' : '🪙 Jetons retirés', amt > 0 ? 0xF5C842 : 0xFF4757, [
+      { name: '🪙 Montant', value: (amt > 0 ? '+' : '') + amt, inline: true },
+      ...(reason ? [{ name: '📝 Raison', value: reason, inline: false }] : [])
+    ]);
+  }
+  res.json({ success: true, tokens: newTokens });
+});
+
 // ── BOUTIQUE À JETONS ──
 // Nécessite les tables "shop_items" et "shop_orders" + la colonne "tokens" sur "users"
 // (voir le SQL fourni séparément pour la création de ces objets dans Supabase).
