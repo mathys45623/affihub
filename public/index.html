@@ -619,7 +619,7 @@ async function startApp(){
     {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
     {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'}]},
+        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'}]},
     {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
         {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
@@ -666,7 +666,7 @@ async function startApp(){
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
         {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
         {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'}]},
+        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'}]},
         {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
         {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
       ];
@@ -756,7 +756,7 @@ function closeMobileNav(){
 const TITLES={
   'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions',
   'aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager',
-  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection','aff-gifts':'🎁 Cadeaux',
+  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection','aff-gifts':'🎁 Cadeaux','aff-badges':'🏅 Mes badges','aff-streak':'🔥 Ma série','aff-wheel':'🎡 Roue de la chance',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
   'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité','admin-discordid':'🆔 ID Discord'
@@ -792,6 +792,52 @@ function fmt(d){return d?d.split('T')[0]:'—';}
 // dans le DOM, pour empêcher qu'un message/nom contenant du code (ex: <img onerror=...>)
 // ne s'exécute chez qui le consulte (protection XSS stocké).
 function esc(str){if(str===null||str===undefined)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// ── Roue de la chance ── (l'ordre DOIT correspondre à WHEEL_SEGMENTS côté serveur)
+const WHEEL_SEGMENTS_CLIENT=[
+  {label:'Perdu',color:'#2a2a2a',text:'#888'},
+  {label:'$1',color:'#4D9EFF',text:'#fff'},
+  {label:'$2',color:'#00D68F',text:'#fff'},
+  {label:'$5',color:'#a855f7',text:'#fff'},
+  {label:'$10',color:'#F0427A',text:'#fff'},
+  {label:'$25',color:'#F5C842',text:'#000'}
+];
+function buildWheelSegments(){
+  const n=WHEEL_SEGMENTS_CLIENT.length,segAngle=360/n,cx=100,cy=100,r=95;
+  const pt=(angleDeg,radius)=>{const a=(angleDeg-90)*Math.PI/180;return [cx+radius*Math.cos(a),cy+radius*Math.sin(a)];};
+  let svg='';
+  for(let i=0;i<n;i++){
+    const startA=i*segAngle,endA=startA+segAngle,midA=startA+segAngle/2;
+    const [x1,y1]=pt(startA,r),[x2,y2]=pt(endA,r);
+    const largeArc=segAngle>180?1:0;
+    svg+='<path d="M'+cx+','+cy+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+r+','+r+' 0 '+largeArc+' 1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="'+WHEEL_SEGMENTS_CLIENT[i].color+'" stroke="#0a0a0a" stroke-width="1.5"/>';
+    const [lx,ly]=pt(midA,r*0.62);
+    svg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="800" fill="'+WHEEL_SEGMENTS_CLIENT[i].text+'" transform="rotate('+midA.toFixed(1)+','+lx.toFixed(1)+','+ly.toFixed(1)+')">'+WHEEL_SEGMENTS_CLIENT[i].label+'</text>';
+  }
+  return svg;
+}
+async function spinWheel(){
+  const btn=document.getElementById('wheel-spin-btn');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='⏳ Ça tourne...';}
+  try{
+    const r=await api('POST','/api/me/wheel/spin');
+    const segAngle=360/WHEEL_SEGMENTS_CLIENT.length;
+    const targetCenter=r.segmentIndex*segAngle+segAngle/2;
+    const finalRotation=5*360+(360-targetCenter);
+    const svg=document.getElementById('wheel-svg');
+    if(svg)svg.style.transform='rotate('+finalRotation+'deg)';
+    setTimeout(()=>{
+      const resultEl=document.getElementById('wheel-result');
+      if(resultEl){
+        if(r.reward>0){resultEl.innerHTML='<span style="color:var(--yellow)">🎉 Tu as gagné $'+r.reward+' !</span>';}
+        else{resultEl.innerHTML='<span style="color:var(--muted)">😢 Pas de chance cette fois — retente la semaine prochaine !</span>';}
+      }
+      if(r.reward>0){ME.balance=(ME.balance||0)+r.reward;localStorage.setItem('affihub_user',JSON.stringify(ME));}
+      toast(r.reward>0?'🎁 Roue gagnée : $'+r.reward:'Roue tournée','s');
+      setTimeout(()=>goPage('aff-wheel'),1200);
+    },4600);
+  }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='🎡 Tourner la roue';}}
+}
 
 const CATS=[
   {key:'casino',label:'🎰 Casino',color:'#F5C842',bg:'rgba(245,200,66,.08)',border:'rgba(245,200,66,.3)'},
@@ -1099,6 +1145,65 @@ async function renderPage(page){
       +(pct===100&&coll.length?'<div style="background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.12));border:1px solid rgba(245,200,66,.35);border-radius:16px;padding:20px;text-align:center;margin-bottom:22px"><div style="font-size:32px;margin-bottom:8px">🏆</div><div style="font-weight:900;font-size:15px;margin-bottom:4px">Collection complète !</div><div style="font-size:12px;color:var(--muted)">Bravo, tu as débloqué toutes les cartes — $50 de bonus ajoutés à ton solde 🎉</div></div>':'')
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px">'+cards+'</div>';
   }
+
+  if(page==='aff-badges'){
+    const {badges,unlockedCount,total}=await api('GET','/api/me/badges');
+    const pct=Math.round(unlockedCount/total*100);
+    const cardsB=badges.map(b=>{
+      const barPct=Math.round((b.progress/b.target)*100);
+      const isMoney=b.id.startsWith('gains_');
+      return '<div class="card" style="text-align:center;padding:20px 14px;'+(b.unlocked?'border-color:rgba(245,200,66,.4);background:linear-gradient(180deg,rgba(245,200,66,.06),transparent)':'opacity:.55')+'">'
+      +'<div style="font-size:40px;margin-bottom:10px;filter:'+(b.unlocked?'none':'grayscale(1)')+'">'+b.icon+'</div>'
+      +'<div style="font-weight:800;font-size:14px;margin-bottom:4px">'+b.label+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px;min-height:28px">'+b.desc+'</div>'
+      +(b.unlocked?'<span class="badge bg2" style="font-size:10px">✅ Débloqué</span>':'<div><div style="background:#111;border-radius:20px;height:7px;overflow:hidden;margin-bottom:5px"><div style="width:'+barPct+'%;height:100%;background:var(--grad);border-radius:20px"></div></div><div style="font-size:10px;color:var(--muted)">'+(isMoney?'$'+b.progress.toFixed(0)+' / $'+b.target:b.progress+' / '+b.target)+'</div></div>')
+      +'</div>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="card-title">🏅 Mes badges</div><div style="font-weight:900;font-size:14px">'+unlockedCount+'/'+total+'</div></div><div style="background:#111;border-radius:20px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:var(--grad);border-radius:20px;transition:width .3s"></div></div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">'+cardsB+'</div>';
+  }
+
+  if(page==='aff-streak'){
+    const s=await api('GET','/api/me/streak');
+    const dayLabels=['L','M','M','J','V','S','D'];
+    const cal=s.last35.map(d=>{
+      const dt=new Date(d.date+'T00:00:00');
+      const isToday=d.date===new Date().toISOString().slice(0,10);
+      return '<div title="'+d.date+(d.hasSale?' — vente ✅':'')+'" style="width:100%;aspect-ratio:1;border-radius:6px;background:'+(d.hasSale?'linear-gradient(135deg,#F0427A,#F5C842)':'#161616')+';border:'+(isToday?'2px solid var(--yellow)':'1px solid #222')+';display:flex;align-items:center;justify-content:center;font-size:9px;color:'+(d.hasSale?'#000':'#555')+';font-weight:700">'+dt.getDate()+'</div>';
+    }).join('');
+    return '<div class="card" style="text-align:center;padding:32px 20px;margin-bottom:20px;background:linear-gradient(180deg,rgba(240,66,122,.08),transparent)">'
+    +'<div style="font-size:64px;line-height:1;margin-bottom:6px">'+(s.current>0?'🔥':'💤')+'</div>'
+    +'<div style="font-size:42px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+s.current+'</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-top:2px">'+(s.current>0?'jour'+(s.current>1?'s':'')+' d\'affilée avec au moins une vente':'Fais une vente aujourd\'hui pour démarrer ta série !')+'</div>'
+    +'</div>'
+    +'<div class="stats-grid" style="margin-bottom:20px"><div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-label">Série actuelle</div><div class="stat-val gy">'+s.current+' j</div></div><div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-label">Meilleure série</div><div class="stat-val gg">'+s.longest+' j</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:14px">📅 5 dernières semaines</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">'+dayLabels.map(l=>'<div style="text-align:center;font-size:10px;color:var(--muted);font-weight:700">'+l+'</div>').join('')+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+cal+'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#F0427A,#F5C842)"></div>Vente ce jour-là<div style="width:12px;height:12px;border-radius:3px;background:#161616;border:1px solid #222;margin-left:12px"></div>Aucune vente</div>'
+    +'</div>';
+  }
+
+  if(page==='aff-wheel'){
+    const w=await api('GET','/api/me/wheel');
+    const resetDate=new Date(w.nextResetAt);
+    const resetStr=resetDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    return '<div class="card" style="text-align:center;padding:30px 20px">'
+    +'<div class="card-title" style="justify-content:center;margin-bottom:6px">🎡 Roue de la chance</div>'
+    +'<p style="font-size:12px;color:var(--muted);margin-bottom:26px">Un tour gratuit chaque semaine si tu as fait au moins une vente.</p>'
+    +'<div style="position:relative;width:260px;max-width:80vw;margin:0 auto 24px">'
+    +'<div style="position:absolute;top:-4px;left:50%;transform:translateX(-50%);z-index:2;width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:20px solid var(--yellow);filter:drop-shadow(0 2px 4px rgba(0,0,0,.4))"></div>'
+    +'<svg id="wheel-svg" viewBox="0 0 200 200" style="width:100%;display:block;transition:transform 4.5s cubic-bezier(.17,.67,.12,1);filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))">'+buildWheelSegments()+'<circle cx="100" cy="100" r="18" fill="#0a0a0a" stroke="var(--yellow)" stroke-width="2"/><text x="100" y="106" text-anchor="middle" font-size="20">🎁</text></svg>'
+    +'</div>'
+    +'<div id="wheel-result" style="min-height:26px;margin-bottom:16px;font-size:15px;font-weight:800"></div>'
+    +(w.alreadySpun
+      ?'<div><span class="badge bg2" style="font-size:13px;padding:8px 16px">✅ Déjà tourné cette semaine — gagné $'+w.lastReward+'</span><div style="font-size:11px;color:var(--muted);margin-top:10px">Rendez-vous <b>'+resetStr+'</b> pour un nouveau tour</div></div>'
+      :w.eligible
+        ?'<button class="btn btn-grad" id="wheel-spin-btn" onclick="spinWheel()" style="padding:12px 32px;font-size:14px;justify-content:center">🎡 Tourner la roue</button>'
+        :'<div><span class="badge by2" style="font-size:13px;padding:8px 16px">🔒 Fais au moins une vente cette semaine pour débloquer</span></div>')
+    +'</div>';
+  }
+
   if(page==='aff-discord'){
     const servers=await api('GET','/api/discord-servers');
     const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF'},dating:{icon:'💕',label:'Dating',color:'#F0427A'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7'}};
