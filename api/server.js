@@ -1247,7 +1247,27 @@ app.get('/api/me/badges', auth, async (req, res) => {
     { id: 'first_link', icon: '🔗', label: 'Premier lien', desc: 'Crée ton premier lien', unlocked: (linksCount || 0) >= 1, progress: Math.min(linksCount || 0, 1), target: 1 },
     { id: 'custom_link', icon: '🎨', label: 'Sur-mesure', desc: 'Personnalise ton premier lien', unlocked: (customLinksCount || 0) >= 1, progress: Math.min(customLinksCount || 0, 1), target: 1 }
   ];
-  res.json({ badges, unlockedCount: badges.filter(b => b.unlocked).length, total: badges.length });
+  const unlockedCount = badges.filter(b => b.unlocked).length;
+
+  // Bonus unique de $35 dès que TOUS les badges sont débloqués (une seule fois, même logique
+  // que le bonus de collection complète).
+  let bonusJustClaimed = false;
+  if (unlockedCount === badges.length) {
+    const { data: u } = await supabase.from('users').select('balance,badges_bonus_claimed,discord_id,name').eq('id', req.user.id).single();
+    if (u && !u.badges_bonus_claimed) {
+      await supabase.from('users').update({ balance: u.balance + 35, badges_bonus_claimed: true }).eq('id', req.user.id);
+      await supabase.from('notifications').insert({ user_id: req.user.id, type: 'badges_complete', message: '🏅 Tous les badges débloqués ! $35 de bonus ajoutés à ton solde 🎉', read: false });
+      log(req.user.id, 'badges-complétés', u.name + ' a débloqué tous les badges — $35 de bonus crédités', req);
+      if (u.discord_id) {
+        await sendDiscordDM(u.discord_id, '🏅 Tous les badges débloqués !', 0xE8B84B, [
+          { name: '🏆 Bravo', value: 'Tu as débloqué tous les badges disponibles !', inline: true },
+          { name: '💰 Bonus', value: '$35 ajoutés à ton solde', inline: true }
+        ]);
+      }
+      bonusJustClaimed = true;
+    }
+  }
+  res.json({ badges, unlockedCount, total: badges.length, bonusJustClaimed });
 });
 
 // ── MA SÉRIE (streak) ──
