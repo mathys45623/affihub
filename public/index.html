@@ -1390,7 +1390,7 @@ async function renderPage(page){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
     const isSuperAdmin=ME.is_super_admin===true;
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12)+'<div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12)+'<div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Attribuer des jetons" onclick="openGrantTokens(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🪙</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
     return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' utilisateur(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>💎 Gains totale</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
@@ -1532,6 +1532,7 @@ async function renderPage(page){
     return '<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🪙 Jetons par vente</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Nombre de jetons crédités <b>automatiquement</b> à chaque vente approuvée (en plus de la commission en $). Ça se déclenche pour toute nouvelle vente approuvée.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / vente</label><input type="number" id="tokens-per-sale-input" min="0" value="'+tokensPerSale+'"></div><button class="btn btn-grad" onclick="saveTokensPerSale()">💾 Enregistrer</button></div>'
       +'<div class="hdiv"></div>'
       +'<div style="font-size:13px;font-weight:800;margin-bottom:8px">⏪ Rattrapage rétroactif</div><p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Les affiliés qui ont déjà des ventes approuvées <b>avant la mise en place du système de jetons</b> n\'en ont pas reçu automatiquement. Clique ici pour créditer, en une fois, les jetons manquants sur toutes ces ventes passées (au tarif actuel ci-dessus). Cette action est sûre à relancer : les ventes déjà traitées ne seront jamais recréditées deux fois.</p><button class="btn btn-gst" onclick="confirmTokensBackfill()" style="width:100%;justify-content:center">⏪ Attribuer les jetons manquants sur les ventes passées</button></div>'
+      +'<div class="settings-section"><div class="settings-section-title">🎁 Attribuer des jetons manuellement</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Pour tous les autres moyens listés ci-dessous qui ne sont pas automatiques (parrainage, événement, bonus ponctuel...) : crédite (ou retire, avec un montant négatif) des jetons toi-même à un affilié précis.</p><button class="btn btn-grad" onclick="openGrantTokens()" style="width:100%;justify-content:center">🪙 Attribuer des jetons à un affilié</button></div>'
       +'<div class="settings-section"><div class="settings-section-title">🪙 Moyens d\'obtenir des jetons</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Cette liste est affichée aux affiliés dans leur page Boutique, pour leur expliquer comment gagner des jetons. C\'est informatif à titre d\'affichage.</p>'
       +methodRows
       +'<button class="btn btn-gst" onclick="openAddTokenMethod()" style="width:100%;justify-content:center;margin-top:6px">+ Ajouter un moyen</button></div>'
@@ -2040,6 +2041,24 @@ async function runTokensBackfill(){
     closeMo();
     if(r.usersCredited>0)toast('✅ '+r.usersCredited+' affilié(s) crédité(s) sur '+r.conversionsUpdated+' vente(s)','s');
     else toast('Rien à rattraper, tout est déjà à jour ✓','i');
+  }catch(e){toast(e.message,'e');}
+}
+function openGrantTokens(presetUserId,presetUserName){
+  Promise.all([api('GET','/api/users')]).then(([users])=>{
+    const uOpts=users.map(u=>'<option value="'+u.id+'" '+(presetUserId&&String(u.id)===String(presetUserId)?'selected':'')+'>'+esc(u.name)+'</option>').join('');
+    document.getElementById('m-title').textContent='🪙 Attribuer des jetons';
+    document.getElementById('m-body').innerHTML='<div class="fi"><label>Affilié</label><select id="gt-user">'+(presetUserId?'':'<option value="">-- Choisir --</option>')+uOpts+'</select></div><div class="fi"><label>Montant (négatif pour retirer)</label><input type="number" id="gt-amount" placeholder="Ex: 20 ou -10" value="10"></div><div class="fi"><label>Raison (optionnel, visible par l\'affilié)</label><input type="text" id="gt-reason" placeholder="Ex: Parrainage de..."></div><button class="btn btn-grad" onclick="doGrantTokens()" style="width:100%;justify-content:center;margin-top:6px">Confirmer →</button>';
+    document.getElementById('mo').classList.add('open');
+  }).catch(e=>toast(e.message,'e'));
+}
+async function doGrantTokens(){
+  const user_id=document.getElementById('gt-user').value;
+  const amount=parseInt(document.getElementById('gt-amount').value);
+  if(!user_id){toast('Choisis un affilié','e');return;}
+  if(!amount){toast('Montant invalide','e');return;}
+  try{
+    await api('POST','/api/admin/tokens/grant',{user_id,amount,reason:document.getElementById('gt-reason').value.trim()});
+    closeMo();toast((amount>0?'+':'')+amount+' 🪙 attribué(s) ✓','s');
   }catch(e){toast(e.message,'e');}
 }
 async function saveTokenMethods(successMsg){
