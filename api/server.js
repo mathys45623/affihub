@@ -243,6 +243,13 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, '../public')));
 
+// Cache très court (15s) pour éviter d'interroger la base à CHAQUE requête du site.
+// La déconnexion forcée / obligation de changer de mot de passe reste quasi-instantanée
+// (max 15s de délai) car on vide le cache immédiatement au moment de ces actions.
+const authCache = new Map(); // userId -> { token_version, must_change_password, expiresAt }
+const AUTH_CACHE_TTL_MS = 15000;
+function invalidateAuthCache(userId) { authCache.delete(userId); }
+
 async function auth(req, res, next) {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Non autorisé' });
@@ -250,20 +257,28 @@ async function auth(req, res, next) {
   try { payload = jwt.verify(token, JWT_SECRET); }
   catch { return res.status(401).json({ error: 'Token invalide' }); }
   try {
-    // token_version permet de forcer une déconnexion à distance (ex: admin qui réinitialise
-    // un mot de passe) : si la version en base a changé depuis l'émission de ce token, on refuse.
-    const { data: u, error: uErr } = await supabase.from('users').select('token_version,must_change_password').eq('id', payload.id).single();
-    if (uErr) {
-      if (uErr.code === 'PGRST116') {
-        // Aucune ligne trouvée pour cet id : le compte a réellement été supprimé, on bloque.
-        return res.status(401).json({ error: 'Compte introuvable' });
+    let u;
+    const cached = authCache.get(payload.id);
+    if (cached && cached.expiresAt > Date.now()) {
+      u = cached;
+    } else {
+      // token_version permet de forcer une déconnexion à distance (ex: admin qui réinitialise
+      // un mot de passe) : si la version en base a changé depuis l'émission de ce token, on refuse.
+      const { data, error: uErr } = await supabase.from('users').select('token_version,must_change_password').eq('id', payload.id).single();
+      if (uErr) {
+        if (uErr.code === 'PGRST116') {
+          // Aucune ligne trouvée pour cet id : le compte a réellement été supprimé, on bloque.
+          return res.status(401).json({ error: 'Compte introuvable' });
+        }
+        // Toute autre erreur (ex: colonnes token_version/must_change_password pas encore créées
+        // sur Supabase) ne doit PAS bloquer tout le site : on laisse passer avec les valeurs par
+        // défaut plutôt que de renvoyer une erreur à chaque requête authentifiée.
+        console.error('auth() erreur (colonne manquante ?):', uErr.message);
+        req.user = payload;
+        return next();
       }
-      // Toute autre erreur (ex: colonnes token_version/must_change_password pas encore créées
-      // sur Supabase) ne doit PAS bloquer tout le site : on laisse passer avec les valeurs par
-      // défaut plutôt que de renvoyer une erreur à chaque requête authentifiée.
-      console.error('auth() erreur (colonne manquante ?):', uErr.message);
-      req.user = payload;
-      return next();
+      u = { ...data, expiresAt: Date.now() + AUTH_CACHE_TTL_MS };
+      authCache.set(payload.id, u);
     }
     if (!u) return res.status(401).json({ error: 'Compte introuvable' });
     if ((payload.tokenVersion || 0) !== (u.token_version || 0)) {
@@ -487,6 +502,7 @@ app.post('/api/change-password', auth, async (req, res) => {
   if (!valid) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
   const hash = await bcrypt.hash(new_password, 10);
   await supabase.from('users').update({ password: hash, must_change_password: false }).eq('id', req.user.id);
+  invalidateAuthCache(req.user.id);
   log(req.user.id, 'mot-de-passe-changé', 'Mot de passe modifié', req);
   res.json({ success: true });
 });
@@ -1073,6 +1089,7 @@ app.post('/api/users/:id/reset-password', auth, adminOnly, async (req, res) => {
   // (déconnexion forcée), et must_change_password pour l'obliger à en définir un nouveau
   // dès sa prochaine connexion, avant de pouvoir faire quoi que ce soit d'autre sur le site.
   await supabase.from('users').update({ password: hash, must_change_password: true, token_version: (target.token_version || 0) + 1 }).eq('id', req.params.id);
+  invalidateAuthCache(req.params.id);
   log(req.user.id, 'mot-de-passe-réinitialisé', 'Mot de passe réinitialisé (+ déconnexion forcée) pour ' + (target.name || '#' + req.params.id), req);
   // Tentative d'envoi direct en DM Discord si l'affilié a un ID Discord renseigné
   let sentViaDiscord = false;
