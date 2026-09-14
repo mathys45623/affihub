@@ -1241,11 +1241,12 @@ async function renderPage(page){
   }
 
   if(page==='aff-wheel'){
-    const w=await api('GET','/api/me/wheel');
+    const [w,history]=await Promise.all([api('GET','/api/me/wheel'),api('GET','/api/me/wheel-history')]);
     const resetDate=new Date(w.nextResetAt);
     const resetStr=resetDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     CURRENT_WHEEL_SEGMENTS=w.segments||[];
-    return '<div class="card wheel-stage" style="text-align:center;padding:36px 20px;border-color:rgba(245,200,66,.25)">'
+    const histRows=history.map(h=>'<tr><td style="color:var(--muted)">'+fmt(h.created_at)+'</td><td>'+esc(h.label||'—')+'</td><td style="font-weight:800;text-align:right;color:'+(h.reward>0?'var(--green)':'var(--muted)')+'">'+(h.reward>0?'+$'+h.reward:'—')+'</td></tr>').join('');
+    return '<div class="card wheel-stage" style="text-align:center;padding:36px 20px;border-color:rgba(245,200,66,.25);margin-bottom:20px">'
     +'<div class="card-title" style="justify-content:center;margin-bottom:6px;font-size:19px">🎡 Roue de la chance</div>'
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:30px">Un tour gratuit chaque semaine si tu as fait au moins une vente.</p>'
     +'<div style="position:relative;width:280px;max-width:82vw;margin:0 auto 26px">'
@@ -1259,7 +1260,8 @@ async function renderPage(page){
       :w.eligible
         ?'<button class="btn btn-grad wheel-spin-btn" id="wheel-spin-btn" onclick="spinWheel()" style="padding:13px 34px;font-size:14px;justify-content:center;border-radius:50px">🎡 Tourner la roue</button>'
         :'<div><span class="badge by2" style="font-size:13px;padding:8px 16px">🔒 Fais au moins une vente cette semaine pour débloquer</span></div>')
-    +'</div>';
+    +'</div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📜 Historique de mes tirages</div>'+(history.length===0?'<div class="empty"><div class="empty-icon">🎡</div><p>Aucun tirage pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎁 Lot</th><th style="text-align:right">💰 Gain</th></tr></thead><tbody>'+histRows+'</tbody></table></div>')+'</div>';
   }
 
   if(page==='aff-discord'){
