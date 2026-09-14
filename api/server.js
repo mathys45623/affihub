@@ -1222,15 +1222,6 @@ app.get('/api/me/badges', auth, async (req, res) => {
 
   const salesCount = (convs || []).length;
   const totalGains = (convs || []).reduce((s, c) => s + c.amount, 0);
-  // Streak (même logique que /api/me)
-  const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
-  let bestStreak = 0, run = 0;
-  const sortedDays = [...days].sort();
-  for (let i = 0; i < sortedDays.length; i++) {
-    if (i === 0 || (new Date(sortedDays[i]) - new Date(sortedDays[i - 1])) === 86400000) run++;
-    else run = 1;
-    bestStreak = Math.max(bestStreak, run);
-  }
 
   const badges = [
     { id: 'first_sale', icon: '🥇', label: 'Première vente', desc: 'Réalise ta première vente', unlocked: salesCount >= 1, progress: Math.min(salesCount, 1), target: 1 },
@@ -1239,7 +1230,6 @@ app.get('/api/me/badges', auth, async (req, res) => {
     { id: 'gains_500', icon: '💰', label: '$500 cumulés', desc: 'Atteins $500 de gains au total', unlocked: totalGains >= 500, progress: Math.min(totalGains, 500), target: 500 },
     { id: 'gains_1000', icon: '🤑', label: '$1000 cumulés', desc: 'Atteins $1000 de gains au total', unlocked: totalGains >= 1000, progress: Math.min(totalGains, 1000), target: 1000 },
     { id: 'super_parrain', icon: '🏆', label: 'Super Parrain', desc: 'Parraine 5 affiliés', unlocked: (referralCount || 0) >= 5, progress: Math.min(referralCount || 0, 5), target: 5 },
-    { id: 'streak_7', icon: '🔥', label: 'Série de 7 jours', desc: '7 jours d\'affilée avec au moins une vente', unlocked: bestStreak >= 7, progress: Math.min(bestStreak, 7), target: 7 },
     { id: 'gift_5', icon: '🎁', label: 'Généreux', desc: 'Envoie $5 ou plus à un autre affilié', unlocked: (bigGiftCount || 0) >= 1, progress: Math.min(bigGiftCount || 0, 1), target: 1 },
     { id: 'withdrawal_1', icon: '💵', label: 'Premier retrait', desc: 'Fais ton premier retrait', unlocked: (paidWithdrawals || 0) >= 1, progress: Math.min(paidWithdrawals || 0, 1), target: 1 },
     { id: 'withdrawal_5', icon: '💸', label: '5 retraits', desc: 'Fais 5 retraits', unlocked: (paidWithdrawals || 0) >= 5, progress: Math.min(paidWithdrawals || 0, 5), target: 5 },
