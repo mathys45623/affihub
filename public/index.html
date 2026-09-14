@@ -661,6 +661,7 @@ async function startApp(){
       {section:'CONFIGURATION',items:[
         {icon:'🎯',label:'Offres',page:'admin-offers'},
         {icon:'🔗',label:'Liens',page:'admin-links'},
+        {icon:'🎡',label:'Roue de la chance',page:'admin-wheel'},
         {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
         {icon:'🆔',label:'ID Discord',page:'admin-discordid'},
         {icon:'⚙️',label:'Paramètres',page:'admin-settings'}
@@ -771,7 +772,7 @@ const TITLES={
   'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection','aff-gifts':'🎁 Cadeaux','aff-badges':'🏅 Mes badges','aff-streak':'🔥 Ma série','aff-wheel':'🎡 Roue de la chance',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
-  'admin-offers':'Offres','admin-links':'Liens','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité','admin-discordid':'🆔 ID Discord'
+  'admin-offers':'Offres','admin-links':'Liens','admin-wheel':'🎡 Roue de la chance','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité','admin-discordid':'🆔 ID Discord'
 };
 
 async function goPage(page){
@@ -805,28 +806,33 @@ function fmt(d){return d?d.split('T')[0]:'—';}
 // ne s'exécute chez qui le consulte (protection XSS stocké).
 function esc(str){if(str===null||str===undefined)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
-// ── Roue de la chance ── (l'ordre DOIT correspondre à WHEEL_SEGMENTS côté serveur)
-const WHEEL_SEGMENTS_CLIENT=[
-  {label:'Perdu',from:'#3a3a3a',to:'#1a1a1a',text:'#888'},
-  {label:'$1',from:'#6EB8FF',to:'#3B7DDB',text:'#fff'},
-  {label:'$2',from:'#3DEBB0',to:'#00A868',text:'#fff'},
-  {label:'$5',from:'#C99BFA',to:'#8B2FE0',text:'#fff'},
-  {label:'$10',from:'#FF7DA8',to:'#E01F5C',text:'#fff'},
-  {label:'$25',from:'#FFE08A',to:'#E0A519',text:'#000'}
+// ── Roue de la chance ── (les segments viennent maintenant du serveur, configurables par l'admin)
+let CURRENT_WHEEL_SEGMENTS=[];
+const WHEEL_PALETTE=[
+  {from:'#6EB8FF',to:'#3B7DDB',text:'#fff'},
+  {from:'#3DEBB0',to:'#00A868',text:'#fff'},
+  {from:'#C99BFA',to:'#8B2FE0',text:'#fff'},
+  {from:'#FF7DA8',to:'#E01F5C',text:'#fff'},
+  {from:'#FFE08A',to:'#E0A519',text:'#000'},
+  {from:'#FFB74D',to:'#E67E22',text:'#000'},
+  {from:'#80DEEA',to:'#00838F',text:'#fff'},
+  {from:'#FF8A80',to:'#D32F2F',text:'#fff'}
 ];
-function buildWheelSegments(){
-  const n=WHEEL_SEGMENTS_CLIENT.length,segAngle=360/n,cx=100,cy=100,r=95;
+const WHEEL_LOSE_COLOR={from:'#3a3a3a',to:'#1a1a1a',text:'#888'};
+function colorForWheelSegment(seg,i){ return seg.reward===0 ? WHEEL_LOSE_COLOR : WHEEL_PALETTE[i%WHEEL_PALETTE.length]; }
+function buildWheelSegments(segments){
+  const n=segments.length,segAngle=360/n,cx=100,cy=100,r=95;
   const pt=(angleDeg,radius)=>{const a=(angleDeg-90)*Math.PI/180;return [cx+radius*Math.cos(a),cy+radius*Math.sin(a)];};
   let defs='',svg='';
   for(let i=0;i<n;i++){
-    const seg=WHEEL_SEGMENTS_CLIENT[i];
-    defs+='<radialGradient id="wseg'+i+'" cx="50%" cy="50%" r="75%"><stop offset="0%" stop-color="'+seg.from+'"/><stop offset="100%" stop-color="'+seg.to+'"/></radialGradient>';
+    const seg=segments[i],col=colorForWheelSegment(seg,i);
+    defs+='<radialGradient id="wseg'+i+'" cx="50%" cy="50%" r="75%"><stop offset="0%" stop-color="'+col.from+'"/><stop offset="100%" stop-color="'+col.to+'"/></radialGradient>';
     const startA=i*segAngle,endA=startA+segAngle,midA=startA+segAngle/2;
     const [x1,y1]=pt(startA,r),[x2,y2]=pt(endA,r);
     const largeArc=segAngle>180?1:0;
     svg+='<path d="M'+cx+','+cy+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+r+','+r+' 0 '+largeArc+' 1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="url(#wseg'+i+')" stroke="#0a0a0a" stroke-width="1.5"/>';
     const [lx,ly]=pt(midA,r*0.62);
-    svg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="11" font-weight="800" fill="'+seg.text+'" transform="rotate('+midA.toFixed(1)+','+lx.toFixed(1)+','+ly.toFixed(1)+')">'+seg.label+'</text>';
+    svg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="'+(seg.label.length>6?9:11)+'" font-weight="800" fill="'+col.text+'" transform="rotate('+midA.toFixed(1)+','+lx.toFixed(1)+','+ly.toFixed(1)+')">'+esc(seg.label)+'</text>';
   }
   // Léger reflet brillant au centre pour un effet glossy
   svg+='<circle cx="100" cy="100" r="95" fill="url(#wshine)" opacity=".5"/>';
@@ -867,7 +873,7 @@ async function spinWheel(){
   if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='⏳ Ça tourne...';btn.classList.remove('wheel-spin-btn');}
   try{
     const r=await api('POST','/api/me/wheel/spin');
-    const segAngle=360/WHEEL_SEGMENTS_CLIENT.length;
+    const segAngle=360/CURRENT_WHEEL_SEGMENTS.length;
     const targetCenter=r.segmentIndex*segAngle+segAngle/2;
     const finalRotation=5*360+(360-targetCenter);
     const svg=document.getElementById('wheel-svg');
@@ -1237,13 +1243,14 @@ async function renderPage(page){
     const w=await api('GET','/api/me/wheel');
     const resetDate=new Date(w.nextResetAt);
     const resetStr=resetDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    CURRENT_WHEEL_SEGMENTS=w.segments||[];
     return '<div class="card wheel-stage" style="text-align:center;padding:36px 20px;border-color:rgba(245,200,66,.25)">'
     +'<div class="card-title" style="justify-content:center;margin-bottom:6px;font-size:19px">🎡 Roue de la chance</div>'
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:30px">Un tour gratuit chaque semaine si tu as fait au moins une vente.</p>'
     +'<div style="position:relative;width:280px;max-width:82vw;margin:0 auto 26px">'
     +'<div class="wheel-pointer" style="position:absolute;top:-8px;left:50%;z-index:3;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:22px solid var(--yellow);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))"></div>'
     +'<svg viewBox="0 0 200 200" style="width:100%;display:block;position:absolute;top:0;left:0;pointer-events:none">'+buildWheelBulbs()+'</svg>'
-    +'<svg id="wheel-svg" viewBox="0 0 200 200" style="width:100%;display:block;transition:transform 4.5s cubic-bezier(.17,.67,.12,1);filter:drop-shadow(0 8px 22px rgba(0,0,0,.6))">'+buildWheelSegments()+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><circle cx="100" cy="100" r="19" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg>'
+    +'<svg id="wheel-svg" viewBox="0 0 200 200" style="width:100%;display:block;transition:transform 4.5s cubic-bezier(.17,.67,.12,1);filter:drop-shadow(0 8px 22px rgba(0,0,0,.6))">'+buildWheelSegments(CURRENT_WHEEL_SEGMENTS)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><circle cx="100" cy="100" r="19" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg>'
     +'</div>'
     +'<div id="wheel-result" style="min-height:30px;margin-bottom:18px"></div>'
     +(w.alreadySpun
@@ -1453,6 +1460,12 @@ async function renderPage(page){
     +'<div style="font-size:13px;font-weight:700;color:var(--yellow);margin-bottom:10px">⏳ En attente ('+pending.length+')</div>'
     +(pending.length===0?'<div class="card" style="margin-bottom:24px"><div class="empty"><p>Aucune demande en attente 🎉</p></div></div>':'<div style="margin-bottom:24px">'+pendingHtml+'</div>')
     +(treated.length>0?'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;font-weight:700;color:var(--muted)">✅ Traités ('+treated.length+')</div><input type="text" id="custom-search" placeholder="🔎 Rechercher un affilié ou une offre..." oninput="filterCustomTreated(this.value)" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:9px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:12px;width:240px"></div><div id="custom-treated-list">'+treatedHtml+'</div>':'');
+  }
+
+  if(page==='admin-wheel'){
+    const segments=await api('GET','/api/admin/wheel-segments');
+    window.wheelEditSegments=segments.map(s=>({...s}));
+    return renderWheelEditor();
   }
 
   if(page==='admin-offers'){
@@ -1728,6 +1741,54 @@ function selectGiftAmount(amount,btn){
   const out=document.getElementById('wd-net-calc');
   const net=(amount*0.95).toFixed(2);
   if(out)out.innerHTML='Tu recevras <b style="color:var(--green)">$'+net+'</b> après 5% de frais';
+}
+function renderWheelEditor(){
+  return '<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:10px">🎡 Configurer la roue de la chance</div><p style="font-size:12px;color:var(--muted)">Définis les lots possibles et leur probabilité relative (plus le nombre est grand par rapport aux autres, plus la chance de tomber dessus est élevée — ce ne sont pas forcément des %). Entre 2 et 8 segments. La colonne "Chance" se recalcule après ajout/suppression d\'un segment ou l\'enregistrement.</p></div>'
+  +'<div id="wheel-editor-body">'+renderWheelEditorRows()+'</div>';
+}
+function renderWheelEditorRows(){
+  const segs=window.wheelEditSegments||[];
+  const totalWeight=segs.reduce((s,x)=>s+(parseFloat(x.weight)||0),0);
+  const rows=segs.map((s,i)=>{
+    const pct=totalWeight>0?((parseFloat(s.weight)||0)/totalWeight*100).toFixed(1):'0.0';
+    return '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:grid;grid-template-columns:1fr 100px 100px 70px auto;gap:10px;align-items:end">'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Nom affiché</label><input type="text" value="'+esc(s.label)+'" onchange="updateWheelField('+i+',\'label\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Montant ($)</label><input type="number" min="0" step="0.5" value="'+s.reward+'" onchange="updateWheelField('+i+',\'reward\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Probabilité</label><input type="number" min="0.1" step="1" value="'+s.weight+'" onchange="updateWheelField('+i+',\'weight\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
+    +'<div style="text-align:center"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Chance</label><span class="badge bp2" style="font-size:12px">'+pct+'%</span></div>'
+    +'<button class="btn btn-red btn-sm" onclick="removeWheelSegment('+i+')" title="Supprimer"'+(segs.length<=2?' disabled style="opacity:.3;cursor:not-allowed"':'')+'>🗑</button>'
+    +'</div></div>';
+  }).join('');
+  return rows
+  +'<button class="btn btn-gst" onclick="addWheelSegment()" style="width:100%;justify-content:center;margin-bottom:20px"'+(segs.length>=8?' disabled':'')+'>+ Ajouter un segment'+(segs.length>=8?' (max 8)':'')+'</button>'
+  +'<button class="btn btn-grad" onclick="saveWheelSegments()" style="width:100%;justify-content:center;padding:13px">💾 Enregistrer la configuration</button>';
+}
+function updateWheelField(i,field,value){
+  if(field==='reward'||field==='weight')value=parseFloat(value)||0;
+  window.wheelEditSegments[i][field]=value;
+}
+function addWheelSegment(){
+  if(window.wheelEditSegments.length>=8){toast('Maximum 8 segments','e');return;}
+  window.wheelEditSegments.push({label:'Nouveau lot',reward:0,weight:10});
+  document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+}
+function removeWheelSegment(i){
+  if(window.wheelEditSegments.length<=2){toast('Il faut au moins 2 segments','e');return;}
+  window.wheelEditSegments.splice(i,1);
+  document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+}
+async function saveWheelSegments(){
+  const segs=window.wheelEditSegments;
+  for(const s of segs){
+    if(!s.label||!String(s.label).trim()){toast('Chaque segment doit avoir un nom','e');return;}
+    if(isNaN(s.reward)||s.reward<0){toast('Montant invalide','e');return;}
+    if(isNaN(s.weight)||s.weight<=0){toast('Probabilité invalide (doit être > 0)','e');return;}
+  }
+  try{
+    await api('PATCH','/api/admin/wheel-segments',{segments:segs});
+    toast('Roue mise à jour ✓','s');
+    goPage('admin-wheel');
+  }catch(e){toast(e.message,'e');}
 }
 function updateWdCalc(){
   const out=document.getElementById('wd-net-calc');
@@ -2320,7 +2381,7 @@ async function openPermissions(userId, userName){
   if(u?.admin_permissions&&u.admin_permissions!=='all'){
     try{currentPerms=JSON.parse(u.admin_permissions);}catch(e){currentPerms=[];}
   } else {
-    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-discordid','admin-settings'];
+    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-logs','admin-discordid','admin-settings'];
   }
   const pages=[
     {page:'admin-dash',label:'📊 Dashboard'},
@@ -2334,6 +2395,7 @@ async function openPermissions(userId, userName){
     {page:'aff-top',label:'🏆 TOP Affiliés'},
     {page:'admin-offers',label:'🎯 Offres'},
     {page:'admin-links',label:'🔗 Liens'},
+    {page:'admin-wheel',label:'🎡 Roue de la chance'},
     {page:'admin-logs',label:'📋 Logs d\'activité'},
     {page:'admin-discordid',label:'🆔 ID Discord'},
     {page:'admin-settings',label:'⚙️ Paramètres'},
@@ -2344,7 +2406,7 @@ async function openPermissions(userId, userName){
   document.getElementById('mo').classList.add('open');
 }
 async function savePermissions(userId){
-  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-logs','admin-discordid','admin-settings'];
+  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-logs','admin-discordid','admin-settings'];
   const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
   try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
 }
