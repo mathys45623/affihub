@@ -252,7 +252,19 @@ async function auth(req, res, next) {
   try {
     // token_version permet de forcer une déconnexion à distance (ex: admin qui réinitialise
     // un mot de passe) : si la version en base a changé depuis l'émission de ce token, on refuse.
-    const { data: u } = await supabase.from('users').select('token_version,must_change_password').eq('id', payload.id).single();
+    const { data: u, error: uErr } = await supabase.from('users').select('token_version,must_change_password').eq('id', payload.id).single();
+    if (uErr) {
+      if (uErr.code === 'PGRST116') {
+        // Aucune ligne trouvée pour cet id : le compte a réellement été supprimé, on bloque.
+        return res.status(401).json({ error: 'Compte introuvable' });
+      }
+      // Toute autre erreur (ex: colonnes token_version/must_change_password pas encore créées
+      // sur Supabase) ne doit PAS bloquer tout le site : on laisse passer avec les valeurs par
+      // défaut plutôt que de renvoyer une erreur à chaque requête authentifiée.
+      console.error('auth() erreur (colonne manquante ?):', uErr.message);
+      req.user = payload;
+      return next();
+    }
     if (!u) return res.status(401).json({ error: 'Compte introuvable' });
     if ((payload.tokenVersion || 0) !== (u.token_version || 0)) {
       return res.status(401).json({ error: 'Session expirée, merci de te reconnecter.' });
