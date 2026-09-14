@@ -487,12 +487,14 @@ app.patch('/api/me/postback', auth, async (req, res) => {
     if (!safe) return res.status(400).json({ error: 'URL invalide ou non autorisée (adresse interne/privée refusée)' });
   }
   await supabase.from('users').update({ postback_url: postback_url || null }).eq('id', req.user.id);
+  log(req.user.id, 'postback-modifié', postback_url ? 'URL de postback mise à jour : ' + postback_url : 'URL de postback supprimée', req);
   res.json({ success: true });
 });
 app.patch('/api/me/discord-id', auth, async (req, res) => {
   const { discord_id } = req.body;
   if (discord_id && !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord invalide' });
   await supabase.from('users').update({ discord_id: discord_id || null }).eq('id', req.user.id);
+  log(req.user.id, 'discord-id-modifié', discord_id ? 'ID Discord mis à jour : ' + discord_id : 'ID Discord supprimé', req);
   res.json({ success: true });
 });
 
@@ -565,6 +567,7 @@ app.patch('/api/links/:id/slug', auth, async (req, res) => {
   if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
   if (!slug || !slug.trim()) {
     await supabase.from('links').update({ custom_slug: null }).eq('id', req.params.id);
+    log(req.user.id, 'slug-lien-supprimé', 'Slug personnalisé retiré du lien #' + req.params.id, req);
     return res.json({ success: true, slug: null });
   }
   slug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
@@ -574,6 +577,7 @@ app.patch('/api/links/:id/slug', auth, async (req, res) => {
   if (taken) return res.status(400).json({ error: 'Ce lien personnalisé est déjà pris' });
   const { error } = await supabase.from('links').update({ custom_slug: slug }).eq('id', req.params.id);
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'slug-lien-modifié', 'Slug du lien #' + req.params.id + ' changé en "' + slug + '"', req);
   res.json({ success: true, slug });
 });
 
@@ -1261,6 +1265,7 @@ app.post('/api/tickets/:id/reply', auth, async (req, res) => {
   if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
   if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
   await supabase.from('ticket_messages').insert({ ticket_id: parseInt(req.params.id), user_id: req.user.id, content: content || '', image_url: image_url || null });
+  log(req.user.id, 'ticket-répondu', (req.user.role === 'admin' ? 'Réponse admin' : 'Réponse affilié') + ' sur le ticket #' + req.params.id, req);
   res.json({ success: true });
 });
 
@@ -1325,6 +1330,7 @@ app.post('/api/custom-requests', auth, async (req, res) => {
   if (existing) {
     const { data, error } = await supabase.from('custom_link_requests').update({ server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text, status: 'pending', updated_at: new Date() }).eq('id', existing.id).select().single();
     if (error) return res.status(500).json({ error: error.message });
+    log(req.user.id, 'demande-lien-perso-mise-à-jour', req.user.name + ' a mis à jour sa demande pour "' + (offer?.name || '?') + '"', req);
     await sendDiscordChannelMsg('1541198868019159051', '🎨 Demande de lien perso (mise à jour)', 0xa855f7, [
       { name: '👤 Affilié', value: req.user.name, inline: true },
       { name: '🎯 Offre', value: offer?.name || '?', inline: true },
@@ -1334,6 +1340,7 @@ app.post('/api/custom-requests', auth, async (req, res) => {
   }
   const { data, error } = await supabase.from('custom_link_requests').insert({ user_id: req.user.id, offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text }).select().single();
   if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'demande-lien-perso-créée', req.user.name + ' a créé une demande de lien perso pour "' + (offer?.name || '?') + '"', req);
   await sendDiscordChannelMsg('1541198868019159051', '🎨 Nouvelle demande de lien perso !', 0xa855f7, [
     { name: '👤 Affilié', value: req.user.name, inline: true },
     { name: '🎯 Offre', value: offer?.name || '?', inline: true },
@@ -1437,6 +1444,7 @@ app.post('/api/announcements', auth, adminOnly, async (req, res) => {
 });
 app.post('/api/announcements/:id/read', auth, async (req, res) => {
   await supabase.from('announcements_read').upsert({ announcement_id: parseInt(req.params.id), user_id: req.user.id }, { onConflict: 'announcement_id,user_id' });
+  log(req.user.id, 'annonce-lue', 'Annonce #' + req.params.id + ' marquée comme lue', req);
   res.json({ success: true });
 });
 app.delete('/api/announcements/:id', auth, adminOnly, async (req, res) => {
@@ -1504,10 +1512,12 @@ app.get('/api/notifications', auth, async (req, res) => {
 });
 app.patch('/api/notifications/read', auth, async (req, res) => {
   await supabase.from('notifications').update({ read: true }).eq('user_id', req.user.id);
+  log(req.user.id, 'notifications-lues', 'Toutes les notifications marquées comme lues', req);
   res.json({ success: true });
 });
 app.delete('/api/notifications/:id', auth, async (req, res) => {
   await supabase.from('notifications').delete().eq('id', req.params.id).eq('user_id', req.user.id);
+  log(req.user.id, 'notification-supprimée', 'Notification #' + req.params.id + ' supprimée', req);
   res.json({ success: true });
 });
 
