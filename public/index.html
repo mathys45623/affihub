@@ -2091,7 +2091,7 @@ function openGrantTokens(presetUserId,presetUserName){
   Promise.all([api('GET','/api/users')]).then(([users])=>{
     const uOpts=users.map(u=>'<option value="'+u.id+'" '+(presetUserId&&String(u.id)===String(presetUserId)?'selected':'')+'>'+esc(u.name)+'</option>').join('');
     document.getElementById('m-title').textContent='🪙 Attribuer des jetons';
-    document.getElementById('m-body').innerHTML='<div class="fi"><label>Affilié</label><select id="gt-user">'+(presetUserId?'':'<option value="">-- Choisir --</option>')+uOpts+'</select></div><div class="fi"><label>Montant (négatif pour retirer)</label><input type="number" id="gt-amount" placeholder="Ex: 20 ou -10" value="10"></div><div class="fi"><label>Raison (optionnel, visible par l\'affilié)</label><input type="text" id="gt-reason" placeholder="Ex: Parrainage de..."></div><button class="btn btn-grad" onclick="doGrantTokens()" style="width:100%;justify-content:center;margin-top:6px">Confirmer →</button>';
+    document.getElementById('m-body').innerHTML='<div class="fi"><label>Affilié</label><select id="gt-user">'+(presetUserId?'':'<option value="">-- Choisir --</option>')+uOpts+'</select></div><div class="fi"><label>Montant (négatif pour retirer)</label><input type="number" id="gt-amount" placeholder="Ex: 20 ou -10" value="10"></div><div class="fi"><label>Raison (optionnel, visible par l\'affilié)</label><input type="text" id="gt-reason" placeholder="Ex: Parrainage de..."></div><button class="btn btn-grad" id="gt-confirm-btn" onclick="doGrantTokens()" style="width:100%;justify-content:center;margin-top:6px">Confirmer →</button>';
     document.getElementById('mo').classList.add('open');
   }).catch(e=>toast(e.message,'e'));
 }
@@ -2100,10 +2100,15 @@ async function doGrantTokens(){
   const amount=parseInt(document.getElementById('gt-amount').value);
   if(!user_id){toast('Choisis un affilié','e');return;}
   if(!amount){toast('Montant invalide','e');return;}
+  const btn=document.getElementById('gt-confirm-btn');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.style.opacity='.6';btn.style.cursor='not-allowed';btn.textContent='⏳ Envoi...';}
   try{
     await api('POST','/api/admin/tokens/grant',{user_id,amount,reason:document.getElementById('gt-reason').value.trim()});
     closeMo();toast((amount>0?'+':'')+amount+' 🪙 attribué(s) ✓','s');
-  }catch(e){toast(e.message,'e');}
+  }catch(e){
+    toast(e.message,'e');
+    if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='Confirmer →';}
+  }
 }
 async function saveTokenMethods(successMsg){
   try{await api('PATCH','/api/admin/token-methods',{methods:window.tokenMethodsEdit});toast(successMsg||'Enregistré ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
@@ -2192,15 +2197,20 @@ async function deleteShopItem(id){try{await api('DELETE','/api/admin/shop/items/
 // ── AFFILIÉ : ACHAT BOUTIQUE ──
 function confirmPurchaseShopItem(id,title,price){
   document.getElementById('m-title').textContent='Confirmer l\'échange';
-  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🛍️</div><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Échanger</div><div style="font-weight:900;font-size:18px;margin-bottom:8px">'+esc(title)+'</div><div style="margin-bottom:18px"><span class="badge by2" style="font-size:14px">🪙 '+price+' jetons</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:20px">Les jetons seront débités immédiatement, l\'offre est à toi tout de suite.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doPurchaseShopItem('+id+')" style="flex:1;justify-content:center">Confirmer</button></div></div>';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🛍️</div><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Échanger</div><div style="font-weight:900;font-size:18px;margin-bottom:8px">'+esc(title)+'</div><div style="margin-bottom:18px"><span class="badge by2" style="font-size:14px">🪙 '+price+' jetons</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:20px">Les jetons seront débités immédiatement, l\'offre est à toi tout de suite.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" id="shop-confirm-btn" onclick="doPurchaseShopItem('+id+')" style="flex:1;justify-content:center">Confirmer</button></div></div>';
   document.getElementById('mo').classList.add('open');
 }
 async function doPurchaseShopItem(id){
+  const btn=document.getElementById('shop-confirm-btn');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.style.opacity='.6';btn.style.cursor='not-allowed';btn.textContent='⏳ Échange...';}
   try{
     await api('POST','/api/shop/purchase/'+id,{});
     closeMo();toast('Échangé ! C\'est à toi 🎉','s');
     goPage('aff-shop');
-  }catch(e){toast(e.message,'e');}
+  }catch(e){
+    toast(e.message,'e');
+    if(btn){btn.disabled=false;btn.style.opacity='1';btn.style.cursor='pointer';btn.textContent='Confirmer';}
+  }
 }
 function openAddConv(){
   Promise.all([api('GET','/api/users'),api('GET','/api/offers')]).then(([users,offers])=>{
