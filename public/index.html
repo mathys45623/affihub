@@ -1517,8 +1517,9 @@ async function renderPage(page){
   }
 
   if(page==='admin-shop-settings'){
-    const [methods,items]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items')]);
+    const [methods,items,settings]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items'),api('GET','/api/settings/all')]);
     window.tokenMethodsEdit=methods.map(m=>({...m}));
+    const tokensPerSale=settings.tokens_per_sale!=null?settings.tokens_per_sale:5;
     const methodRows=window.tokenMethodsEdit.map((m,i)=>'<div class="card" style="margin-bottom:10px;padding:14px 16px;'+(m.active===false?'opacity:.5':'')+'"><div style="display:flex;align-items:center;gap:14px"><div style="font-size:24px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div><div style="text-align:center;flex-shrink:0"><span class="badge by2">🪙 '+(m.tokens||0)+'</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn '+(m.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleTokenMethod('+i+')">'+(m.active===false?'✅':'🚫')+'</button><button class="btn btn-gst btn-sm" onclick="openEditTokenMethod('+i+')">✏️</button><button class="btn btn-red btn-sm" onclick="removeTokenMethod('+i+')">🗑</button></div></div></div>').join('');
     const itemCards=items.map(it=>'<div class="card" style="padding:0;overflow:hidden;'+(it.active===false?'opacity:.5':'')+'">'
       +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:120px;object-fit:cover;display:block">':'<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px">🎁</div>')
@@ -1528,7 +1529,10 @@ async function renderPage(page){
       +'<button class="btn btn-red btn-sm" onclick="confirmDeleteShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\')">🗑</button>'
       +'</div></div></div></div>').join('');
     window.SHOP_ITEMS_CACHE=items;
-    return '<div class="settings-section"><div class="settings-section-title">🪙 Moyens d\'obtenir des jetons</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Cette liste est affichée aux affiliés dans leur page Boutique, pour leur expliquer comment gagner des jetons. C\'est informatif — les jetons sont crédités via tes autres systèmes (ventes, bonus manuels, etc.).</p>'
+    return '<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🪙 Jetons par vente</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Nombre de jetons crédités <b>automatiquement</b> à chaque vente approuvée (en plus de la commission en $). Ça se déclenche pour toute nouvelle vente approuvée.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / vente</label><input type="number" id="tokens-per-sale-input" min="0" value="'+tokensPerSale+'"></div><button class="btn btn-grad" onclick="saveTokensPerSale()">💾 Enregistrer</button></div>'
+      +'<div class="hdiv"></div>'
+      +'<div style="font-size:13px;font-weight:800;margin-bottom:8px">⏪ Rattrapage rétroactif</div><p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Les affiliés qui ont déjà des ventes approuvées <b>avant la mise en place du système de jetons</b> n\'en ont pas reçu automatiquement. Clique ici pour créditer, en une fois, les jetons manquants sur toutes ces ventes passées (au tarif actuel ci-dessus). Cette action est sûre à relancer : les ventes déjà traitées ne seront jamais recréditées deux fois.</p><button class="btn btn-gst" onclick="confirmTokensBackfill()" style="width:100%;justify-content:center">⏪ Attribuer les jetons manquants sur les ventes passées</button></div>'
+      +'<div class="settings-section"><div class="settings-section-title">🪙 Moyens d\'obtenir des jetons</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Cette liste est affichée aux affiliés dans leur page Boutique, pour leur expliquer comment gagner des jetons. C\'est informatif à titre d\'affichage.</p>'
       +methodRows
       +'<button class="btn btn-gst" onclick="openAddTokenMethod()" style="width:100%;justify-content:center;margin-top:6px">+ Ajouter un moyen</button></div>'
       +'<div class="card-header" style="margin-bottom:16px"><div class="card-title">🛍️ Offres de la boutique</div><button class="btn btn-grad btn-sm" onclick="openAddShopItem()">+ Ajouter une offre</button></div>'
@@ -2020,6 +2024,24 @@ async function doAddOffer(){
 }
 
 // ── ADMIN : MOYENS D'OBTENIR DES JETONS ──
+async function saveTokensPerSale(){
+  const val=parseInt(document.getElementById('tokens-per-sale-input').value);
+  if(!Number.isFinite(val)||val<0){toast('Valeur invalide','e');return;}
+  try{await api('PATCH','/api/admin/settings/tokens-per-sale',{tokens_per_sale:val});toast('Jetons par vente mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+function confirmTokensBackfill(){
+  document.getElementById('m-title').textContent='⏪ Rattrapage rétroactif';
+  document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px"><div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Ça va créditer les jetons manquants à tous les affiliés ayant des ventes approuvées qui n\'ont encore reçu aucun jeton (au tarif actuellement configuré). Les ventes déjà traitées ne seront pas recréditées.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="runTokensBackfill()" style="flex:1;justify-content:center">Lancer le rattrapage</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function runTokensBackfill(){
+  try{
+    const r=await api('POST','/api/admin/tokens/backfill',{});
+    closeMo();
+    if(r.usersCredited>0)toast('✅ '+r.usersCredited+' affilié(s) crédité(s) sur '+r.conversionsUpdated+' vente(s)','s');
+    else toast('Rien à rattraper, tout est déjà à jour ✓','i');
+  }catch(e){toast(e.message,'e');}
+}
 async function saveTokenMethods(successMsg){
   try{await api('PATCH','/api/admin/token-methods',{methods:window.tokenMethodsEdit});toast(successMsg||'Enregistré ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
 }
