@@ -834,16 +834,23 @@ function colorForWheelSegment(seg,i){ return seg.reward===0 ? WHEEL_LOSE_COLOR :
 function buildWheelSegments(segments){
   const n=segments.length,segAngle=360/n,cx=100,cy=100,r=95;
   const pt=(angleDeg,radius)=>{const a=(angleDeg-90)*Math.PI/180;return [cx+radius*Math.cos(a),cy+radius*Math.sin(a)];};
+  // Taille du texte adaptée au nombre de segments (plus il y en a, moins il y a de place
+  // sur chaque part) ET à la longueur du libellé, pour éviter que le texte déborde.
+  const baseSize=n<=6?12:n<=8?11:n<=10?9.5:n<=12?8.5:7.5;
   let defs='',svg='';
   for(let i=0;i<n;i++){
     const seg=segments[i],col=colorForWheelSegment(seg,i);
+    const label=String(seg.label||'');
+    let fontSize=baseSize;
+    if(label.length>10)fontSize=Math.max(6,baseSize-2.5);
+    else if(label.length>6)fontSize=Math.max(6.5,baseSize-1.3);
     defs+='<radialGradient id="wseg'+i+'" cx="50%" cy="50%" r="75%"><stop offset="0%" stop-color="'+col.from+'"/><stop offset="100%" stop-color="'+col.to+'"/></radialGradient>';
     const startA=i*segAngle,endA=startA+segAngle,midA=startA+segAngle/2;
     const [x1,y1]=pt(startA,r),[x2,y2]=pt(endA,r);
     const largeArc=segAngle>180?1:0;
     svg+='<path d="M'+cx+','+cy+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+r+','+r+' 0 '+largeArc+' 1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="url(#wseg'+i+')" stroke="#0a0a0a" stroke-width="1.5"/>';
-    const [lx,ly]=pt(midA,r*0.62);
-    svg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="'+(seg.label.length>6?9:11)+'" font-weight="800" fill="'+col.text+'" transform="rotate('+midA.toFixed(1)+','+lx.toFixed(1)+','+ly.toFixed(1)+')">'+esc(seg.label)+'</text>';
+    const [lx,ly]=pt(midA,r*0.66);
+    svg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="'+fontSize+'" font-weight="800" fill="'+col.text+'" transform="rotate('+midA.toFixed(1)+','+lx.toFixed(1)+','+ly.toFixed(1)+')">'+esc(label)+'</text>';
   }
   // Léger reflet brillant au centre pour un effet glossy
   svg+='<circle cx="100" cy="100" r="95" fill="url(#wshine)" opacity=".5"/>';
@@ -1266,7 +1273,7 @@ async function renderPage(page){
     return '<div class="card wheel-stage" style="text-align:center;padding:36px 20px;border-color:rgba(245,200,66,.25);margin-bottom:20px">'
     +'<div class="card-title" style="justify-content:center;margin-bottom:6px;font-size:19px">🎡 Roue de la chance</div>'
     +'<p style="font-size:12px;color:var(--muted);margin-bottom:30px">Un tour gratuit chaque semaine si tu as fait au moins une vente. Certains lots rapportent des $, d\'autres des 🪙 jetons (utilisables dans la Boutique).</p>'
-    +'<div style="position:relative;width:280px;max-width:82vw;margin:0 auto 26px">'
+    +'<div style="position:relative;width:340px;max-width:92vw;margin:0 auto 26px">'
     +'<div class="wheel-pointer" style="position:absolute;top:-8px;left:50%;z-index:3;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:22px solid var(--yellow);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))"></div>'
     +'<svg viewBox="0 0 200 200" style="width:100%;display:block;position:absolute;top:0;left:0;pointer-events:none">'+buildWheelBulbs()+'</svg>'
     +'<svg id="wheel-svg" viewBox="0 0 200 200" style="width:100%;display:block;transition:transform 4.5s cubic-bezier(.17,.67,.12,1);filter:drop-shadow(0 8px 22px rgba(0,0,0,.6))">'+buildWheelSegments(CURRENT_WHEEL_SEGMENTS)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><circle cx="100" cy="100" r="19" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg>'
@@ -1804,8 +1811,8 @@ function selectGiftAmount(amount,btn){
 }
 function renderWheelEditor(){
   return '<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:10px">🎡 Configurer la roue de la chance</div><p style="font-size:12px;color:var(--muted)">Définis les lots possibles et leur probabilité relative (plus le nombre est grand par rapport aux autres, plus la chance de tomber dessus est élevée — ce ne sont pas forcément des %). Entre 2 et 15 segments. La colonne "Chance" se recalcule après ajout/suppression d\'un segment ou l\'enregistrement.</p></div>'
-  +'<div style="display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start" class="wheel-editor-grid">'
-  +'<div class="card" style="text-align:center;padding:20px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Aperçu</div><div id="wheel-preview-container" style="position:relative;width:100%;max-width:200px;margin:0 auto"><svg viewBox="0 0 200 200" style="width:100%;display:block;filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))" id="wheel-preview-svg">'+buildWheelSegments(window.wheelEditSegments)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg></div></div>'
+  +'<div style="display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start" class="wheel-editor-grid">'
+  +'<div class="card" style="text-align:center;padding:20px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Aperçu</div><div id="wheel-preview-container" style="position:relative;width:100%;max-width:260px;margin:0 auto"><svg viewBox="0 0 200 200" style="width:100%;display:block;filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))" id="wheel-preview-svg">'+buildWheelSegments(window.wheelEditSegments)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg></div></div>'
   +'<div><div id="wheel-editor-body">'+renderWheelEditorRows()+'</div></div>'
   +'</div>';
 }
