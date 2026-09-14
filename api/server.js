@@ -460,7 +460,7 @@ app.post('/api/login', loginRateLimit, async (req, res) => {
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
-  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate,must_change_password').eq('id', req.user.id).single();
+  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate,must_change_password,avatar_url,tokens').eq('id', req.user.id).single();
   if (error) {
     console.error('/api/me erreur (colonne manquante ?):', error.message);
     const fallback = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
@@ -1061,7 +1061,7 @@ app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
 // ── USERS ──
 app.get('/api/users', auth, adminOnly, async (req, res) => {
   const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
-  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin,discord_id');
+  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin,discord_id,avatar_url,tokens');
   if (!me?.is_super_admin) {
     query = query.eq('role', 'affiliate');
   } else {
@@ -1224,7 +1224,7 @@ app.get('/api/referrals', auth, async (req, res) => {
 
 // ── RANKING ──
 app.get('/api/ranking', auth, async (req, res) => {
-  const { data: users } = await supabase.from('users').select('id,name,created_at').eq('role','affiliate').eq('show_ranking',true);
+  const { data: users } = await supabase.from('users').select('id,name,created_at,avatar_url').eq('role','affiliate').eq('show_ranking',true);
   const result = await Promise.all((users||[]).map(async u => {
     const [convsRes, linksRes, referralRes] = await Promise.all([
       supabase.from('conversions').select('amount,status').eq('user_id',u.id),
@@ -1416,8 +1416,8 @@ app.get('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
 });
 app.patch('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
   const { segments } = req.body;
-  if (!Array.isArray(segments) || segments.length < 2 || segments.length > 8) {
-    return res.status(400).json({ error: 'Il faut entre 2 et 8 segments' });
+  if (!Array.isArray(segments) || segments.length < 2 || segments.length > 15) {
+    return res.status(400).json({ error: 'Il faut entre 2 et 15 segments' });
   }
   for (const s of segments) {
     if (typeof s.label !== 'string' || !s.label.trim()) return res.status(400).json({ error: 'Chaque segment doit avoir un nom' });
@@ -1433,6 +1433,125 @@ app.patch('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
 // Historique des tirages de l'affilié connecté
 app.get('/api/me/wheel-history', auth, async (req, res) => {
   const { data } = await supabase.from('wheel_spins').select('reward,label,created_at').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(30);
+  res.json(data || []);
+});
+
+// ── AVATAR / PHOTO DE PROFIL ──
+// L'image elle-même est uploadée directement depuis le front vers le bucket Supabase
+// "avatars" (comme pour les images d'offres), puis on enregistre juste l'URL ici.
+app.patch('/api/me/avatar', auth, async (req, res) => {
+  const { avatar_url } = req.body;
+  await supabase.from('users').update({ avatar_url: avatar_url || null }).eq('id', req.user.id);
+  log(req.user.id, 'avatar-modifié', avatar_url ? 'Photo de profil mise à jour' : 'Photo de profil supprimée', req);
+  res.json({ success: true });
+});
+
+// ── JETONS — MOYENS D'EN OBTENIR ──
+// Stockés dans la table settings (comme les segments de la roue), sous forme de tableau JSON.
+// Chaque moyen est purement informatif : { id, icon, title, description, tokens, active }
+const DEFAULT_TOKEN_METHODS = [
+  { id: 'm1', icon: '🔁', title: 'Réaliser une vente', description: 'Chaque conversion approuvée te rapporte des jetons en plus de ta commission.', tokens: 5, active: true },
+  { id: 'm2', icon: '🔥', title: 'Garder ta série active', description: 'Vends chaque jour pour faire grimper ta série et gagner des jetons bonus.', tokens: 10, active: true },
+  { id: 'm3', icon: '🎡', title: 'Tourner la roue de la chance', description: 'Certains lots de la roue hebdomadaire peuvent te rapporter des jetons.', tokens: 0, active: true }
+];
+async function getTokenMethods() {
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'token_earn_methods').single();
+    if (!data?.value) return DEFAULT_TOKEN_METHODS;
+    const parsed = JSON.parse(data.value);
+    if (!Array.isArray(parsed)) return DEFAULT_TOKEN_METHODS;
+    return parsed;
+  } catch (e) { return DEFAULT_TOKEN_METHODS; }
+}
+app.get('/api/token-methods', auth, async (req, res) => {
+  const methods = await getTokenMethods();
+  res.json(req.user.role === 'admin' ? methods : methods.filter(m => m.active !== false));
+});
+app.patch('/api/admin/token-methods', auth, adminOnly, async (req, res) => {
+  const { methods } = req.body;
+  if (!Array.isArray(methods)) return res.status(400).json({ error: 'Liste invalide' });
+  for (const m of methods) {
+    if (typeof m.title !== 'string' || !m.title.trim()) return res.status(400).json({ error: 'Chaque moyen doit avoir un titre' });
+  }
+  const cleaned = methods.map((m, i) => ({
+    id: m.id || 'm' + Date.now() + '_' + i,
+    icon: (m.icon || '🎟️').toString().slice(0, 8),
+    title: m.title.trim(),
+    description: (m.description || '').toString().trim(),
+    tokens: parseInt(m.tokens) || 0,
+    active: m.active !== false
+  }));
+  await supabase.from('settings').upsert({ key: 'token_earn_methods', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
+  log(req.user.id, 'jetons-moyens-modifiés', 'Moyens d\'obtenir des jetons mis à jour (' + cleaned.length + ')', req);
+  res.json(cleaned);
+});
+
+// ── BOUTIQUE À JETONS ──
+// Nécessite les tables "shop_items" et "shop_orders" + la colonne "tokens" sur "users"
+// (voir le SQL fourni séparément pour la création de ces objets dans Supabase).
+app.get('/api/shop/items', auth, async (req, res) => {
+  let query = supabase.from('shop_items').select('*').order('created_at', { ascending: false });
+  if (req.user.role !== 'admin') query = query.eq('active', true);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data || []);
+});
+app.post('/api/admin/shop/items', auth, adminOnly, async (req, res) => {
+  const { title, description, image_url, price_tokens } = req.body;
+  if (!title || !title.trim()) return res.status(400).json({ error: 'Titre requis' });
+  const price = parseInt(price_tokens);
+  if (!price || price <= 0) return res.status(400).json({ error: 'Prix en jetons invalide' });
+  const { data, error } = await supabase.from('shop_items').insert({ title: title.trim(), description: (description || '').trim(), image_url: image_url || null, price_tokens: price, active: true }).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'boutique-offre-créée', 'Offre boutique "' + title + '" créée (' + price + ' jetons)', req);
+  res.json(data);
+});
+app.patch('/api/admin/shop/items/:id', auth, adminOnly, async (req, res) => {
+  const { title, description, image_url, price_tokens, active } = req.body;
+  const updates = {};
+  if (title !== undefined) { if (!title.trim()) return res.status(400).json({ error: 'Titre requis' }); updates.title = title.trim(); }
+  if (description !== undefined) updates.description = (description || '').trim();
+  if (image_url !== undefined) updates.image_url = image_url || null;
+  if (price_tokens !== undefined) { const p = parseInt(price_tokens); if (!p || p <= 0) return res.status(400).json({ error: 'Prix en jetons invalide' }); updates.price_tokens = p; }
+  if (active !== undefined) updates.active = !!active;
+  const { data, error } = await supabase.from('shop_items').update(updates).eq('id', req.params.id).select().single();
+  if (error) return res.status(500).json({ error: error.message });
+  log(req.user.id, 'boutique-offre-modifiée', 'Offre boutique "' + (data?.title || '?') + '" modifiée', req);
+  res.json(data);
+});
+app.delete('/api/admin/shop/items/:id', auth, adminOnly, async (req, res) => {
+  const { data: item } = await supabase.from('shop_items').select('title').eq('id', req.params.id).single();
+  await supabase.from('shop_items').delete().eq('id', req.params.id);
+  log(req.user.id, 'boutique-offre-supprimée', 'Offre boutique "' + (item?.title || '?') + '" supprimée', req);
+  res.json({ success: true });
+});
+
+// Achat d'une offre de la boutique par un affilié : débite ses jetons et l'offre est
+// acquise immédiatement, aucune validation admin nécessaire. On garde quand même une
+// trace dans "shop_orders" (statut "fulfilled" direct) pour l'historique et les stats.
+app.post('/api/shop/purchase/:id', auth, async (req, res) => {
+  const { data: item } = await supabase.from('shop_items').select('*').eq('id', req.params.id).single();
+  if (!item || item.active === false) return res.status(404).json({ error: 'Offre introuvable ou indisponible' });
+  const { data: user } = await supabase.from('users').select('name,tokens,discord_id').eq('id', req.user.id).single();
+  const balance = user?.tokens || 0;
+  if (balance < item.price_tokens) return res.status(400).json({ error: 'Jetons insuffisants' });
+  await supabase.from('users').update({ tokens: balance - item.price_tokens }).eq('id', req.user.id);
+  const { data: order, error } = await supabase.from('shop_orders').insert({ user_id: req.user.id, item_id: item.id, item_title: item.title, price_tokens: item.price_tokens, status: 'fulfilled' }).select().single();
+  if (error) { await supabase.from('users').update({ tokens: balance }).eq('id', req.user.id); return res.status(500).json({ error: error.message }); }
+  log(req.user.id, 'boutique-achat', user.name + ' a échangé ' + item.price_tokens + ' jetons contre "' + item.title + '" (obtenu immédiatement)', req);
+  await notifyDiscord2(DISCORD_WITHDRAWAL, '🛍️ Nouvel échange boutique !', 0xF5C842, [
+    { name: '👤 Affilié', value: user.name, inline: true },
+    { name: '🎁 Offre', value: item.title, inline: true },
+    { name: '🪙 Jetons', value: String(item.price_tokens), inline: true }
+  ]);
+  res.json(order);
+});
+// Historique des commandes : l'affilié voit les siennes, l'admin voit tout
+app.get('/api/shop/orders', auth, async (req, res) => {
+  let query = supabase.from('shop_orders').select('*, users(name,email)').order('created_at', { ascending: false });
+  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
+  const { data, error } = await query;
+  if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
 });
 
