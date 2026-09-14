@@ -1,2213 +1,2804 @@
-const express = require('express');
-const cors = require('cors');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const { createClient } = require('@supabase/supabase-js');
-const path = require('path');
-const dns = require('dns').promises;
-const net = require('net');
-
-const app = express();
-app.set('trust proxy', true);
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_KEY = process.env.SUPABASE_KEY;
-// ⚠️ Si JWT_SECRET n'est pas défini dans les variables d'environnement, on génère un secret
-// aléatoire à chaque démarrage plutôt que d'utiliser une valeur fixe en dur dans le code
-// (l'ancienne valeur par défaut est désormais connue et donc invalidée pour de bon).
-// CONSÉQUENCE si tu ne configures pas JWT_SECRET toi-même : tous les utilisateurs seront
-// déconnectés à chaque redémarrage/déploiement du serveur (le secret change à chaque fois).
-// Pour l'éviter, définis une vraie variable d'environnement JWT_SECRET sur ton hébergeur
-// (une longue chaîne aléatoire, ex: générée avec `openssl rand -hex 32`), une seule fois.
-if (!process.env.JWT_SECRET) {
-  console.warn('⚠️  JWT_SECRET non défini : un secret temporaire a été généré pour ce démarrage. Configure JWT_SECRET dans tes variables d\'environnement pour éviter que tous les utilisateurs soient déconnectés à chaque redéploiement.');
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AffiHub</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#F5C842">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AffiHub">
+<link rel="apple-touch-icon" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js" defer></script>
+<style>
+:root{--bg:#0A0A0A;--bg2:#111111;--bg3:#1A1A1A;--bg4:#222222;--border:#2A2A2A;--text:#FFFFFF;--muted:#777777;--yellow:#F5C842;--pink:#F0427A;--grad:linear-gradient(135deg,#F5C842,#F0427A);--green:#00D68F;--red:#FF4757;--blue:#4D9EFF;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:linear-gradient(180deg,rgba(245,200,66,.5),rgba(240,66,122,.5));border-radius:4px}
+#auth-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--bg)!important;position:relative;z-index:2}
+.auth-box{background:rgba(17,17,17,.95);border-radius:20px;padding:44px 40px;width:410px;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.auth-box::before{content:'';position:absolute;inset:-1px;background:linear-gradient(135deg,rgba(245,200,66,.4),rgba(240,66,122,.4));border-radius:21px;z-index:-1}
+.logo-wrap{display:inline-flex;align-items:center;gap:11px;font-size:24px;font-weight:800;color:var(--text)}
+.logo-icon{width:42px;height:42px;border-radius:13px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 4px 20px rgba(240,66,122,.4);overflow:hidden;flex-shrink:0}
+.auth-tabs{display:flex;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:4px;margin-bottom:26px;gap:3px}
+.auth-tab{flex:1;padding:10px;border:none;background:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .2s}
+.auth-tab.active{background:var(--grad);color:#000;font-weight:800}
+.fg{margin-bottom:16px}.fg label{display:block;font-size:11px;font-weight:700;color:var(--yellow);margin-bottom:7px;text-transform:uppercase;letter-spacing:.8px}
+.fg input{width:100%;background:var(--bg3);border:1px solid #333;border-radius:11px;padding:12px 15px;color:var(--text);font-family:inherit;font-size:14px;outline:none;transition:all .2s}
+.fg input:focus{border-color:var(--pink);box-shadow:0 0 0 3px rgba(240,66,122,.15)}
+.fg input::placeholder{color:var(--muted)}
+.btn-primary{width:100%;padding:13px;background:var(--grad);border:none;border-radius:11px;color:#000;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;margin-top:10px;box-shadow:0 4px 24px rgba(240,66,122,.4)}
+#app{display:none}.shell{display:flex;min-height:100vh}
+.sidebar{width:248px;background:linear-gradient(180deg,#111 0%,#140c1e 50%,#111 100%);border-right:1px solid #1E1E1E;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.sb-head{padding:20px;border-bottom:1px solid #1E1E1E;display:flex;align-items:center;gap:11px;flex-shrink:0}
+.sb-role{padding:12px 16px 6px;flex-shrink:0}
+.role-badge{display:inline-flex;align-items:center;gap:6px;background:var(--grad);color:#000;font-size:10px;font-weight:800;padding:5px 12px;border-radius:20px;text-transform:uppercase;letter-spacing:.8px}
+.sb-nav{flex:1;padding:8px 10px 12px}
+.nav-section{margin-bottom:6px}
+.nav-section-label{font-size:9px;font-weight:800;color:rgba(245,200,66,.5);text-transform:uppercase;letter-spacing:1.5px;padding:10px 12px 5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;cursor:pointer;font-size:13px;font-weight:600;color:#666;transition:all .2s;margin-bottom:2px;border-left:3px solid transparent;-webkit-tap-highlight-color:rgba(245,200,66,.2);touch-action:manipulation;user-select:none;width:100%;text-align:left;background:none;border-top:none;border-right:none;border-bottom:none;font-family:inherit}
+.nav-item:hover{background:rgba(255,255,255,.05);color:#ccc}
+.nav-item.active{background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.08));color:var(--text);border-left:3px solid var(--yellow);animation:navActivate .2s ease}
+.notif-badge{background:var(--red);color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:20px;margin-left:auto;min-width:18px;text-align:center;animation:pulse-notif 2s ease-in-out infinite}
+@keyframes pulse-notif{0%,100%{opacity:1}50%{opacity:.6}}
+.sb-foot{padding:14px 16px;border-top:1px solid #1E1E1E;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.avatar{width:34px;height:34px;border-radius:10px;background:var(--grad);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#000;flex-shrink:0}
+.uname{font-size:13px;font-weight:700}.uemail{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.logout-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:6px;border-radius:8px;margin-left:auto}
+.logout-btn:hover{color:var(--red)}
+.main{margin-left:248px;flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{background:rgba(10,10,10,.8);backdrop-filter:blur(20px);border-bottom:1px solid rgba(245,200,66,.1);padding:0 28px;height:58px;display:flex;align-items:center;position:sticky;top:0;z-index:50}
+.page-title{font-size:18px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.content{padding:28px;flex:1}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-bottom:22px}
+.stat-card{background:var(--bg2);border:1px solid #222;border-radius:14px;padding:20px;position:relative;overflow:hidden;transition:all .3s}
+.stat-card:hover{border-color:rgba(245,200,66,.4);transform:translateY(-4px);box-shadow:0 0 30px rgba(245,200,66,.12)}
+.stat-icon{font-size:20px;margin-bottom:10px;display:block}
+.stat-label{font-size:10px;font-weight:700;color:rgba(245,200,66,.7);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px}
+.stat-val{font-size:28px;font-weight:900;letter-spacing:-.5px;line-height:1}
+.stat-val.gy{background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-val.gg{color:var(--green)}.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.card{background:rgba(17,17,17,.8)!important;backdrop-filter:blur(10px);border:1px solid rgba(245,200,66,.08)!important;border-radius:14px;padding:22px;margin-bottom:20px}
+.card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.card-title{font-size:15px;font-weight:800}
+.bal-hero{border-radius:18px;padding:28px 32px;margin-bottom:22px;background:var(--grad);display:flex;align-items:center;justify-content:space-between;background-size:200% 200%;animation:gradient-shift 6s ease infinite;box-shadow:0 8px 40px rgba(240,66,122,.35)}
+.bal-amount{font-size:46px;font-weight:900;letter-spacing:-2px;color:#000;line-height:1}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{font-size:10px;font-weight:700;color:rgba(245,200,66,.8);text-transform:uppercase;letter-spacing:.8px;padding:10px 14px;text-align:left;border-bottom:1px solid #222;background:rgba(245,200,66,.03)}
+tbody td{padding:13px 14px;border-bottom:1px solid #1a1a1a;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(245,200,66,.04)}
+.badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;padding:4px 10px;border-radius:20px}
+.bg2{background:rgba(0,214,143,.15);color:var(--green);border:1px solid rgba(0,214,143,.3)}
+.by2{background:rgba(245,200,66,.15);color:var(--yellow);border:1px solid rgba(245,200,66,.3)}
+.br2{background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3)}
+.bb2{background:rgba(77,158,255,.15);color:var(--blue);border:1px solid rgba(77,158,255,.3)}
+.bp2{background:rgba(240,66,122,.15);color:var(--pink);border:1px solid rgba(240,66,122,.3)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:9px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;border:none;transition:all .15s}
+.btn-sm{padding:5px 11px;font-size:11px;border-radius:7px}
+.btn-grad{background:var(--grad);color:#000;box-shadow:0 2px 14px rgba(240,66,122,.35);position:relative;overflow:hidden}
+.btn-grad:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(240,66,122,.5)!important}
+.btn-grn{background:rgba(0,214,143,.12);color:var(--green);border:1px solid rgba(0,214,143,.3)}
+.btn-grn:hover{background:var(--green);color:#000}
+.btn-red{background:rgba(255,71,87,.12);color:var(--red);border:1px solid rgba(255,71,87,.3)}
+.btn-red:hover{background:var(--red);color:#fff}
+.btn-gst{background:var(--bg3);color:#888;border:1px solid #2a2a2a}
+.btn-gst:hover{color:var(--text);border-color:rgba(245,200,66,.3)}
+.offer-card{background:var(--bg3);border:1px solid #222;border-radius:14px;padding:18px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:12px;transition:all .25s}
+.offer-card:hover{border-color:rgba(245,200,66,.3);transform:translateY(-3px)}
+.copy-btn{background:none;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:3px 7px;border-radius:5px;transition:all .15s}
+.copy-btn:hover{color:var(--yellow)}
+.crypto-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px}
+.crypto-opt{background:var(--bg3);border:1px solid #2a2a2a;border-radius:12px;padding:16px 12px;text-align:center;cursor:pointer;transition:all .25s;font-size:12px;font-weight:700;color:#666}
+.crypto-opt:hover,.crypto-opt.sel{border-color:var(--yellow);color:var(--yellow);background:rgba(245,200,66,.08);transform:translateY(-3px)}
+.fi{margin-bottom:15px}
+.fi label{display:block;font-size:10px;font-weight:700;color:rgba(245,200,66,.8);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px}
+.fi input,.fi select,.fi textarea{width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none;transition:all .2s}
+.fi input:focus,.fi select:focus,.fi textarea:focus{border-color:var(--yellow);box-shadow:0 0 0 3px rgba(245,200,66,.1)}
+.fi input::placeholder,.fi textarea::placeholder{color:var(--muted)}.fi select option{background:var(--bg3)}
+.tabs{display:flex;gap:2px;background:var(--bg3);border:1px solid #222;border-radius:12px;padding:4px;margin-bottom:18px}
+.tab{flex:1;padding:9px 6px;border:none;background:none;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;border-radius:9px;font-family:inherit;transition:all .2s;text-align:center}
+.tab.active{background:var(--grad);color:#000}
+.dot{width:6px;height:6px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dg{background:var(--green)}.dy{background:var(--yellow)}.dr{background:var(--red)}
+.empty{text-align:center;padding:48px 20px;color:var(--muted)}
+.empty-icon{font-size:32px;margin-bottom:10px;opacity:.3;display:block}
+.act-item{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #1a1a1a}
+.act-item:last-child{border-bottom:none}
+.act-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.warning-box{background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:12px;padding:14px 16px;margin-bottom:18px;display:flex;align-items:flex-start;gap:10px}
+.hdiv{height:1px;background:linear-gradient(90deg,transparent,rgba(245,200,66,.2),transparent);margin:20px 0}
+#toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:#111;border:1px solid #333;border-radius:12px;padding:13px 18px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:9px;transform:translateY(80px);opacity:0;transition:all .35s;pointer-events:none;box-shadow:0 12px 40px rgba(0,0,0,.6);min-width:220px}
+#toast.show{transform:translateY(0);opacity:1}
+#toast.ts{border-color:rgba(0,214,143,.4);color:var(--green)}
+#toast.te{border-color:rgba(255,71,87,.4);color:var(--red)}
+#toast.ti{border-color:rgba(245,200,66,.4);color:var(--yellow)}
+.mo{position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .2s}
+.mo.open{opacity:1;pointer-events:all}
+.modal{background:#111;border:1px solid rgba(245,200,66,.15);border-radius:18px;padding:30px;width:600px;max-width:96vw;transform:scale(.93);transition:transform .3s;position:relative;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6);max-height:90vh;overflow-y:auto}
+.modal::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--grad)}
+.mo.open .modal{transform:scale(1)}
+.modal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}
+.modal-title{font-size:16px;font-weight:800}
+.modal-close{background:var(--bg3);border:1px solid #2a2a2a;color:var(--muted);cursor:pointer;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.loading{display:flex;align-items:center;justify-content:center;padding:60px;color:var(--muted);font-size:13px;gap:10px}
+.spinner{width:20px;height:20px;border:2px solid #333;border-top-color:var(--yellow);border-right-color:var(--pink);border-radius:50%;animation:spin .7s linear infinite}
+.sk{background:var(--bg3);border-radius:8px;position:relative;overflow:hidden}
+.sk::after{content:'';position:absolute;inset:0;transform:translateX(-100%);background:linear-gradient(90deg,transparent,rgba(255,255,255,.06),transparent);animation:sk-shimmer 1.4s infinite}
+@keyframes sk-shimmer{100%{transform:translateX(100%)}}
+.sk-wrap{padding:2px}
+.sk-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px}
+.sk-stat{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:18px}
+.sk-card{background:var(--bg2);border:1px solid var(--border);border-radius:14px;padding:20px}
+.ref-hero{background:var(--grad);border-radius:18px;padding:26px 28px;margin-bottom:20px;background-size:200% 200%;animation:gradient-shift 6s ease infinite;box-shadow:0 8px 40px rgba(240,66,122,.35)}
+.ref-link-box{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.2);border-radius:10px;padding:11px 14px;margin-top:14px}
+.ref-link-box code{flex:1;font-family:'JetBrains Mono',monospace;font-size:12px;color:#000}
+.settings-section{background:var(--bg2);border:1px solid #1E1E1E;border-radius:14px;padding:24px;margin-bottom:18px}
+.settings-section-title{font-size:14px;font-weight:800;margin-bottom:18px}
+.info-row{display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid #1a1a1a}
+.info-row:last-child{border-bottom:none}
+.info-label{font-size:12px;color:var(--muted)}.info-value{font-size:13px;font-weight:700}
+.support-hero{background:var(--grad);border-radius:18px;padding:40px 36px;text-align:center;margin-bottom:20px;background-size:200% 200%;animation:gradient-shift 6s ease infinite}
+.discord-card{background:var(--bg2);border:1px solid rgba(88,101,242,.2);border-radius:14px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes navActivate{from{opacity:.6;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
+.faq-item{border:1px solid #1e1e1e;border-radius:14px;margin-bottom:10px;overflow:hidden;cursor:pointer;transition:border-color .2s;background:#0d0d0d}
+.faq-item:hover{border-color:rgba(245,200,66,.25)}
+.faq-q{padding:20px 22px;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.faq-chev{color:var(--yellow);font-size:12px;flex-shrink:0;transition:transform .3s}
+.faq-a{padding:0 22px;font-size:13px;color:var(--muted);line-height:1.8;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}
+.faq-item.open .faq-a{max-height:200px;padding:0 22px 20px}
+.faq-item.open .faq-chev{transform:rotate(90deg)}
+.faq-item.open{border-color:rgba(245,200,66,.3);background:rgba(245,200,66,.02)}
+@keyframes orb1{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-40px)}}
+@keyframes orb2{0%,100%{transform:translate(0,0)}50%{transform:translate(-40px,30px)}}
+@keyframes orb3{0%,100%{transform:translate(-50%,-50%) scale(1)}50%{transform:translate(-50%,-50%) scale(1.2)}}
+.land-stat-val{font-size:32px;font-weight:900;letter-spacing:-1px;margin-bottom:6px}
+.land-stat-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+.land-feat{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:18px;padding:26px;transition:all .3s;position:relative;overflow:hidden}
+.land-feat::before{content:'';position:absolute;inset:0;background:var(--feat-color,rgba(255,255,255,.05));opacity:0;transition:opacity .3s}
+.land-feat:hover{border-color:rgba(255,255,255,.15);transform:translateY(-4px)}
+.land-feat:hover::before{opacity:1}
+.land-feat-icon{font-size:32px;margin-bottom:14px;display:block}
+.land-feat-title{font-size:15px;font-weight:800;margin-bottom:8px}
+.land-feat-desc{font-size:13px;color:var(--muted);line-height:1.65}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes pageOut{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(-6px)}}
+@keyframes aurora{0%,100%{background-position:0% 50%}50%{background-position:100% 50%}}
+@keyframes gradient-shift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+@keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(245,200,66,.2)}50%{box-shadow:0 0 40px rgba(245,200,66,.5)}}
+@keyframes ripple{0%{transform:scale(0);opacity:.6}100%{transform:scale(4);opacity:0}}
+.content>*{animation:fadeInUp .4s ease both}
+.content>*:nth-child(1){animation-delay:.05s}.content>*:nth-child(2){animation-delay:.1s}.content>*:nth-child(3){animation-delay:.15s}
+.content.page-out{animation:pageOut .12s ease forwards;pointer-events:none}
+.content.page-in{animation:pageIn .22s ease forwards}
+.logo-icon{animation:pulse-glow 4s ease-in-out infinite}
+#auth-screen{background:radial-gradient(ellipse 60% 50% at 20% 10%,rgba(245,200,66,.1) 0%,transparent 60%),radial-gradient(ellipse 50% 60% at 80% 90%,rgba(240,66,122,.1) 0%,transparent 60%),var(--bg)}
+.btn-grad .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.3);transform:scale(0);animation:ripple .6s linear;pointer-events:none}
+#particles-canvas{position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;opacity:.4}
+#auth-screen,#app,.shell,.content,.auth-box{position:relative;z-index:1}
+/* MOBILE */
+@media(max-width:768px){
+  .sidebar{display:none!important}
+  .main{margin-left:0!important}
+  .topbar{padding:0 16px}
+  .content{padding:16px}
+  .stats-grid{grid-template-columns:repeat(2,1fr);gap:10px}
+  .bal-hero{padding:20px;flex-direction:column;gap:14px;text-align:center}
+  .bal-amount{font-size:32px}
+  .modal{padding:20px}
+  .crypto-grid{grid-template-columns:repeat(3,1fr)}
+  .auth-box{width:95vw;padding:28px 20px}
+  #mobile-nav{display:none;position:fixed;top:58px;left:0;right:0;bottom:0;background:#0a0a0a;z-index:999;overflow-y:auto;padding:16px}
+  #mobile-nav.open{display:block!important}
+  #particles-canvas{display:none}
 }
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(48).toString('hex');
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
-
-// ── EMAIL ──
-// Ces webhooks peuvent être surchargés via variables d'environnement (recommandé).
-// Les valeurs en dur restent en fallback pour ne rien casser tant que tu n'as pas
-// configuré les variables d'environnement — mais comme ces URLs ont déjà été vues/partagées,
-// il vaut mieux les régénérer sur Discord (Paramètres du serveur → Intégrations → Webhooks
-// → "Nouvelle URL de webhook") puis mettre les nouvelles dans tes variables d'environnement.
-const DISCORD_WEBHOOK = process.env.DISCORD_WEBHOOK_SALES || 'https://discord.com/api/webhooks/1526526889756332134/lCByUUSbUigvyW0TfTarZ14LxziWL6k_5iLbq_jwG8ecC9qHpFTOLFPbE9gKdqnbD_hX';
-const DISCORD_REGISTER = process.env.DISCORD_WEBHOOK_REGISTER || 'https://discord.com/api/webhooks/1526534674317316106/DVjEe1IQmTYt7Xnyy37gyiJcABJoks4hpc5Z2v6dUSF3LYqXN0XJsfVRD7TnvwBKYvVo';
-const DISCORD_WITHDRAWAL = process.env.DISCORD_WEBHOOK_WITHDRAWAL || 'https://discord.com/api/webhooks/1526535135003148411/T36o_LZh8U-GxnIJUEBPpagDCc52f5l00qX6va8fgj-lzUQacn3r1dtY5yh4FguLk3OX';
-const DISCORD_PAYMENT = process.env.DISCORD_WEBHOOK_PAYMENT || 'https://discord.com/api/webhooks/1526535272437780600/RLIxROgmO64UPycLUJgbDN31kCuDIt7VpJmTgSSouYHolByFqZNeAB59k7ZjOm0u2qHa';
-const DISCORD_TICKET = process.env.DISCORD_WEBHOOK_TICKET || 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
-const DISCORD_REFERRAL = process.env.DISCORD_WEBHOOK_REFERRAL || 'https://discord.com/api/webhooks/1526536467168493658/SJ-Et9ONIpTC_YmCd7Ow_VZbOrO5FIGHB8MNaV9FcxolheQFmtf2pdou4za8UA8r73OD';
-
-// ── Rôle auto attribué à l'inscription ──
-const DISCORD_GUILD_ID = '1520172933815730227';
-const DISCORD_AFFILIATE_ROLE_ID = '1520173497048105170';
-
-async function notifyDiscord(affiliateName, offerName, amount) {
-  try {
-    await fetch(DISCORD_WEBHOOK, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: '<@&1520173497048105170>',
-        embeds: [{
-          title: '💰 Nouvelle conversion !',
-          color: 0xF5C842,
-          fields: [
-            { name: '👤 Affilié', value: affiliateName, inline: true },
-            { name: '🎯 Offre', value: offerName, inline: true },
-            { name: '💵 Montant', value: '$' + amount, inline: true }
-          ],
-          timestamp: new Date().toISOString(),
-          footer: { text: 'AffiHub' }
-        }]
-      })
-    });
-  } catch(e) { console.error('Discord webhook error:', e.message); }
+@media(min-width:769px){
+  #mobile-menu-btn{display:none!important}
+  #mobile-nav{display:none!important}
 }
+/* ── Roue de la chance ── */
+.wheel-stage{background:radial-gradient(ellipse at 50% 30%,rgba(245,200,66,.14),transparent 65%),radial-gradient(ellipse at 50% 100%,rgba(240,66,122,.1),transparent 60%);border-radius:24px}
+.wheel-bulb{animation:bulbTwinkle 1.6s ease-in-out infinite}
+@keyframes bulbTwinkle{0%,100%{opacity:.25;filter:drop-shadow(0 0 0 transparent)}50%{opacity:1;filter:drop-shadow(0 0 4px currentColor)}}
+.wheel-pointer{animation:pointerBounce 1.4s ease-in-out infinite}
+@keyframes pointerBounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(3px)}}
+.wheel-spin-btn{position:relative;animation:btnPulse 1.8s ease-in-out infinite}
+@keyframes btnPulse{0%,100%{box-shadow:0 0 0 0 rgba(245,200,66,.5)}50%{box-shadow:0 0 0 12px rgba(245,200,66,0)}}
+.wheel-result-pop{animation:resultPop .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes resultPop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
+.confetti-piece{position:fixed;top:-20px;z-index:9999;pointer-events:none;animation:confettiFall linear forwards}
+@keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+@media(max-width:640px){.wheel-editor-grid{grid-template-columns:1fr!important}}
+</style>
+</head>
+<body>
+<canvas id="particles-canvas"></canvas>
+<div id="landing" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:2;overflow:hidden">
 
-async function notifyDiscord2(webhook, title, color, fields, content) {
-  try {
-    await fetch(webhook, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        content: content || undefined,
-        embeds: [{
-          title,
-          color,
-          fields,
-          timestamp: new Date().toISOString(),
-          footer: { text: 'AffiHub' }
-        }]
-      })
-    });
-  } catch(e) { console.error('Discord webhook error:', e.message); }
-}
+  <!-- Animated background orbs -->
+  <div style="position:fixed;top:-20%;left:-10%;width:600px;height:600px;background:radial-gradient(circle,rgba(245,200,66,.12) 0%,transparent 70%);pointer-events:none;animation:orb1 8s ease-in-out infinite;z-index:0"></div>
+  <div style="position:fixed;bottom:-20%;right:-10%;width:700px;height:700px;background:radial-gradient(circle,rgba(240,66,122,.1) 0%,transparent 70%);pointer-events:none;animation:orb2 10s ease-in-out infinite;z-index:0"></div>
+  <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:400px;height:400px;background:radial-gradient(circle,rgba(77,158,255,.05) 0%,transparent 70%);pointer-events:none;animation:orb3 12s ease-in-out infinite;z-index:0"></div>
 
-// ── DM privé à un affilié via un bot Discord (nécessite DISCORD_BOT_TOKEN) ──
-async function sendDiscordDM(discordId, title, color, fields) {
-  if (!discordId || !process.env.DISCORD_BOT_TOKEN) return;
-  try {
-    const chanRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipient_id: discordId })
-    });
-    const chan = await chanRes.json();
-    if (!chan.id) { console.error('Discord DM: impossible d\'ouvrir le channel', chan); return; }
-    await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ embeds: [{ title, color, fields, timestamp: new Date().toISOString(), footer: { text: 'AffiHub' } }] })
-    });
-  } catch (e) { console.error('Discord DM error:', e.message); }
-}
-
-// Attribue un rôle à un membre du serveur Discord (nécessite DISCORD_BOT_TOKEN + que le bot
-// ait la permission "Gérer les rôles" et soit positionné au-dessus du rôle ciblé)
-async function assignDiscordRole(guildId, discordId, roleId) {
-  if (!guildId || !discordId || !roleId || !process.env.DISCORD_BOT_TOKEN) return false;
-  try {
-    const res = await fetch(`https://discord.com/api/v10/guilds/${guildId}/members/${discordId}/roles/${roleId}`, {
-      method: 'PUT',
-      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN }
-    });
-    // 204 No Content = succès. Si le membre n'est pas (encore) sur le serveur, Discord renvoie 404.
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      console.error('Discord role assign error:', res.status, body);
-      return false;
-    }
-    return true;
-  } catch (e) { console.error('Discord role assign error:', e.message); return false; }
-}
-
-// Poste un message directement dans un salon (via son ID) en utilisant le bot déjà configuré
-async function sendDiscordChannelMsg(channelId, title, color, fields, mention) {
-  if (!channelId || !process.env.DISCORD_BOT_TOKEN) return;
-  try {
-    await fetch('https://discord.com/api/v10/channels/' + channelId + '/messages', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: mention || undefined, embeds: [{ title, color, fields, timestamp: new Date().toISOString(), footer: { text: 'AffiHub' } }] })
-    });
-  } catch (e) { console.error('Discord channel msg error:', e.message); }
-}
-
-// DM texte brut (pour les envois groupés), renvoie true/false
-async function sendDiscordDMPlain(discordId, content, image_url) {
-  if (!discordId || !process.env.DISCORD_BOT_TOKEN) return false;
-  try {
-    const chanRes = await fetch('https://discord.com/api/v10/users/@me/channels', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipient_id: discordId })
-    });
-    const chan = await chanRes.json();
-    if (!chan.id) return false;
-    let msgRes;
-    if (image_url) {
-      // Télécharge l'image puis l'envoie comme vraie pièce jointe (pas de lien visible)
-      const imgRes = await fetch(image_url);
-      const imgBuffer = Buffer.from(await imgRes.arrayBuffer());
-      const ext = (image_url.split('.').pop() || 'png').split('?')[0].slice(0, 4);
-      const form = new FormData();
-      form.append('payload_json', JSON.stringify({ content }));
-      form.append('files[0]', new Blob([imgBuffer]), 'image.' + ext);
-      msgRes = await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN },
-        body: form
-      });
-    } else {
-      msgRes = await fetch('https://discord.com/api/v10/channels/' + chan.id + '/messages', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bot ' + process.env.DISCORD_BOT_TOKEN, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content })
-      });
-    }
-    return msgRes.ok;
-  } catch (e) { console.error('Discord DM plain error:', e.message); return false; }
-}
-
-async function sendEmail(to, subject, html) {
-  try {
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + process.env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: process.env.EMAIL_FROM || 'AffiHub <onboarding@resend.dev>', to, subject, html })
-    });
-    if (!res.ok) console.error('Email error:', await res.text());
-  } catch(e) { console.error('Email error:', e.message); }
-}
-
-// ── LOG HELPER ──
-// Calcule et crédite la commission de parrainage pour une conversion donnée.
-// Priorité du taux appliqué : taux personnalisé du filleul (referral_rate_override)
-// > taux global du parrain (referral_rate) > 10% par défaut.
-async function creditReferralCommission(refereeId, convAmount, conversionId) {
-  const { data: referee } = await supabase.from('users').select('referred_by,referral_active,referral_rate_override').eq('id', refereeId).single();
-  if (!referee || !referee.referred_by || referee.referral_active === false) return;
-  const { data: referrer } = await supabase.from('users').select('balance,referral_rate').eq('id', referee.referred_by).single();
-  if (!referrer) return;
-  const rate = (referee.referral_rate_override ?? referrer.referral_rate ?? 10) / 100;
-  const commission = parseFloat((convAmount * rate).toFixed(2));
-  await supabase.from('users').update({ balance: referrer.balance + commission }).eq('id', referee.referred_by);
-  await supabase.from('referral_commissions').insert({ referrer_id: referee.referred_by, referee_id: refereeId, conversion_id: conversionId, amount: commission });
-}
-
-function log(userId, action, details, req) {
-  const ip = req?.headers?.['x-forwarded-for']?.split(',')[0] || req?.socket?.remoteAddress || '';
-  supabase.from('activity_logs').insert({ user_id: userId, action, details, ip }).then(()=>{}).catch(()=>{});
-}
-
-// ── Protection SSRF pour postback_url (empêche d'atteindre des adresses internes/privées) ──
-function isPrivateIP(ip) {
-  if (net.isIPv4(ip)) {
-    const p = ip.split('.').map(Number);
-    if (p[0] === 127) return true;                          // loopback
-    if (p[0] === 10) return true;                            // 10.0.0.0/8
-    if (p[0] === 172 && p[1] >= 16 && p[1] <= 31) return true; // 172.16.0.0/12
-    if (p[0] === 192 && p[1] === 168) return true;           // 192.168.0.0/16
-    if (p[0] === 169 && p[1] === 254) return true;           // link-local / metadata cloud
-    if (p[0] === 0) return true;                             // 0.0.0.0/8
-    if (p[0] === 100 && p[1] >= 64 && p[1] <= 127) return true; // CGNAT
-    return false;
-  }
-  if (net.isIPv6(ip)) {
-    const l = ip.toLowerCase();
-    if (l === '::1') return true;                            // loopback
-    if (l.startsWith('fc') || l.startsWith('fd')) return true; // fc00::/7 (unique local)
-    if (l.startsWith('fe80')) return true;                    // link-local
-    if (l.startsWith('::ffff:')) {                            // IPv4 mappée en IPv6
-      const v4 = l.split(':').pop();
-      if (net.isIPv4(v4)) return isPrivateIP(v4);
-    }
-    return false;
-  }
-  return true; // format inconnu → on bloque par sécurité
-}
-async function isSafePostbackUrl(urlStr) {
-  try {
-    const u = new URL(urlStr);
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return false;
-    if (u.hostname === 'localhost') return false;
-    const addresses = await dns.lookup(u.hostname, { all: true });
-    if (!addresses.length) return false;
-    for (const a of addresses) { if (isPrivateIP(a.address)) return false; }
-    return true;
-  } catch (e) { return false; }
-}
-
-app.use(cors());
-app.use(express.json());
-app.use(express.static(path.join(__dirname, '../public')));
-
-// Cache très court (15s) pour éviter d'interroger la base à CHAQUE requête du site.
-// La déconnexion forcée / obligation de changer de mot de passe reste quasi-instantanée
-// (max 15s de délai) car on vide le cache immédiatement au moment de ces actions.
-const authCache = new Map(); // userId -> { token_version, must_change_password, expiresAt }
-const AUTH_CACHE_TTL_MS = 15000;
-function invalidateAuthCache(userId) { authCache.delete(userId); }
-
-async function auth(req, res, next) {
-  const token = req.headers.authorization?.split(' ')[1];
-  if (!token) return res.status(401).json({ error: 'Non autorisé' });
-  let payload;
-  try { payload = jwt.verify(token, JWT_SECRET); }
-  catch { return res.status(401).json({ error: 'Token invalide' }); }
-  try {
-    let u;
-    const cached = authCache.get(payload.id);
-    if (cached && cached.expiresAt > Date.now()) {
-      u = cached;
-    } else {
-      // token_version permet de forcer une déconnexion à distance (ex: admin qui réinitialise
-      // un mot de passe) : si la version en base a changé depuis l'émission de ce token, on refuse.
-      const { data, error: uErr } = await supabase.from('users').select('token_version,must_change_password').eq('id', payload.id).single();
-      if (uErr) {
-        if (uErr.code === 'PGRST116') {
-          // Aucune ligne trouvée pour cet id : le compte a réellement été supprimé, on bloque.
-          return res.status(401).json({ error: 'Compte introuvable' });
-        }
-        // Toute autre erreur (ex: colonnes token_version/must_change_password pas encore créées
-        // sur Supabase) ne doit PAS bloquer tout le site : on laisse passer avec les valeurs par
-        // défaut plutôt que de renvoyer une erreur à chaque requête authentifiée.
-        console.error('auth() erreur (colonne manquante ?):', uErr.message);
-        req.user = payload;
-        return next();
-      }
-      u = { ...data, expiresAt: Date.now() + AUTH_CACHE_TTL_MS };
-      authCache.set(payload.id, u);
-    }
-    if (!u) return res.status(401).json({ error: 'Compte introuvable' });
-    if ((payload.tokenVersion || 0) !== (u.token_version || 0)) {
-      return res.status(401).json({ error: 'Session expirée, merci de te reconnecter.' });
-    }
-    req.user = payload;
-    // Si un changement de mot de passe est obligatoire (ex: réinitialisé par un admin),
-    // on bloque tout sauf la consultation du profil et le changement de mot de passe lui-même.
-    if (u.must_change_password && req.path !== '/api/change-password' && req.path !== '/api/me') {
-      return res.status(423).json({ error: 'Tu dois changer ton mot de passe avant de continuer.', code: 'MUST_CHANGE_PASSWORD' });
-    }
-    next();
-  } catch (e) { return res.status(401).json({ error: 'Erreur d\'authentification' }); }
-}
-function adminOnly(req, res, next) {
-  if (req.user.role !== 'admin') return res.status(403).json({ error: 'Admin seulement' });
-  next();
-}
-
-// Anti brute-force générique, sans dépendance externe (donc rien à installer,
-// zéro risque de casser le déploiement). Bloque une IP après trop de requêtes.
-// Note: en mémoire, donc reset si le serveur redémarre, et pas partagé entre plusieurs
-// instances si jamais tu scales horizontalement un jour.
-function makeRateLimiter(maxAttempts, windowMs) {
-  const attempts = new Map(); // ip -> { count, firstAttempt }
-  function middleware(req, res, next) {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-    const now = Date.now();
-    const entry = attempts.get(ip);
-    if (entry && now - entry.firstAttempt < windowMs && entry.count >= maxAttempts) {
-      const waitMin = Math.ceil((windowMs - (now - entry.firstAttempt)) / 60000);
-      return res.status(429).json({ error: `Trop de tentatives. Réessaie dans ${waitMin} min.` });
-    }
-    next();
-  }
-  function record(req) {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-    const now = Date.now();
-    const entry = attempts.get(ip);
-    if (!entry || now - entry.firstAttempt > windowMs) attempts.set(ip, { count: 1, firstAttempt: now });
-    else entry.count++;
-  }
-  function clear(req) {
-    const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
-    attempts.delete(ip);
-  }
-  return { middleware, record, clear };
-}
-
-const loginLimiter = makeRateLimiter(8, 15 * 60 * 1000); // 8 tentatives / 15 min
-const loginRateLimit = loginLimiter.middleware;
-const recordFailedLogin = loginLimiter.record;
-const clearFailedLogin = loginLimiter.clear;
-
-// Limite l'envoi de DM Discord de vérification à 5 par IP toutes les 10 minutes,
-// pour empêcher que cette route publique soit utilisée pour spammer des gens via le bot.
-const discordVerifyLimiter = makeRateLimiter(5, 10 * 60 * 1000);
-const discordVerifyRateLimit = discordVerifyLimiter.middleware;
-
-// ── REGISTER ──
-// Vérifie qu'un ID Discord est valide en y envoyant un vrai message de test, avant même l'inscription
-app.post('/api/verify-discord-id', discordVerifyRateLimit, async (req, res) => {
-  const { discord_id } = req.body;
-  if (!discord_id || !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'Format invalide (uniquement des chiffres)' });
-  const ok = await sendDiscordDMPlain(discord_id, '✅ Ton ID Discord fonctionne bien sur AffiHub ! Tu recevras tes alertes de vente ici.');
-  if (!ok) return res.status(400).json({ error: 'Impossible d\'envoyer un message à cet ID. Vérifie qu\'il est correct et que tu partages bien un serveur avec le bot AffiHub.' });
-  res.json({ success: true });
-});
-
-app.post('/api/register', async (req, res) => {
-  const { name, email, password, referral_code, discord_id } = req.body;
-  if (!name || !email || !password) return res.status(400).json({ error: 'Champs requis' });
-  if (!discord_id || !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord requis et valide' });
-  // Check maintenance mode
-  const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
-  if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
-  const hash = await bcrypt.hash(password, 10);
-  const signupIp = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || '';
-  // Generate referral code from username (lowercase, no spaces, unique)
-  const baseCode = name.toLowerCase().replace(/[^a-z0-9]/g, '').substring(0, 20);
-  // Check if code already exists and make it unique if needed
-  let newCode = baseCode;
-  let suffix = 1;
-  while(true) {
-    const { data: existing } = await supabase.from('users').select('id').eq('referral_code', newCode).single();
-    if (!existing) break;
-    newCode = baseCode + suffix;
-    suffix++;
-  }
-  let referred_by = null;
-  let referral_same_ip = false;
-  if (referral_code) {
-    const { data: referrer } = await supabase.from('users').select('id,signup_ip').eq('referral_code', referral_code).single();
-    if (referrer) {
-      referred_by = referrer.id;
-      if (signupIp && referrer.signup_ip && signupIp === referrer.signup_ip) referral_same_ip = true;
-    }
-  }
-  const { data, error } = await supabase.from('users').insert({ name, email, password: hash, role: 'affiliate', balance: 0, referral_code: newCode, referred_by, referral_same_ip, signup_ip: signupIp, show_ranking: true, discord_id }).select().single();
-  if (error) return res.status(400).json({ error: 'Email déjà utilisé' });
-  // Notify referrer on Discord if referred
-  if (referred_by) {
-    const { data: referrer } = await supabase.from('users').select('name').eq('id', referred_by).single();
-    if (referrer) {
-      const fields = [
-        { name: '👤 Parrain', value: referrer.name, inline: true },
-        { name: '🆕 Filleul', value: name, inline: true },
-        { name: '💰 Commission', value: '10% sur chaque vente', inline: true }
-      ];
-      if (referral_same_ip) fields.push({ name: '⚠️ Alerte', value: 'Même IP que le parrain — double compte possible !', inline: false });
-      await notifyDiscord2(DISCORD_REFERRAL, referral_same_ip ? '⚠️ Nouveau parrainage — DOUBLE COMPTE DÉTECTÉ' : '🤝 Nouveau parrainage !', referral_same_ip ? 0xff4757 : 0xa855f7, fields);
-    }
-    checkReferralMilestone(referred_by).catch(()=>{});
-  }
-  // Get welcome message
-  const { data: wmsg } = await supabase.from('settings').select('value').eq('key', 'welcome_message').single();
-  // Send welcome email
-  sendEmail(email, '🎉 Bienvenue sur AffiHub !', `
-    <div style="font-family:sans-serif;max-width:500px;margin:0 auto;background:#0a0a0a;color:#fff;border-radius:16px;padding:32px;border:1px solid #222">
-      <div style="text-align:center;margin-bottom:24px">
-        <div style="font-size:48px;margin-bottom:8px">🎉</div>
-        <h2 style="color:#F5C842;margin-bottom:4px">Bienvenue sur AffiHub !</h2>
-        <p style="color:#aaa;font-size:14px">Bonjour <b style="color:#fff">${name}</b>, ton compte est prêt.</p>
-      </div>
-      <div style="background:#111;border:1px solid #2a2a2a;border-radius:12px;padding:20px;margin-bottom:24px">
-        <div style="margin-bottom:12px;display:flex;justify-content:space-between"><span style="color:#777">Nom</span><span style="color:#fff;font-weight:700">${name}</span></div>
-        <div style="margin-bottom:12px;display:flex;justify-content:space-between"><span style="color:#777">Email</span><span style="color:#fff">${email}</span></div>
-        <div style="display:flex;justify-content:space-between"><span style="color:#777">Code parrainage</span><span style="color:#F5C842;font-weight:800;font-family:monospace">${newCode}</span></div>
-      </div>
-      ${wmsg?.value ? `<div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:12px;padding:16px;margin-bottom:24px"><p style="color:#F5C842;font-size:13px;line-height:1.7;margin:0">${wmsg.value}</p></div>` : ''}
-      <div style="font-size:12px;color:#aaa;line-height:2">
-        <div>✅ Retrait minimum : <b style="color:#fff">$25</b></div>
-        <div>✅ Commission parrainage : <b style="color:#fff">10%</b></div>
-        <div>✅ 7 moyens de paiement disponibles</div>
-        <div>💬 Support Discord : <b style="color:#fff">ananous.</b></div>
-      </div>
-      <div style="margin-top:24px;padding-top:20px;border-top:1px solid #222;text-align:center;color:#555;font-size:12px">AffiHub — Plateforme d'affiliation privée</div>
+  <!-- Nav -->
+  <nav style="padding:16px 40px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:rgba(10,10,10,.7);backdrop-filter:blur(24px);border-bottom:1px solid rgba(255,255,255,.05);z-index:10">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="logo-icon" style="width:32px;height:32px;font-size:15px"><img id="land-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="land-logo-emoji">🔗</span></div>
+      <span style="font-size:17px;font-weight:800;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">AffiHub</span>
     </div>
-  `);
-  const token = jwt.sign({ id: data.id, email: data.email, role: data.role, name: data.name, tokenVersion: data.token_version || 0 }, JWT_SECRET, { expiresIn: '30d' });
-  log(data.id, 'inscription', 'Nouveau compte créé : '+name, req);
-  // Discord notification
-  await notifyDiscord2(DISCORD_REGISTER, '👤 Nouvel affilié !', 0x00D68F, [
-    { name: '👤 Nom', value: name, inline: true },
-    { name: '📧 Email', value: email, inline: true },
-    { name: '🔗 Code parrainage', value: newCode, inline: true }
-  ]);
-  // Attribution automatique du rôle Discord (en arrière-plan, ne bloque pas la réponse)
-  assignDiscordRole(DISCORD_GUILD_ID, discord_id, DISCORD_AFFILIATE_ROLE_ID).then(ok => {
-    if (!ok) console.error(`Rôle non attribué pour ${name} (discord_id: ${discord_id}) — vérifie qu'il est bien sur le serveur et que le bot a la permission requise.`);
-  });
-  res.json({ token, user: { id: data.id, name: data.name, email: data.email, role: data.role, balance: data.balance, referral_code: data.referral_code }, welcome_message: wmsg?.value || '' });
-});
+    <div style="display:flex;align-items:center;gap:10px">
+      <a href="https://discord.gg/vAAjRq6jaC" target="_blank" style="display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-weight:600;text-decoration:none;padding:7px 14px;border-radius:8px;border:1px solid #222;transition:all .2s" onmouseover="this.style.borderColor='rgba(88,101,242,.5)';this.style.color='#fff'" onmouseout="this.style.borderColor='#222';this.style.color='var(--muted)'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.04.037.052a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+        Discord
+      </a>
+      <button class="btn btn-grad btn-sm" onclick="showAuth()" style="font-size:12px">Se connecter</button>
+    </div>
+  </nav>
 
-// ── LOGIN ──
-app.post('/api/login', loginRateLimit, async (req, res) => {
-  const { email, password } = req.body;
-  const { data: user } = await supabase.from('users').select('*').eq('email', email).single();
-  if (!user) { recordFailedLogin(req); return res.status(401).json({ error: 'Email ou mot de passe incorrect' }); }
-  let valid = false;
-  try { valid = await bcrypt.compare(password, user.password); } catch (e) { valid = false; }
-  if (!valid && user.password === password) {
-    // Compte legacy avec mot de passe stocké en clair : on l'accepte une dernière fois,
-    // puis on le migre immédiatement en bcrypt pour fermer la faille sur ce compte.
-    valid = true;
-    const migratedHash = await bcrypt.hash(password, 10);
-    await supabase.from('users').update({ password: migratedHash }).eq('id', user.id);
-  }
-  if (!valid) { recordFailedLogin(req); return res.status(401).json({ error: 'Email ou mot de passe incorrect' }); }
-  clearFailedLogin(req);
-  // Check maintenance mode for non-admin
-  if (user.role !== 'admin') {
-    const { data: maint } = await supabase.from('settings').select('value').eq('key', 'maintenance_mode').single();
-    if (maint && maint.value === 'true') return res.status(403).json({ error: '🔧 Site en maintenance. Revenez bientôt !' });
-  }
-  log(user.id, 'login', 'Connexion de '+user.name+' ('+user.role+')', req);
-  const token = jwt.sign({ id: user.id, email: user.email, role: user.role, name: user.name, tokenVersion: user.token_version || 0 }, JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, user: { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance, referral_code: user.referral_code, created_at: user.created_at, is_super_admin: user.is_super_admin || false, admin_permissions: user.admin_permissions || 'all', must_change_password: user.must_change_password || false } });
-});
+  <!-- Hero -->
+  <div style="max-width:900px;margin:0 auto;padding:100px 24px 70px;text-align:center;position:relative;z-index:1">
+    <h1 style="font-size:clamp(42px,7vw,80px);font-weight:900;line-height:1.02;letter-spacing:-3px;margin-bottom:24px;color:var(--text);animation:fadeInUp .6s .1s ease both">
+      Transforme ton<br>
+      <span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-size:200% 200%;animation:gradient-shift 4s ease infinite">audience en cash</span>
+    </h1>
+    <p style="font-size:18px;color:var(--muted);max-width:520px;margin:0 auto 48px;line-height:1.8;animation:fadeInUp .6s .2s ease both">Rejoins notre réseau d'affiliation privé. Génère tes liens, suis tes conversions en temps réel et retire tes gains facilement.</p>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;animation:fadeInUp .6s .3s ease both">
+      <button class="btn btn-grad" onclick="showAuthRegister()" style="font-size:15px;padding:15px 36px;border-radius:14px;box-shadow:0 8px 32px rgba(240,66,122,.4)">🚀 Rejoindre maintenant</button>
+      <a href="https://discord.gg/vAAjRq6jaC" target="_blank" style="display:inline-flex;align-items:center;gap:8px;color:var(--muted);font-size:14px;font-weight:600;text-decoration:none;padding:15px 28px;border-radius:14px;border:1px solid #2a2a2a;transition:all .2s" onmouseover="this.style.borderColor='rgba(245,200,66,.3)';this.style.color='var(--text)'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='var(--muted)'">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057c.002.022.015.04.037.052a19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03z"/></svg>
+        Rejoindre le Discord
+      </a>
+    </div>
+  </div>
 
-// ── ME ──
-app.get('/api/me', auth, async (req, res) => {
-  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate,must_change_password,avatar_url,tokens').eq('id', req.user.id).single();
-  if (error) {
-    console.error('/api/me erreur (colonne manquante ?):', error.message);
-    const fallback = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
-    data = fallback.data;
-  }
-  if (data) {
-    try {
-      const { data: convs } = await supabase.from('conversions').select('created_at').eq('user_id', req.user.id).eq('status', 'approved');
-      const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
-      let streak = 0;
-      const cursor = new Date();
-      const todayStr = cursor.toISOString().slice(0, 10);
-      if (!days.has(todayStr)) cursor.setDate(cursor.getDate() - 1); // pas encore vendu aujourd'hui : ok tant qu'hier compte
-      while (days.has(cursor.toISOString().slice(0, 10))) { streak++; cursor.setDate(cursor.getDate() - 1); }
-      data.streak = streak;
-    } catch (e) { data.streak = 0; }
-  }
-  res.json(data);
-});
+  <!-- Stats animated -->
+  <div style="max-width:760px;margin:0 auto 80px;padding:0 24px;position:relative;z-index:1">
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:rgba(255,255,255,.05);border-radius:20px;overflow:hidden;border:1px solid rgba(255,255,255,.06)">
+      <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center">
+        <div class="land-stat-val" style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$25</div>
+        <div class="land-stat-label">Retrait minimum</div>
+      </div>
+      <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center;border-left:1px solid rgba(255,255,255,.05);border-right:1px solid rgba(255,255,255,.05)">
+        <div class="land-stat-val" style="color:var(--green)">10%</div>
+        <div class="land-stat-label">Commission parrainage</div>
+      </div>
+      <div class="land-stat" style="background:#0d0d0d;padding:28px 24px;text-align:center">
+        <div class="land-stat-val" style="color:var(--yellow)">9</div>
+        <div class="land-stat-label">Moyens de paiement</div>
+      </div>
+    </div>
+  </div>
 
-app.patch('/api/users/:id/permissions', auth, async (req, res) => {
-  // Only super admin can change permissions
-  const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
-  if (!me?.is_super_admin) return res.status(403).json({ error: 'Non autorisé' });
-  const { permissions } = req.body;
-  await supabase.from('users').update({ admin_permissions: JSON.stringify(permissions) }).eq('id', req.params.id);
-  log(req.user.id, 'permissions-modifiées', 'Permissions admin #'+req.params.id+' modifiées', req);
-  res.json({ success: true });
-});
+  <!-- Features -->
+  <div style="max-width:900px;margin:0 auto 80px;padding:0 24px;position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:48px">
+      <div style="font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">Fonctionnalités</div>
+      <h2 style="font-size:clamp(24px,4vw,36px);font-weight:900;letter-spacing:-1px">Tout ce dont tu as besoin</h2>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px">
+      <div class="land-feat" style="--feat-color:rgba(245,200,66,.15)">
+        <div class="land-feat-icon">🔗</div>
+        <div class="land-feat-title">Liens trackés</div>
+        <div class="land-feat-desc">Chaque clic et conversion enregistrés automatiquement. Postback Adunlock intégré.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(0,214,143,.15)">
+        <div class="land-feat-icon">💰</div>
+        <div class="land-feat-title">Paiements flexibles</div>
+        <div class="land-feat-desc">Bitcoin, Solana, Litecoin, Ethereum, Revolut, Virement, PayPal, TapTap Send, PaysafeCard, Carte cadeau — dès $25.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(77,158,255,.15)">
+        <div class="land-feat-icon">📊</div>
+        <div class="land-feat-title">Stats en temps réel</div>
+        <div class="land-feat-desc">Clics, conversions, gains par offre — tableau de bord complet et intuitif.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(240,66,122,.15)">
+        <div class="land-feat-icon">👥</div>
+        <div class="land-feat-title">Parrainage 10%</div>
+        <div class="land-feat-desc">Invite tes amis et gagne 10% sur toutes leurs conversions approuvées.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(168,85,247,.15)">
+        <div class="land-feat-icon">🎨</div>
+        <div class="land-feat-title">Liens personnalisés</div>
+        <div class="land-feat-desc">Personnalise ta page avec ton branding — logo, photos, slogan sur mesure.</div>
+      </div>
+      <div class="land-feat" style="--feat-color:rgba(88,101,242,.15)">
+        <div class="land-feat-icon">🎫</div>
+        <div class="land-feat-title">Support dédié</div>
+        <div class="land-feat-desc">Manager disponible sur Discord. Ticket support intégré pour toutes tes questions.</div>
+      </div>
+    </div>
+  </div>
 
-// ── CHANGE PASSWORD ──
-app.post('/api/change-password', auth, async (req, res) => {
-  const { current_password, new_password } = req.body;
-  if (!new_password || new_password.length < 6) return res.status(400).json({ error: 'Le nouveau mot de passe doit faire au moins 6 caractères' });
-  const { data: user } = await supabase.from('users').select('*').eq('id', req.user.id).single();
-  let valid = false;
-  try { valid = await bcrypt.compare(current_password, user.password); } catch (e) { valid = false; }
-  if (!valid && user.password === current_password) valid = true; // compte legacy en clair — sera migré ci-dessous
-  if (!valid) return res.status(400).json({ error: 'Mot de passe actuel incorrect' });
-  const hash = await bcrypt.hash(new_password, 10);
-  await supabase.from('users').update({ password: hash, must_change_password: false }).eq('id', req.user.id);
-  invalidateAuthCache(req.user.id);
-  log(req.user.id, 'mot-de-passe-changé', 'Mot de passe modifié', req);
-  res.json({ success: true });
-});
+  <!-- FAQ -->
+  <div style="max-width:760px;margin:0 auto;padding:0 24px 100px;position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:48px">
+      <div style="font-size:11px;font-weight:700;color:var(--yellow);text-transform:uppercase;letter-spacing:2px;margin-bottom:12px">FAQ</div>
+      <h2 style="font-size:clamp(24px,4vw,36px);font-weight:900;letter-spacing:-1px">Questions fréquentes</h2>
+    </div>
+    <div id="faq-list">
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">C'est quoi AffiHub, concrètement ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">AffiHub est une agence d'affiliation. On te met en relation avec des casinos en ligne partenaires, des sites de dating, etc... Tu partages ton lien à ton audience, et tu touches une commission sur chaque joueur qui paye sur le site partenaire.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Il faut avoir une grosse audience pour commencer ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Non. Si tu as une communauté active — même petite — sur Twitch, YouTube, TikTok, Instagram, Discord ou un site, tu peux candidater. C'est la qualité de ton audience qui compte, pas seulement la taille.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Comment je suis payé ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Tes commissions s'accumulent en temps réel dans ton espace. Dès que tu as atteint un montant suffisant, tu demandes un retrait et tu es payé rapidement en crypto ou virement.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Est-ce que c'est gratuit ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Oui, 100 %. L'inscription et l'utilisation de la plateforme sont totalement gratuites. Tu ne paies rien, tu gagnes uniquement.</div>
+      </div>
+      <div class="faq-item" onclick="toggleFaq(this)">
+        <div class="faq-q">Je n'y connais rien en technique, c'est grave ? <span class="faq-chev">▸</span></div>
+        <div class="faq-a">Non, tout est fait pour être simple. Tu partages un lien, et un manager t'accompagne dès le début pour tout t'expliquer.</div>
+      </div>
+    </div>
+  </div>
 
-app.patch('/api/me/postback', auth, async (req, res) => {
-  const { postback_url } = req.body;
-  if (postback_url) {
-    const test = postback_url.replace('{LINK_ID}', 'test').replace('{AMOUNT}', '1').replace('{STATUS}', 'approved');
-    const safe = await isSafePostbackUrl(test);
-    if (!safe) return res.status(400).json({ error: 'URL invalide ou non autorisée (adresse interne/privée refusée)' });
-  }
-  await supabase.from('users').update({ postback_url: postback_url || null }).eq('id', req.user.id);
-  log(req.user.id, 'postback-modifié', postback_url ? 'URL de postback mise à jour : ' + postback_url : 'URL de postback supprimée', req);
-  res.json({ success: true });
-});
-app.patch('/api/me/discord-id', auth, async (req, res) => {
-  const { discord_id } = req.body;
-  if (discord_id && !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord invalide' });
-  await supabase.from('users').update({ discord_id: discord_id || null }).eq('id', req.user.id);
-  log(req.user.id, 'discord-id-modifié', discord_id ? 'ID Discord mis à jour : ' + discord_id : 'ID Discord supprimé', req);
-  res.json({ success: true });
-});
+  <div style="text-align:center;padding:30px 20px 40px;font-size:12px;color:var(--muted)"><span onclick="showCGU()" style="cursor:pointer;text-decoration:underline;text-underline-offset:3px">Conditions générales</span></div>
 
-app.patch('/api/admin/users/:id/discord-id', auth, adminOnly, async (req, res) => {
-  const { discord_id } = req.body;
-  if (discord_id && !/^\d{15,25}$/.test(discord_id)) return res.status(400).json({ error: 'ID Discord invalide' });
-  const { data: target } = await supabase.from('users').select('name,discord_id').eq('id', req.params.id).single();
-  if (!target) return res.status(404).json({ error: 'Affilié introuvable' });
-  await supabase.from('users').update({ discord_id: discord_id || null }).eq('id', req.params.id);
-  if (discord_id) {
-    log(req.user.id, 'id-discord-ajouté', 'ID Discord ' + (target.discord_id ? 'modifié' : 'ajouté') + ' pour ' + target.name, req);
-  } else {
-    log(req.user.id, 'id-discord-supprimé', 'ID Discord supprimé pour ' + target.name, req);
-  }
-  res.json({ success: true });
-});
+  <!-- end landing -->
+</div>
 
-app.post('/api/admin/dm-all', auth, adminOnly, async (req, res) => {
-  const { message, image_url, user_ids } = req.body;
-  if (!message || !message.trim()) return res.status(400).json({ error: 'Message requis' });
-  let query = supabase.from('users').select('id,discord_id').eq('role', 'affiliate').not('discord_id', 'is', null);
-  if (Array.isArray(user_ids) && user_ids.length > 0) query = query.in('id', user_ids);
-  const { data: users } = await query;
-  const targets = (users || []).filter(u => u.discord_id);
-  let sent = 0, failed = 0;
-  for (const u of targets) {
-    const ok = await sendDiscordDMPlain(u.discord_id, message.trim(), image_url);
-    if (ok) sent++; else failed++;
-  }
-  log(req.user.id, 'dm-groupé-discord', 'DM envoyé à ' + sent + '/' + targets.length + ' affiliés' + (image_url ? ' (avec image)' : '') + (Array.isArray(user_ids) && user_ids.length ? ' (sélection personnalisée)' : ''), req);
-  await supabase.from('dm_broadcasts').insert({
-    admin_id: req.user.id, message: message.trim(), image_url: image_url || null,
-    target_count: targets.length, sent_count: sent, failed_count: failed,
-    custom_selection: Array.isArray(user_ids) && user_ids.length > 0
-  });
-  res.json({ total: targets.length, sent, failed });
-});
+<div id="cgu-page" style="display:none;min-height:100vh;background:var(--bg);position:relative;z-index:2">
+  <div style="max-width:760px;margin:0 auto;padding:40px 24px 80px">
+    <button onclick="hideCGU()" style="background:var(--bg3);border:1px solid #2a2a2a;color:#aaa;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;gap:6px;margin-bottom:30px;padding:8px 16px;border-radius:10px">← Retour à l'accueil</button>
+    <h1 style="font-size:28px;font-weight:900;margin-bottom:6px">Conditions générales d'utilisation</h1>
+    <p style="color:var(--muted);font-size:13px;margin-bottom:32px">Dernière mise à jour : <span id="cgu-date"></span></p>
 
-app.get('/api/admin/dm-broadcasts', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('dm_broadcasts').select('*, users(name)').order('created_at', { ascending: false }).limit(50);
-  res.json(data || []);
-});
+    <div style="font-size:14px;line-height:1.8;color:#d5d5d5">
 
-// ── TRACKING CLIC ──
-async function doRedirect(link, res) {
-  await supabase.from('links').update({ clicks: link.clicks + 1 }).eq('id', link.id);
-  const destination = link.custom_url || link.offers.url;
-  const separator = destination.includes('?') ? '&' : '?';
-  res.redirect(destination + separator + 'sub=' + link.id);
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">1. Présentation</h3>
+      <p>AffiHub ("la Plateforme") est une plateforme d'affiliation privée qui met en relation des affiliés avec des offres partenaires (casino en ligne, dating, IA, influenceurs, et autres). L'affilié génère des liens de suivi personnalisés, les partage auprès de son audience, et perçoit une commission sur les conversions générées.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">2. Éligibilité</h3>
+      <p>L'inscription est réservée aux personnes âgées d'au moins 18 ans. Certaines offres promues sur la Plateforme (notamment les offres de jeux d'argent) sont elles-mêmes réservées à un public majeur conformément à la réglementation en vigueur dans le pays de résidence de l'audience visée. L'affilié est seul responsable de s'assurer que sa promotion respecte les lois applicables à son audience et à son pays d'exercice.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">3. Compte affilié</h3>
+      <p>Chaque affilié est responsable de la confidentialité de ses identifiants de connexion. Un seul compte est autorisé par personne physique. La création de comptes multiples dans le but de générer des parrainages ou des commissions frauduleuses entraîne la suspension immédiate des comptes concernés et l'annulation des gains associés.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">4. Commissions et parrainage</h3>
+      <p>Les commissions sont calculées automatiquement à partir des conversions validées sur les liens de l'affilié, selon le taux affiché pour chaque offre au moment de la conversion. Le programme de parrainage verse 10% de commission sur les ventes générées par les filleuls, tant que la relation de parrainage reste active. AffiHub se réserve le droit de suspendre une commission de parrainage en cas de comportement frauduleux détecté (notamment inscription depuis une même adresse IP que le parrain).</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">5. Retraits</h3>
+      <p>Le retrait minimum est de $25 (sauf PayPal : $50 minimum), avec des frais de 5% appliqués quel que soit le moyen de paiement choisi. L'affilié est seul responsable de l'exactitude des coordonnées de paiement fournies ; AffiHub ne pourra être tenu responsable en cas d'erreur de saisie entraînant une perte de fonds. Les délais de traitement des retraits sont indicatifs et peuvent varier.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">6. Pratiques interdites</h3>
+      <p>Sont notamment interdits : la génération de clics ou conversions frauduleuses (bots, auto-clics), la publicité mensongère sur les offres promues, l'utilisation de marques déposées sans autorisation, et toute pratique visant à contourner les mécanismes de suivi de la Plateforme. Tout manquement peut entraîner la suspension du compte et l'annulation des gains non retirés.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">7. Résiliation</h3>
+      <p>AffiHub se réserve le droit de suspendre ou résilier un compte affilié à tout moment en cas de violation des présentes conditions. L'affilié peut demander la suppression de son compte à tout moment en contactant son manager.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">8. Responsabilité</h3>
+      <p>AffiHub agit en tant qu'intermédiaire entre l'affilié et les offres partenaires. AffiHub ne saurait être tenu responsable des actions, contenus ou pratiques des annonceurs partenaires, ni des pertes indirectes liées à l'utilisation de la Plateforme.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">9. Modification des conditions</h3>
+      <p>AffiHub peut modifier les présentes conditions à tout moment. Les affiliés seront informés des changements significatifs. La poursuite de l'utilisation de la Plateforme après modification vaut acceptation des nouvelles conditions.</p>
+
+      <h3 style="font-size:16px;font-weight:800;color:var(--yellow);margin:28px 0 10px">10. Contact</h3>
+      <p>Pour toute question relative à ces conditions, contacte ton manager directement sur Discord.</p>
+
+    </div>
+  </div>
+</div>
+
+<div id="auth-screen" style="position:relative;overflow:hidden">
+  <!-- Animated background -->
+  <div style="position:fixed;inset:0;background:var(--bg);z-index:0"></div>
+  <div style="position:fixed;top:-30%;left:-20%;width:700px;height:700px;background:radial-gradient(circle,rgba(245,200,66,.1) 0%,transparent 70%);pointer-events:none;animation:orb1 8s ease-in-out infinite;z-index:0"></div>
+  <div style="position:fixed;bottom:-30%;right:-20%;width:800px;height:800px;background:radial-gradient(circle,rgba(240,66,122,.1) 0%,transparent 70%);pointer-events:none;animation:orb2 10s ease-in-out infinite;z-index:0"></div>
+  <div style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:500px;height:500px;background:radial-gradient(circle,rgba(77,158,255,.04) 0%,transparent 70%);pointer-events:none;animation:orb3 12s ease-in-out infinite;z-index:0"></div>
+  <div class="auth-box" style="position:relative;z-index:1">
+    <div style="text-align:center;margin-bottom:30px">
+      <div class="logo-wrap"><div class="logo-icon" id="auth-logo-wrap"><img id="auth-logo-img" style="width:100%;height:100%;object-fit:contain;display:none"><span id="auth-logo-emoji">🔗</span></div>AffiHub</div>
+      <p style="color:var(--muted);font-size:13px;margin-top:7px">La plateforme d'affiliation privée</p>
+    </div>
+    <button onclick="showLanding()" style="background:var(--bg3);border:1px solid #2a2a2a;color:#aaa;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;display:flex;align-items:center;gap:6px;margin:0 auto 20px;padding:8px 16px;border-radius:10px;transition:all .2s" onmouseover="this.style.borderColor='rgba(245,200,66,.4)';this.style.color='var(--yellow)'" onmouseout="this.style.borderColor='#2a2a2a';this.style.color='#aaa'">← Retour à l'accueil</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">Connexion</button>
+      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">Inscription</button>
+    </div>
+    <div id="login-form">
+      <div class="fg"><label>Email</label><input type="email" id="l-email" placeholder="email@exemple.com"></div>
+      <div class="fg"><label>Mot de passe</label><input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn-primary" onclick="doLogin()">Se connecter →</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="fg"><label>Pseudo Discord</label><input type="text" id="r-name" placeholder="Votre pseudo Discord"></div>
+      <div class="fg"><label>ID Discord</label><div style="display:flex;gap:8px"><input type="text" id="r-discord-id" placeholder="Ex: 123456789012345678" oninput="discordIdVerified=false;document.getElementById('r-discord-verify-status').textContent='';" style="flex:1"><button type="button" class="btn btn-gst btn-sm" onclick="verifyDiscordId()" id="r-discord-verify-btn">✅ Vérifier</button></div><div id="r-discord-verify-status" style="font-size:11px;margin-top:6px"></div><div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5">Pour le trouver : Discord → Réglages → Avancés → active le "Mode développeur", puis clic droit sur ton profil → "Copier l'identifiant".</div></div>
+      <div class="fg"><label>Email</label><input type="email" id="r-email" placeholder="email@exemple.com"></div>
+      <div class="fg"><label>Mot de passe</label><input type="password" id="r-pass" placeholder="Choisir un mot de passe"></div>
+      <div class="fg"><label>Code de parrainage (optionnel)</label><input type="text" id="r-ref" placeholder="Code d'un affilié"></div>
+      <button class="btn-primary" onclick="doRegister()">Créer mon compte →</button>
+    </div>
+  </div>
+</div>
+<div id="force-pw-screen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:var(--bg);position:relative;z-index:2">
+  <div class="auth-box" style="position:relative">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:44px;margin-bottom:10px">🔑</div>
+      <div style="font-size:18px;font-weight:800">Nouveau mot de passe requis</div>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Un admin a réinitialisé ton mot de passe. Choisis-en un nouveau, rien qu'à toi, pour continuer.</p>
+    </div>
+    <div style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:12px;padding:14px 16px;margin-bottom:20px;font-size:12px;line-height:1.9;color:#ccc">
+      <div><b style="color:var(--yellow)">1.</b> Entre le mot de passe que l'admin t'a communiqué (Discord ou autre)</div>
+      <div><b style="color:var(--yellow)">2.</b> Choisis ton nouveau mot de passe personnel (6 caractères minimum)</div>
+      <div><b style="color:var(--yellow)">3.</b> Retape-le pour confirmer, puis valide</div>
+    </div>
+    <div class="fg"><label>1️⃣ Mot de passe reçu de l'admin</label><input type="password" id="fpw-current" placeholder="Celui qu'on t'a communiqué" onkeydown="if(event.key==='Enter')document.getElementById('fpw-new').focus()"></div>
+    <div class="fg"><label>2️⃣ Ton nouveau mot de passe</label><input type="password" id="fpw-new" placeholder="Au moins 6 caractères" onkeydown="if(event.key==='Enter')document.getElementById('fpw-confirm').focus()"></div>
+    <div class="fg"><label>3️⃣ Confirme ton nouveau mot de passe</label><input type="password" id="fpw-confirm" placeholder="Retape-le" onkeydown="if(event.key==='Enter')submitForcedPasswordChange()"></div>
+    <button class="btn-primary" onclick="submitForcedPasswordChange()">Valider et continuer →</button>
+    <button onclick="logout()" style="width:100%;background:none;border:none;color:var(--muted);cursor:pointer;font-size:12px;margin-top:14px;font-family:inherit">Se déconnecter</button>
+  </div>
+</div>
+<div id="mobile-nav"></div>
+<div id="app">
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="sb-head">
+        <div class="logo-icon" style="width:32px;height:32px;font-size:16px"><img id="sb-logo-img" style="width:100%;height:100%;object-fit:contain;display:none;border-radius:10px"><span id="sb-logo-emoji">🔗</span></div>
+        <span style="font-size:17px;font-weight:800">AffiHub</span>
+      </div>
+      <div class="sb-role"><span class="role-badge" id="role-badge">Affilié</span></div>
+      <nav class="sb-nav" id="sb-nav"></nav>
+      <div class="sb-foot">
+        <div class="avatar" id="u-avatar">A</div>
+        <div style="min-width:0;flex:1"><div class="uname" id="u-name">Nom</div><div class="uemail" id="u-email">email</div></div>
+        <button class="logout-btn" onclick="logout()">⏏</button>
+      </div>
+    </aside>
+    <div class="main">
+      <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button id="mobile-menu-btn" onclick="toggleMobileMenu()" style="background:none;border:none;color:var(--text);font-size:22px;cursor:pointer;padding:6px 10px;border-radius:8px">☰</button>
+          <div class="page-title" id="page-title">Dashboard</div>
+        </div>
+        <div style="margin-left:auto;position:relative">
+          <button id="notif-bell-btn" onclick="toggleNotifPanel()" style="background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:var(--muted);font-size:20px;position:relative;transition:color .2s" onmouseover="this.style.color='var(--yellow)'" onmouseout="this.style.color='var(--muted)'">
+            🔔
+            <span id="notif-count" style="display:none;position:absolute;top:2px;right:2px;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 5px;border-radius:20px;min-width:16px;text-align:center"></span>
+          </button>
+          <div id="notif-panel" style="display:none;position:absolute;right:0;top:44px;width:320px;background:#111;border:1px solid #2a2a2a;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.6);z-index:999;overflow:hidden">
+            <div style="padding:14px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:center;justify-content:space-between"><span style="font-weight:700;font-size:13px">🔔 Notifications</span><button onclick="markNotifsRead()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit">Tout lire</button></div>
+            <div id="notif-list" style="max-height:320px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+      <div class="content" id="content"></div>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+<div class="mo" id="mo">
+  <div class="modal">
+    <div class="modal-head"><div class="modal-title" id="m-title">Modal</div><button class="modal-close" onclick="closeMo()">✕</button></div>
+    <div id="m-body"></div>
+  </div>
+</div>
+<script>
+const API='';
+const SURL='https://rhrhtqmgqwkdcrcglkys.supabase.co';
+const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJocmh0cW1ncXdrZGNyY2dsa3lzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI0NDEzMzAsImV4cCI6MjA5ODAxNzMzMH0.QJuNi5x9u_o4PZyYykU6Ft96cGBFJWqVvgQsJ0fGJvM';
+const LOGO_URL=SURL+'/storage/v1/object/public/settings/logo.png';
+var TOKEN=localStorage.getItem('affihub_token');
+var ME=JSON.parse(localStorage.getItem('affihub_user')||'null');
+const SESSION_DURATION = 60 * 60 * 1000; // 1 heure
+
+function refreshSession(){
+  localStorage.setItem('affihub_session_start', Date.now().toString());
 }
-app.get('/go/:linkId', async (req, res) => {
-  const { data: link } = await supabase.from('links').select('*, offers(url)').eq('id', req.params.linkId).single();
-  if (!link || !link.active) return res.status(404).send('Lien invalide ou désactivé');
-  await doRedirect(link, res);
-});
-// Liens vanity personnalisés (ex: /mathys-casino) — même suivi/postback que /go/:linkId, juste une autre porte d'entrée
-const RESERVED_SLUGS = ['go', 'api', 'admin', 'login', 'register'];
-app.get('/:slug', async (req, res, next) => {
-  const slug = req.params.slug;
-  if (RESERVED_SLUGS.includes(slug) || slug.startsWith('api')) return next();
-  const { data: link } = await supabase.from('links').select('*, offers(url)').eq('custom_slug', slug).single();
-  if (!link) return next();
-  if (!link.active) return res.status(404).send('Lien invalide ou désactivé');
-  await doRedirect(link, res);
-});
-app.patch('/api/links/:id/slug', auth, async (req, res) => {
-  let { slug } = req.body;
-  const { data: link } = await supabase.from('links').select('user_id').eq('id', req.params.id).single();
-  if (!link) return res.status(404).json({ error: 'Lien introuvable' });
-  if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
-  if (!slug || !slug.trim()) {
-    await supabase.from('links').update({ custom_slug: null }).eq('id', req.params.id);
-    log(req.user.id, 'slug-lien-supprimé', 'Slug personnalisé retiré du lien #' + req.params.id, req);
-    return res.json({ success: true, slug: null });
+function checkSession(){
+  if(!TOKEN||!ME)return;
+  const start=parseInt(localStorage.getItem('affihub_session_start')||'0');
+  if(start && Date.now()-start > SESSION_DURATION){
+    logout();
+    toast('Session expirée — reconnecte-toi','i');
   }
-  slug = slug.trim().toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
-  if (!slug) return res.status(400).json({ error: 'Texte invalide' });
-  if (RESERVED_SLUGS.includes(slug)) return res.status(400).json({ error: 'Ce texte est réservé, choisis-en un autre' });
-  const { data: taken } = await supabase.from('links').select('id').eq('custom_slug', slug).neq('id', req.params.id).single();
-  if (taken) return res.status(400).json({ error: 'Ce lien personnalisé est déjà pris' });
-  const { error } = await supabase.from('links').update({ custom_slug: slug }).eq('id', req.params.id);
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'slug-lien-modifié', 'Slug du lien #' + req.params.id + ' changé en "' + slug + '"', req);
-  res.json({ success: true, slug });
-});
+}
+// Check session every minute
+setInterval(checkSession, 60*1000);
+// Reset timer on user activity
+['click','keydown','scroll','touchstart'].forEach(e=>document.addEventListener(e,refreshSession,{passive:true}));
+var selCrypto=null;var curPage='';var refreshTimer=null;
 
-// Aperçu de la destination d'un lien, sans compter comme un clic
-app.get('/api/links/:id/preview', auth, async (req, res) => {
-  const { data: link } = await supabase.from('links').select('*, offers(url)').eq('id', req.params.id).single();
-  if (!link) return res.status(404).json({ error: 'Lien invalide' });
-  if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Accès refusé' });
-  const destination = link.custom_url || link.offers.url;
-  const separator = destination.includes('?') ? '&' : '?';
-  res.json({ url: destination + separator + 'sub=' + link.id });
-});
-
-// ── POSTBACK CONVERSION ──
-app.get('/api/postback', async (req, res) => {
-  const { ref, amount, status, secret } = req.query;
-  if (!process.env.POSTBACK_SECRET || secret !== process.env.POSTBACK_SECRET) {
-    return res.status(401).json({ error: 'Non autorisé' });
+async function api(method,path,body){
+  const opts={method,headers:{'Content-Type':'application/json'}};
+  if(TOKEN)opts.headers['Authorization']='Bearer '+TOKEN;
+  if(body)opts.body=JSON.stringify(body);
+  const r=await fetch(API+path,opts);const data=await r.json();
+  if(!r.ok){
+    if(data.code==='MUST_CHANGE_PASSWORD'){showForcePasswordScreen();}
+    else if(r.status===401&&TOKEN){logout();toast(data.error||'Session expirée, reconnecte-toi.','i');}
+    throw new Error(data.error||'Erreur');
   }
-  if (!ref) return res.status(400).json({ error: 'ref manquant' });
-  if (status === 'reversed') {
-    const { data: conv } = await supabase.from('conversions').select('*, users(balance)').eq('link_id', ref).eq('status', 'approved').order('created_at', { ascending: false }).limit(1).single();
-    if (conv) {
-      await supabase.from('conversions').update({ status: 'rejected' }).eq('id', conv.id);
-      const newBalance = Math.max(0, (conv.users?.balance || 0) - conv.amount);
-      await supabase.from('users').update({ balance: newBalance }).eq('id', conv.user_id);
-    }
-    return res.json({ success: true, action: 'reversed' });
+  return data;
+}
+
+function showForcePasswordScreen(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='none';
+  document.getElementById('landing').style.display='none';
+  document.getElementById('force-pw-screen').style.display='flex';
+}
+async function submitForcedPasswordChange(){
+  const current=document.getElementById('fpw-current').value;
+  const pw1=document.getElementById('fpw-new').value;
+  const pw2=document.getElementById('fpw-confirm').value;
+  if(!current){toast('Renseigne le mot de passe temporaire reçu','e');return;}
+  if(pw1.length<6){toast('Le nouveau mot de passe doit faire au moins 6 caractères','e');return;}
+  if(pw1!==pw2){toast('Les deux mots de passe ne correspondent pas','e');return;}
+  try{
+    await api('POST','/api/change-password',{current_password:current,new_password:pw1});
+    toast('Mot de passe mis à jour ✓','s');
+    document.getElementById('force-pw-screen').style.display='none';
+    ME=await api('GET','/api/me');localStorage.setItem('affihub_user',JSON.stringify(ME));
+    startApp();
+  }catch(e){toast(e.message,'e');}
+}
+function switchTab(t){
+  document.getElementById('tab-login').classList.toggle('active',t==='login');
+  document.getElementById('tab-register').classList.toggle('active',t==='register');
+  document.getElementById('login-form').style.display=t==='login'?'block':'none';
+  document.getElementById('register-form').style.display=t==='register'?'block':'none';
+}
+
+async function doLogin(){
+  try{const r=await api('POST','/api/login',{email:document.getElementById('l-email').value.trim(),password:document.getElementById('l-pass').value.trim()});
+  TOKEN=r.token;ME=r.user;localStorage.setItem('affihub_token',TOKEN);localStorage.setItem('affihub_user',JSON.stringify(ME));refreshSession();
+  if(ME.must_change_password){showForcePasswordScreen();}else{startApp();}}
+  catch(e){toast(e.message,'e');}
+}
+
+let discordIdVerified=false;
+async function verifyDiscordId(){
+  const discordId=document.getElementById('r-discord-id').value.trim();
+  const status=document.getElementById('r-discord-verify-status');
+  const btn=document.getElementById('r-discord-verify-btn');
+  if(!discordId||!/^\d{15,25}$/.test(discordId)){status.innerHTML='<span style="color:var(--red)">ID invalide (uniquement des chiffres)</span>';return;}
+  btn.disabled=true;btn.textContent='⏳...';
+  try{
+    await api('POST','/api/verify-discord-id',{discord_id:discordId});
+    discordIdVerified=true;
+    status.innerHTML='<span style="color:var(--green)">✅ Vérifié ! Regarde tes DM Discord.</span>';
+  }catch(e){
+    discordIdVerified=false;
+    status.innerHTML='<span style="color:var(--red)">❌ '+e.message+'</span>';
   }
-  const { data: link } = await supabase.from('links').select('*, offers(commission,name), users(name)').eq('id', ref).single();
-  if (!link || !link.active) return res.status(404).json({ error: 'Lien invalide' });
-  const convAmount = link.offers?.commission || parseFloat(amount) || 10;
-
-  // ── ANTI-DOUBLON ──
-  // addunlock (ou tout autre réseau) peut renvoyer le même postback plusieurs fois
-  // (retry automatique si la réponse HTTP tarde, double envoi, etc.).
-  // On vérifie donc si une conversion identique (même lien + même montant) vient
-  // d'être créée il y a moins de 2 minutes avant d'en créer une nouvelle.
-  const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
-  const { data: recentDuplicate } = await supabase
-    .from('conversions')
-    .select('id')
-    .eq('link_id', ref)
-    .eq('amount', convAmount)
-    .gte('created_at', twoMinutesAgo)
-    .limit(1)
-    .maybeSingle();
-
-  if (recentDuplicate) {
-    // On répond "success" (pour qu'addunlock arrête de réessayer) sans rien recréditer
-    return res.json({ success: true, conversion_id: recentDuplicate.id, duplicate: true });
-  }
-
-  const { data: conv, error } = await supabase.from('conversions').insert({ link_id: ref, user_id: link.user_id, offer_id: link.offer_id, amount: convAmount, status: 'approved' }).select().single();
-  if (error) return res.status(500).json({ error: 'Erreur création conversion' });
-
-  // Créditer le solde
-  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', link.user_id).single();
-  if (user) {
-    await supabase.from('users').update({ balance: user.balance + convAmount }).eq('id', link.user_id);
-  }
-
-  // ── On répond IMMÉDIATEMENT à addunlock une fois la conversion créditée. ──
-  // Tout ce qui suit (Discord, notifications, parrainage, postback vers l'affilié)
-  // ne doit plus bloquer la réponse HTTP : sinon, si Discord répond lentement,
-  // addunlock peut timeout et renvoyer le postback -> doublon.
-  res.json({ success: true, conversion_id: conv.id });
-
-  // ── Tout ce qui suit s'exécute en arrière-plan, après la réponse ──
-  if (user) {
-    supabase.from('notifications').insert({ user_id: link.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + convAmount + ' (' + (link.offers?.name || '?') + ')', read: false }).then(()=>{}).catch(()=>{});
-    checkCollectionComplete(link.user_id).catch(()=>{});
-    // DM privé à l'affilié
-    sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
-      { name: '🎯 Offre', value: link.offers?.name || '?', inline: true },
-      { name: '💵 Montant', value: '$' + convAmount, inline: true }
-    ]).catch(()=>{});
-    // Commission parrainage
-    if (user.referred_by) {
-      creditReferralCommission(link.user_id, convAmount, conv.id).catch(()=>{});
-    }
-    // Jetons de vente
-    grantSaleTokens(link.user_id, conv.id).catch(()=>{});
-    // Postback affilié
-    if (user.postback_url) {
-      const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
-      isSafePostbackUrl(postbackUrl).then(safe => { if (safe) fetch(postbackUrl).catch(()=>{}); }).catch(()=>{});
+  btn.disabled=false;btn.textContent='✅ Vérifier';
+}
+async function doRegister(){
+  const name=document.getElementById('r-name').value.trim();
+  const discordId=document.getElementById('r-discord-id').value.trim();
+  const email=document.getElementById('r-email').value.trim();
+  const password=document.getElementById('r-pass').value.trim();
+  if(!name){toast('Pseudo Discord requis','e');return;}
+  if(!discordId){toast('ID Discord requis','e');return;}
+  if(!/^\d{15,25}$/.test(discordId)){toast('ID Discord invalide (uniquement des chiffres, 15 à 25)','e');return;}
+  if(!discordIdVerified){toast('Clique sur "Vérifier" à côté de ton ID Discord avant de continuer','e');return;}
+  if(!email){toast('Email requis','e');return;}
+  if(!password){toast('Mot de passe requis','e');return;}
+  try{
+    const r=await api('POST','/api/register',{name,email,password,discord_id:discordId,referral_code:document.getElementById('r-ref').value.trim()});
+    TOKEN=r.token;ME=r.user;
+    localStorage.setItem('affihub_token',TOKEN);
+    localStorage.setItem('affihub_user',JSON.stringify(ME));
+    refreshSession();
+    startApp();
+    if(r.welcome_message){
+      setTimeout(()=>{
+        document.getElementById('m-title').textContent='👋 Bienvenue sur AffiHub !';
+        document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:16px">🎉</div><div style="font-size:14px;line-height:1.8;color:var(--muted);white-space:pre-wrap">'+r.welcome_message+'</div><button class="btn btn-grad" onclick="closeMo()" style="margin-top:20px;width:100%;justify-content:center">C\'est parti ! 🚀</button></div>';
+        document.getElementById('mo').classList.add('open');
+      },800);
+    } else {
+      toast('Bienvenue !','s');
     }
   }
-  // Notify Discord
-  notifyDiscord(link.users?.name || '?', link.offers?.name || '?', convAmount).catch(()=>{});
-});
+  catch(e){toast(e.message,'e');}
+}
 
-app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
-  const { user_id, offer_id, amount, status } = req.body;
-  if (!user_id || !offer_id || !amount) return res.status(400).json({ error: 'Champs requis' });
-  // Anti-doublon : évite qu'un double-clic ou un double envoi réseau crée deux fois
-  // la même conversion manuelle (même affilié + même offre + même montant à quelques secondes d'écart).
-  const tenSecondsAgo = new Date(Date.now() - 10 * 1000).toISOString();
-  const { data: recentDuplicate } = await supabase.from('conversions').select('id').eq('user_id', user_id).eq('offer_id', offer_id).eq('amount', parseFloat(amount)).gte('created_at', tenSecondsAgo).limit(1).maybeSingle();
-  if (recentDuplicate) return res.status(409).json({ error: 'Conversion identique déjà ajoutée il y a quelques secondes (doublon évité)' });
-  // Find existing link or use null for manual conversions
-  const { data: link } = await supabase.from('links').select('id').eq('user_id', user_id).eq('offer_id', offer_id).single();
-  const link_id = link ? link.id : null;
-  const { data: conv, error } = await supabase.from('conversions').insert({ link_id, user_id, offer_id, amount: parseFloat(amount), status: status || 'pending' }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'conversion-ajoutée', 'Conversion manuelle de $' + amount + ' ajoutée (statut: ' + (status || 'pending') + ')', req);
-  if (status === 'approved') {
-    const { data: user } = await supabase.from('users').select('name,balance,referred_by,discord_id').eq('id', user_id).single();
-    if (user) {
-      await supabase.from('users').update({ balance: user.balance + parseFloat(amount) }).eq('id', user_id);
-      const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
-      await supabase.from('notifications').insert({ user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + amount + ' (' + (offer?.name || '?') + ')', read: false });
-      await checkCollectionComplete(user_id);
-      await notifyDiscord(user.name || '?', offer?.name || '?', amount);
-      await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
-        { name: '🎯 Offre', value: offer?.name || '?', inline: true },
-        { name: '💵 Montant', value: '$' + amount, inline: true }
+function updateLogo(url){
+  const t=url+'?t='+Date.now();
+  ['auth-logo-img','sb-logo-img'].forEach(id=>{const el=document.getElementById(id);if(el){el.src=t;el.style.display='block';}});
+  ['auth-logo-emoji','sb-logo-emoji'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+}
+
+async function startApp(){
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('u-name').textContent=ME.name;
+  document.getElementById('u-email').textContent=ME.email;
+  document.getElementById('u-avatar').textContent=ME.name[0].toUpperCase();
+  updateSidebarAvatar();
+  setTimeout(()=>updateLogo(LOGO_URL),100);
+  const adminNav=[
+    {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
+    {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'💬',label:'Serveurs Discord',page:'admin-discord'}]},
+    {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'🛍️',label:'Boutique',page:'admin-shop-settings'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'🆔',label:'ID Discord',page:'admin-discordid'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
+  ];
+  const affNav=[
+    {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},
+    {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
+    {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
+    {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'},{icon:'🛍️',label:'Boutique',page:'aff-shop'}]},
+    {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
+        {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+  ];
+  if(ME.role==='admin'){
+    // Refresh ME to get latest permissions
+    try{const fresh=await api('GET','/api/me');ME=fresh;localStorage.setItem('affihub_user',JSON.stringify(ME));}catch(e){}
+    document.getElementById('role-badge').textContent='👑 Admin';
+    document.getElementById('notif-bell-btn').style.display='none';
+    const isSuperAdmin=ME.is_super_admin===true;
+    let perms=null;
+    if(!isSuperAdmin&&ME.admin_permissions&&ME.admin_permissions!=='all'){
+      try{perms=JSON.parse(ME.admin_permissions);}catch(e){perms=null;}
+    }
+    const canSee=p=>!perms||perms.includes(p);
+    const filteredAdminNav=[
+      {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
+      {section:'GESTION',items:[
+        {icon:'👥',label:'Affiliés',page:'admin-aff'},
+        {icon:'🔁',label:'Conversions',page:'admin-conv'},
+        {icon:'💸',label:'Retraits',page:'admin-wd'},
+        {icon:'🤝',label:'Parrainages',page:'admin-ref'},
+        {icon:'🎫',label:'Tickets',page:'admin-tickets'},
+        {icon:'🎨',label:'Liens perso',page:'admin-custom'},
+        {icon:'💬',label:'Serveurs Discord',page:'admin-discord'}
+      ].filter(i=>canSee(i.page))},
+      {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+      {section:'CONFIGURATION',items:[
+        {icon:'🎯',label:'Offres',page:'admin-offers'},
+        {icon:'🔗',label:'Liens',page:'admin-links'},
+        {icon:'🎡',label:'Roue de la chance',page:'admin-wheel'},
+        {icon:'🛍️',label:'Boutique',page:'admin-shop-settings'},
+        {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
+        {icon:'🆔',label:'ID Discord',page:'admin-discordid'},
+        {icon:'⚙️',label:'Paramètres',page:'admin-settings'}
+      ].filter(i=>canSee(i.page))}
+    ];
+    buildNav(filteredAdminNav);buildMobileNav(filteredAdminNav);goPage('admin-dash');
+    setTimeout(refreshNotifs,500);
+  }else{
+    document.getElementById('role-badge').textContent='⚡ Affilié';
+    document.getElementById('notif-bell-btn').style.display='block';
+    api('GET','/api/settings/all').then(s=>{
+      const accueilItems=[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}];
+      const nav=[
+        {section:'ACCUEIL',items:accueilItems},
+        {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
+        {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
+        {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
+        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'},{icon:'🛍️',label:'Boutique',page:'aff-shop'}]},
+        {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
+        {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+      ];
+      buildNav(nav);buildMobileNav(nav);
+      goPage('aff-dash');
+      setTimeout(refreshNotifs,500);
+    }).catch(()=>{
+      buildNav(affNav);buildMobileNav(affNav);
+      goPage('aff-dash');
+      setTimeout(refreshNotifs,500);
+    });
+  }
+}
+
+function logout(){TOKEN=null;ME=null;localStorage.removeItem('affihub_token');localStorage.removeItem('affihub_user');localStorage.removeItem('affihub_session_start');clearInterval(refreshTimer);document.getElementById('app').style.display='none';document.getElementById('auth-screen').style.display='flex';}
+
+function buildNav(sections){
+  var nav=document.getElementById('sb-nav');nav.innerHTML='';
+  sections.forEach(sec=>{
+    var div=document.createElement('div');div.className='nav-section';
+    div.innerHTML='<div class="nav-section-label">'+sec.section+'</div>';
+    sec.items.forEach(item=>{
+      var el=document.createElement('button');el.className='nav-item';el.id='nav-'+item.page;
+      el.innerHTML='<span style="font-size:15px;width:20px;text-align:center">'+item.icon+'</span><span>'+item.label+'</span><span class="notif-badge" id="notif-'+item.page+'" style="display:none">0</span>';
+      el.addEventListener('click',()=>goPage(item.page));
+      div.appendChild(el);
+    });
+    nav.appendChild(div);
+  });
+}
+
+async function refreshNotifs(){
+  if(!ME||!TOKEN)return;
+  try{
+    if(ME.role==='admin'){
+      const [convs,wds,tickets,customs]=await Promise.all([
+        api('GET','/api/conversions'),api('GET','/api/withdrawals'),
+        api('GET','/api/tickets'),api('GET','/api/custom-requests')
       ]);
-      if (user.referred_by) {
-        await creditReferralCommission(user_id, parseFloat(amount), conv.id).catch(()=>{});
-      }
-      await grantSaleTokens(user_id, conv.id);
+      const pendingConvs=convs.filter(c=>c.status==='pending').length;
+      const pendingWds=wds.filter(w=>w.status==='pending').length;
+      const unreadTickets=tickets.filter(t=>t.unread>0).length;
+      const pendingCustoms=customs.filter(c=>c.status==='pending').length;
+      setNotif('admin-conv',pendingConvs);
+      setNotif('admin-wd',pendingWds);
+      setNotif('admin-tickets',unreadTickets);
+      setNotif('admin-custom',pendingCustoms);
+    } else {
+      const tickets=await api('GET','/api/tickets');
+      const unread=tickets.filter(t=>t.unread>0).length;
+      setNotif('aff-tickets',unread);
+      loadNotifs();
     }
-  }
-  res.json(conv);
-});
-
-app.delete('/api/conversions/:id', auth, adminOnly, async (req, res) => {
-  const { data: conv } = await supabase.from('conversions').select('*').eq('id', req.params.id).single();
-  if (!conv) return res.status(404).json({ error: 'Introuvable' });
-  // If approved, remove amount from user balance (+ jetons accordés pour cette vente)
-  if (conv.status === 'approved') {
-    const { data: user } = await supabase.from('users').select('balance').eq('id', conv.user_id).single();
-    if (user) await supabase.from('users').update({ balance: Math.max(0, user.balance - conv.amount) }).eq('id', conv.user_id);
-    await revokeSaleTokens(conv.user_id, conv.tokens_granted);
-  }
-  await supabase.from('conversions').delete().eq('id', req.params.id);
-  log(req.user.id, 'conversion-supprimée', 'Conversion #' + req.params.id + ' supprimée ($' + conv.amount + ')', req);
-  res.json({ success: true });
-});
-
-// ── APPROVE CONVERSION + PARRAINAGE ──
-app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
-  const { data: conv } = await supabase.from('conversions').select('*, users(name), offers(name)').eq('id', req.params.id).single();
-  if (!conv || conv.status !== 'pending') return res.status(400).json({ error: 'Conversion invalide' });
-  await supabase.from('conversions').update({ status: 'approved' }).eq('id', req.params.id);
-  log(req.user.id, 'conversion-approuvée', 'Conversion #'+req.params.id+' approuvée ($'+conv.amount+')', req);
-  const { data: user } = await supabase.from('users').select('balance,referred_by,postback_url,discord_id').eq('id', conv.user_id).single();
-  await supabase.from('users').update({ balance: user.balance + conv.amount }).eq('id', conv.user_id);
-  await supabase.from('notifications').insert({ user_id: conv.user_id, type: 'commission', message: '💰 Nouvelle vente créditée : $' + conv.amount + ' (' + (conv.offers?.name || '?') + ')', read: false });
-  await checkCollectionComplete(conv.user_id);
-  // DM privé à l'affilié
-  await sendDiscordDM(user.discord_id, '💰 Nouvelle vente créditée !', 0x00D68F, [
-    { name: '🎯 Offre', value: conv.offers?.name || '?', inline: true },
-    { name: '💵 Montant', value: '$' + conv.amount, inline: true }
-  ]);
-  // Notify Discord
-  await notifyDiscord(conv.users?.name || '?', conv.offers?.name || '?', conv.amount);
-  if (user.referred_by) {
-    await creditReferralCommission(conv.user_id, conv.amount, conv.id).catch(()=>{});
-  }
-  await grantSaleTokens(conv.user_id, conv.id);
-  // Send postback to affiliate's own system if configured
-  if (user.postback_url) {
-    const postbackUrl = user.postback_url
-      .replace('{LINK_ID}', conv.link_id || '')
-      .replace('{AMOUNT}', conv.amount)
-      .replace('{STATUS}', 'approved');
-    isSafePostbackUrl(postbackUrl).then(safe => {
-      if (safe) fetch(postbackUrl).catch(err => console.error('Postback affilié échoué:', err.message));
-    }).catch(()=>{});
-  }
-  res.json({ success: true });
-});
-
-app.patch('/api/conversions/:id/reject', auth, adminOnly, async (req, res) => {
-  const { reason } = req.body;
-  const { data: conv } = await supabase.from('conversions').select('*, users(name,balance,discord_id), offers(name)').eq('id', req.params.id).single();
-  if (!conv) return res.status(404).json({ error: 'Conversion introuvable' });
-  if (conv.status === 'rejected') return res.status(409).json({ error: 'Cette conversion est déjà rejetée' });
-
-  const wasApproved = conv.status === 'approved';
-  let clawbackShortfall = 0;
-  if (wasApproved && conv.users) {
-    // Retire le montant du solde de l'affilié. S'il n'a plus assez (déjà retiré ailleurs),
-    // on plafonne à 0 et on le signale dans les logs plutôt que de mettre le solde en négatif.
-    const newBalance = conv.users.balance - conv.amount;
-    if (newBalance < 0) clawbackShortfall = -newBalance;
-    await supabase.from('users').update({ balance: Math.max(0, newBalance) }).eq('id', conv.user_id);
-    // Retire aussi les jetons accordés pour cette vente, le cas échéant
-    await revokeSaleTokens(conv.user_id, conv.tokens_granted);
-  }
-
-  await supabase.from('conversions').update({ status: 'rejected', reason: reason || null }).eq('id', req.params.id);
-  log(req.user.id, 'conversion-rejetée', 'Conversion #'+req.params.id+' de $'+conv.amount+(wasApproved?' (était approuvée, solde retiré'+(clawbackShortfall>0?', manque $'+clawbackShortfall.toFixed(2)+' — solde déjà insuffisant':'')+')':'')+' rejetée'+(reason?' — raison : '+reason:''), req);
-
-  if (conv.users) {
-    await supabase.from('notifications').insert({ user_id: conv.user_id, type: 'conversion_rejected', message: '❌ Ta vente de $' + conv.amount + ' (' + (conv.offers?.name||'?') + ') a été rejetée' + (wasApproved?' et retirée de ton solde':'') + (reason ? ' : ' + reason : ''), read: false });
-    if (conv.users.discord_id) {
-      await sendDiscordDM(conv.users.discord_id, '❌ Conversion rejetée', 0xFF4757, [
-        { name: '🎯 Offre', value: conv.offers?.name || '?', inline: true },
-        { name: '💵 Montant', value: '$' + conv.amount, inline: true },
-        ...(wasApproved ? [{ name: '⚠️ Solde', value: 'Retiré de ton solde', inline: true }] : []),
-        ...(reason ? [{ name: '❓ Raison', value: reason, inline: false }] : [])
-      ]);
-    }
-  }
-  res.json({ success: true });
-});
-
-// ── CONVERSIONS ──
-app.get('/api/conversions', auth, async (req, res) => {
-  let query = supabase.from('conversions').select('*, offers(name), users(name)').order('created_at', { ascending: false });
-  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
-  const { data } = await query;
-  res.json(data || []);
-});
-
-// ── OFFERS ──
-// ── COLLECTION DE CARTES ──
-async function getCollectionForUser(userId) {
-  const { data: offers } = await supabase.from('offers').select('*').order('id');
-  const { data: convs } = await supabase.from('conversions').select('offer_id,created_at').eq('user_id', userId).eq('status', 'approved').order('created_at');
-  const { data: grants } = await supabase.from('manual_card_grants').select('offer_id,granted_at').eq('user_id', userId);
-  const unlocked = {};
-  (convs || []).forEach(c => {
-    if (!unlocked[c.offer_id]) unlocked[c.offer_id] = { count: 0, first: c.created_at, manual: false };
-    unlocked[c.offer_id].count++;
-  });
-  (grants || []).forEach(g => {
-    if (!unlocked[g.offer_id]) unlocked[g.offer_id] = { count: 0, first: g.granted_at, manual: true };
-  });
-  return (offers || []).map(o => ({
-    id: o.id, name: o.name, category: o.category, image_url: o.image_url,
-    unlocked: !!unlocked[o.id],
-    sales_count: unlocked[o.id]?.count || 0,
-    unlocked_at: unlocked[o.id]?.first || null,
-    manual: unlocked[o.id]?.manual || false
-  }));
+  }catch(e){}
 }
-// Bonus de $50, versé une seule fois, quand la collection passe à 100%
-async function checkCollectionComplete(userId) {
-  try {
-    const collection = await getCollectionForUser(userId);
-    if (collection.length === 0 || !collection.every(c => c.unlocked)) return;
-    const { data: user } = await supabase.from('users').select('balance,collection_bonus_claimed,discord_id').eq('id', userId).single();
-    if (!user || user.collection_bonus_claimed) return;
-    await supabase.from('users').update({ balance: user.balance + 50, collection_bonus_claimed: true }).eq('id', userId);
-    await supabase.from('notifications').insert({ user_id: userId, type: 'collection_complete', message: '🎴 Collection complète ! $50 de bonus ajoutés à ton solde 🎉', read: false });
-    await sendDiscordDM(user.discord_id, '🎴 Collection complète !', 0xE8B84B, [
-      { name: '🏆 Bravo', value: 'Toutes les cartes débloquées !', inline: true },
-      { name: '💰 Bonus', value: '$50 ajoutés à ton solde', inline: true }
-    ]);
-  } catch (e) { console.error('checkCollectionComplete error:', e.message); }
+function setNotif(page,count){
+  const el=document.getElementById('notif-'+page);
+  if(!el)return;
+  if(count>0){el.textContent=count;el.style.display='inline-block';}
+  else{el.style.display='none';}
 }
 
-app.get('/api/me/collection', auth, async (req, res) => {
-  res.json(await getCollectionForUser(req.user.id));
-});
-app.get('/api/admin/collection/:userId', auth, adminOnly, async (req, res) => {
-  res.json(await getCollectionForUser(req.params.userId));
-});
-app.post('/api/admin/grant-card', auth, adminOnly, async (req, res) => {
-  const { user_id, offer_id } = req.body;
-  if (!user_id || !offer_id) return res.status(400).json({ error: 'user_id et offer_id requis' });
-  const { data: existing } = await supabase.from('manual_card_grants').select('id').eq('user_id', user_id).eq('offer_id', offer_id).single();
-  if (existing) return res.status(400).json({ error: 'Déjà débloquée manuellement' });
-  const { error } = await supabase.from('manual_card_grants').insert({ user_id, offer_id, granted_by: req.user.id });
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'carte-débloquée-manuellement', 'Carte offre #' + offer_id + ' débloquée pour affilié #' + user_id, req);
-  await checkCollectionComplete(user_id);
-  res.json({ success: true });
-});
-app.delete('/api/admin/grant-card/:userId/:offerId', auth, adminOnly, async (req, res) => {
-  await supabase.from('manual_card_grants').delete().eq('user_id', req.params.userId).eq('offer_id', req.params.offerId);
-  log(req.user.id, 'carte-retirée', 'Déblocage manuel retiré (offre #' + req.params.offerId + ', affilié #' + req.params.userId + ')', req);
-  res.json({ success: true });
-});
-app.get('/api/offers', auth, async (req, res) => {
-  const { data } = await supabase.from('offers').select('*').order('id');
-  res.json(data || []);
-});
-app.post('/api/offers', auth, adminOnly, async (req, res) => {
-  const { name, description, url, commission, category, image_url } = req.body;
-  if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
-  const validCats = ['casino','dating','influenceuse','ia','autre'];
-  const cat = validCats.includes(category) ? category : 'autre';
-  const { data, error } = await supabase.from('offers').insert({ name, description, url, commission: commission || 10, category: cat, image_url: image_url || null }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'offre-créée', 'Offre "' + name + '" créée', req);
-  res.json(data);
-});
-app.patch('/api/offers/:id', auth, adminOnly, async (req, res) => {
-  const { name, description, url, commission, category, image_url, active } = req.body;
-  if (active !== undefined && !name) {
-    const { data, error } = await supabase.from('offers').update({ active }).eq('id', req.params.id).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    log(req.user.id, 'offre-'+(active?'activée':'désactivée'), 'Offre "'+(data?.name||'#'+req.params.id)+'" '+(active?'activée':'désactivée'), req);
-    return res.json(data);
-  }
-  if (!name || !url) return res.status(400).json({ error: 'Nom et URL requis' });
-  const { data, error } = await supabase.from('offers').update({ name, description, url, commission: commission || 10, category: category || 'autre', image_url: image_url || null, active: active !== undefined ? active : true }).eq('id', req.params.id).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'offre-modifiée', 'Offre "'+name+'" modifiée', req);
-  res.json(data);
-});
-app.delete('/api/offers/:id', auth, adminOnly, async (req, res) => {
-  const id = req.params.id;
-  const { data: offer } = await supabase.from('offers').select('name').eq('id', id).single();
-  const { data: links } = await supabase.from('links').select('id').eq('offer_id', id);
-  if (links && links.length > 0) {
-    const linkIds = links.map(l => l.id);
-    await supabase.from('conversions').delete().in('link_id', linkIds);
-    await supabase.from('links').delete().eq('offer_id', id);
-  }
-  await supabase.from('offers').delete().eq('id', id);
-  log(req.user.id, 'offre-supprimée', 'Offre "' + (offer?.name || '#' + id) + '" supprimée', req);
-  res.json({ success: true });
-});
+function buildMobileNav(sections){
+  const nav=document.getElementById('mobile-nav');if(!nav)return;
+  let html='<div style="padding-bottom:60px">';
+  sections.forEach(sec=>{
+    html+='<div style="margin-bottom:8px"><div style="font-size:9px;font-weight:800;color:rgba(245,200,66,.5);text-transform:uppercase;letter-spacing:1.5px;padding:10px 4px 5px">'+sec.section+'</div>';
+    sec.items.forEach(item=>{
+      html+='<button onclick="closeMobileNav();goPage(\''+item.page+'\')" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:none;border:none;border-radius:12px;color:#888;font-size:15px;font-weight:600;cursor:pointer;font-family:inherit;margin-bottom:2px;-webkit-tap-highlight-color:rgba(245,200,66,.2);touch-action:manipulation" id="mnav-'+item.page+'">'
+        +'<span style="font-size:18px;width:24px;text-align:center">'+item.icon+'</span>'+item.label+'</button>';
+    });
+    html+='</div>';
+  });
+  html+='<div style="margin-top:16px;padding-top:16px;border-top:1px solid #1a1a1a"><button onclick="closeMobileNav();logout()" style="width:100%;display:flex;align-items:center;gap:12px;padding:14px 16px;background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:12px;color:var(--red);font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:rgba(255,71,87,.2);touch-action:manipulation"><span style="font-size:18px;width:24px;text-align:center">⏏</span>Déconnexion</button></div>';
+  html+='</div>';nav.innerHTML=html;
+}
 
-// ── LINKS ──
-app.get('/api/links', auth, async (req, res) => {
-  let query = supabase.from('links').select('*, offers(name,commission), users(name)');
-  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
-  const { data } = await query.order('created_at', { ascending: false });
-  res.json(data || []);
-});
-app.post('/api/links', auth, async (req, res) => {
-  const { offer_id } = req.body;
-  const { data: existing } = await supabase.from('links').select('*').eq('user_id', req.user.id).eq('offer_id', offer_id).single();
-  if (existing) return res.status(400).json({ error: 'Lien déjà généré' });
-  const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let id = ''; for (let i = 0; i < 6; i++) id += chars[Math.floor(Math.random() * chars.length)];
-  // Shorten the link
-  const { data, error } = await supabase.from('links').insert({ id, user_id: req.user.id, offer_id, clicks: 0, active: true }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'lien-généré', 'Lien généré pour "'+( offer?.name||'offre #'+offer_id)+'" : '+id, req);
-  res.json(data);
-});
-app.patch('/api/links/:id', auth, adminOnly, async (req, res) => {
-  const { active } = req.body;
-  const { data } = await supabase.from('links').update({ active }).eq('id', req.params.id).select().single();
-  log(req.user.id, 'lien-'+(active?'activé':'désactivé'), 'Lien '+req.params.id+' '+(active?'activé':'désactivé')+' par admin', req);
-  res.json(data);
-});
-app.delete('/api/links/:id', auth, async (req, res) => {
-  const { data: link } = await supabase.from('links').select('user_id').eq('id', req.params.id).single();
-  if (!link) return res.status(404).json({ error: 'Lien introuvable' });
-  if (req.user.role !== 'admin' && link.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
-  // Détache les conversions existantes (garde l'historique + l'argent déjà crédité intact) avant de supprimer le lien
-  const { error: detachErr } = await supabase.from('conversions').update({ link_id: null }).eq('link_id', req.params.id);
-  if (detachErr) return res.status(500).json({ error: 'Suppression impossible : ' + detachErr.message });
-  const { error } = await supabase.from('links').delete().eq('id', req.params.id);
-  if (error) return res.status(500).json({ error: 'Suppression impossible : ' + error.message });
-  log(req.user.id, 'lien-supprimé', 'Lien '+req.params.id+' supprimé', req);
-  res.json({ success: true });
-});
+function toggleMobileMenu(){
+  const nav=document.getElementById('mobile-nav');
+  if(nav)nav.classList.toggle('open');
+}
+function closeMobileNav(){
+  const nav=document.getElementById('mobile-nav');
+  if(nav)nav.classList.remove('open');
+}
 
-// ── WITHDRAWALS ──
-app.get('/api/withdrawals', auth, async (req, res) => {
-  let query = supabase.from('withdrawals').select('*, users(name)').order('created_at', { ascending: false });
-  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
-  const { data } = await query;
-  res.json(data || []);
-});
-const GIFT_CARDS = {
-  playstation: { label: 'PlayStation', amounts: [20, 50] },
-  xbox: { label: 'Xbox', amounts: [10, 25, 50] },
-  roblox: { label: 'Roblox', amounts: [10, 20, 50] },
-  nintendo: { label: 'Nintendo', amounts: [15, 25, 50, 75, 100] },
-  twitch: { label: 'Twitch', amounts: [15, 25, 50] },
-  amazon: { label: 'Amazon', amounts: [10, 25, 50] },
-  zalando: { label: 'Zalando', amounts: [20, 50, 100] },
-  airbnb: { label: 'Airbnb', amounts: [50] },
-  footlocker: { label: 'Footlocker', amounts: [25, 50] },
-  netflix: { label: 'Netflix', amounts: [25, 50, 100] },
-  adidas: { label: 'Adidas', amounts: [25] },
-  primark: { label: 'Primark', amounts: [15, 25] },
-  flixbus: { label: 'FlixBus', amounts: [20, 50, 100] },
-  safemoni: { label: 'Safemoni', amounts: [10, 20, 50] },
-  tripgift: { label: 'Tripgift', amounts: [50, 100, 250] },
-  hotelsgift: { label: 'Hotelsgift', amounts: [50, 100, 250] }
+const TITLES={
+  'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions',
+  'aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager',
+  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection','aff-gifts':'🎁 Cadeaux','aff-badges':'🏅 Mes badges','aff-streak':'🔥 Ma série','aff-wheel':'🎡 Roue de la chance','aff-shop':'🛍️ Boutique',
+  'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
+  'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
+  'admin-offers':'Offres','admin-links':'Liens','admin-wheel':'🎡 Roue de la chance','admin-shop-settings':'🛍️ Réglages boutique','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité','admin-discordid':'🆔 ID Discord'
 };
 
-app.post('/api/withdrawals', auth, async (req, res) => {
-  const { amount, crypto, address, gift_provider } = req.body;
-  const { data: user } = await supabase.from('users').select('balance,name,discord_id').eq('id', req.user.id).single();
-  if (!user) return res.status(400).json({ error: 'Utilisateur introuvable' });
-  if (!user.discord_id) return res.status(400).json({ error: 'Renseigne ton ID Discord dans Paramètres avant de demander un retrait' });
-  let finalAddress = address;
-  if (crypto === 'CADEAU') {
-    const card = GIFT_CARDS[gift_provider];
-    if (!card) return res.status(400).json({ error: 'Carte cadeau invalide' });
-    if (!card.amounts.includes(Number(amount))) return res.status(400).json({ error: 'Montant invalide pour cette carte' });
-    if (amount < 25) return res.status(400).json({ error: 'Retrait minimum $25' });
-    if (amount > user.balance) return res.status(400).json({ error: 'Solde insuffisant pour cette carte cadeau' });
-    finalAddress = card.label + ' - $' + amount;
-  } else {
-    if (user.balance < 25) return res.status(400).json({ error: 'Solde insuffisant (minimum $25)' });
-    if (amount < 25 || amount > user.balance) return res.status(400).json({ error: 'Montant invalide' });
+async function goPage(page){
+  curPage=page;
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const nav=document.getElementById('nav-'+page);if(nav)nav.classList.add('active');
+  if(page.startsWith('admin-ref-')){const n=document.getElementById('nav-admin-ref');if(n)n.classList.add('active');}
+  if(page.startsWith('aff-ticket-')){const n=document.getElementById('nav-aff-tickets');if(n)n.classList.add('active');}
+  if(page.startsWith('admin-ticket-')){const n=document.getElementById('nav-admin-tickets');if(n)n.classList.add('active');}
+  document.getElementById('page-title').textContent=page.startsWith('admin-ref-')?'Détail parrainage':page.startsWith('aff-ticket-')||page.startsWith('admin-ticket-')?'💬 Ticket':(TITLES[page]||page);
+  const content=document.getElementById('content');
+  // Fade out current content
+  content.classList.add('page-out');
+  await new Promise(r=>setTimeout(r,120));
+  content.classList.remove('page-out');
+  content.innerHTML='<div class="sk-wrap"><div class="sk" style="height:90px;border-radius:18px;margin-bottom:20px"></div><div class="sk-stats"><div class="sk-stat"><div class="sk" style="height:11px;width:60%;margin-bottom:10px"></div><div class="sk" style="height:22px;width:40%"></div></div><div class="sk-stat"><div class="sk" style="height:11px;width:60%;margin-bottom:10px"></div><div class="sk" style="height:22px;width:40%"></div></div><div class="sk-stat"><div class="sk" style="height:11px;width:60%;margin-bottom:10px"></div><div class="sk" style="height:22px;width:40%"></div></div></div><div class="sk-card"><div class="sk" style="height:14px;width:30%;margin-bottom:16px"></div><div class="sk" style="height:38px;margin-bottom:10px"></div><div class="sk" style="height:38px;margin-bottom:10px"></div><div class="sk" style="height:38px;width:80%"></div></div></div>';
+  try{
+    const html=await renderPage(page);
+    content.innerHTML=html;
+    content.classList.add('page-in');
+    setTimeout(()=>content.classList.remove('page-in'),250);
   }
-  await supabase.from('users').update({ balance: user.balance - amount }).eq('id', req.user.id);
-  const { data } = await supabase.from('withdrawals').insert({ user_id: req.user.id, amount, crypto, address: finalAddress, status: 'pending' }).select().single();
-  // Discord notification
-  await notifyDiscord2(DISCORD_WITHDRAWAL, '💸 Demande de retrait !', 0xF0427A, [
-    { name: '👤 Affilié', value: user.name, inline: true },
-    { name: '💰 Montant', value: '$' + amount, inline: true },
-    { name: '💳 Moyen', value: crypto === 'CADEAU' ? finalAddress : crypto, inline: true }
-  ], '<@1504481208266915861>');
-  log(req.user.id, 'retrait-demandé', 'Demande de $'+amount+' en '+crypto, req);
-  res.json(data);
-});
-app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
-  const { data: wd } = await supabase.from('withdrawals').select('*, users(name)').eq('id', req.params.id).single();
-  if (!wd) return res.status(404).json({ error: 'Introuvable' });
-  if (wd.status !== 'pending') return res.status(409).json({ error: 'Ce retrait a déjà été traité (statut actuel : ' + wd.status + ')' });
-  await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
-  await grantWithdrawalTokens(wd.user_id, wd.id, wd.amount);
-  // Discord notification
-  log(req.user.id, 'retrait-payé', 'Retrait #'+req.params.id+' de $'+wd.amount+' payé à '+(wd.users?.name||'?'), req);
-  await supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_paid', message: '💸 Ton retrait de $' + wd.amount + ' a été payé !', read: false });
-  await notifyDiscord2(DISCORD_PAYMENT, '✅ Retrait payé !', 0x00D68F, [
-    { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
-    { name: '💰 Montant', value: '$' + wd.amount, inline: true },
-    { name: '💳 Moyen', value: wd.crypto, inline: true }
-  ]);
-  res.json({ success: true });
-});
-app.patch('/api/withdrawals/:id/reject', auth, adminOnly, async (req, res) => {
-  const { reason } = req.body;
-  const { data: wd } = await supabase.from('withdrawals').select('*, users(name)').eq('id', req.params.id).single();
-  if (!wd) return res.status(404).json({ error: 'Introuvable' });
-  if (wd.status !== 'pending') return res.status(409).json({ error: 'Ce retrait a déjà été traité (statut actuel : ' + wd.status + ') — pas de remboursement en double.' });
-  await supabase.from('withdrawals').update({ status: 'rejected', reason }).eq('id', req.params.id);
-  const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
-  await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
-  // Discord notification
-  log(req.user.id, 'retrait-rejeté', 'Retrait #'+req.params.id+' de '+(wd.users?.name||'?')+' rejeté', req);
-  await supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_rejected', message: '❌ Ton retrait de $' + wd.amount + ' a été rejeté' + (reason ? ' : ' + reason : '') + '. Le montant a été remis sur ton solde.', read: false });
-  await notifyDiscord2(DISCORD_PAYMENT, '❌ Retrait rejeté', 0xFF4757, [
-    { name: '👤 Affilié', value: wd.users?.name || '?', inline: true },
-    { name: '💰 Montant', value: '$' + wd.amount, inline: true },
-    { name: '❓ Raison', value: reason || 'Non précisée', inline: true }
-  ]);
-  res.json({ success: true });
-});
-app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
-  const { data: wd } = await supabase.from('withdrawals').select('*').eq('id', req.params.id).single();
-  if (!wd) return res.status(404).json({ error: 'Introuvable' });
-  if (wd.status === 'pending') {
-    const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
-    if (user) await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
+  catch(e){content.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>'+e.message+'</p></div>';}
+}
+
+function sbadge(s){const m={approved:'<span class="badge bg2"><span class="dot dg"></span>Approuvée</span>',pending:'<span class="badge by2"><span class="dot dy"></span>En attente</span>',rejected:'<span class="badge br2"><span class="dot dr"></span>Rejetée</span>',paid:'<span class="badge bg2">Payé</span>',active:'<span class="badge bg2">Actif</span>',disabled:'<span class="badge br2">Désactivé</span>'};return m[s]||s;}
+function gtext(v){return '<span style="background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:900">'+v+'</span>';}
+function fmt(d){return d?d.split('T')[0]:'—';}
+// Échappe le HTML dangereux dans un texte fourni par un utilisateur avant de l'insérer
+// dans le DOM, pour empêcher qu'un message/nom contenant du code (ex: <img onerror=...>)
+// ne s'exécute chez qui le consulte (protection XSS stocké).
+function esc(str){if(str===null||str===undefined)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Avatar rond : affiche la photo de profil si elle existe, sinon l'initiale du nom (comportement inchangé par défaut)
+function avatarHtml(name,avatarUrl,size,fontSize,extraStyle){
+  size=size||34;fontSize=fontSize||13;
+  const base='width:'+size+'px;height:'+size+'px;border-radius:'+Math.round(size*0.29)+'px;flex-shrink:0;'+(extraStyle||'');
+  if(avatarUrl)return '<div class="avatar" style="'+base+';padding:0;overflow:hidden;background:#1a1a1a"><img src="'+avatarUrl+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent=\''+esc((name||'?')[0].toUpperCase())+'\';this.parentElement.style.background=\'var(--grad)\'"></div>';
+  return '<div class="avatar" style="'+base+';font-size:'+fontSize+'px">'+esc((name||'?')[0].toUpperCase())+'</div>';
+}
+
+// ── Roue de la chance ── (les segments viennent maintenant du serveur, configurables par l'admin)
+let CURRENT_WHEEL_SEGMENTS=[];
+const WHEEL_PALETTE=[
+  {from:'#6EB8FF',to:'#3B7DDB',text:'#fff'},
+  {from:'#3DEBB0',to:'#00A868',text:'#fff'},
+  {from:'#C99BFA',to:'#8B2FE0',text:'#fff'},
+  {from:'#FF7DA8',to:'#E01F5C',text:'#fff'},
+  {from:'#FFE08A',to:'#E0A519',text:'#000'},
+  {from:'#FFB74D',to:'#E67E22',text:'#000'},
+  {from:'#80DEEA',to:'#00838F',text:'#fff'},
+  {from:'#FF8A80',to:'#D32F2F',text:'#fff'}
+];
+const WHEEL_LOSE_COLOR={from:'#3a3a3a',to:'#1a1a1a',text:'#888'};
+const WHEEL_TOKEN_COLOR={from:'#FFE08A',to:'#C99400',text:'#000'};
+function colorForWheelSegment(seg,i){ return seg.reward===0 ? WHEEL_LOSE_COLOR : seg.type==='tokens' ? WHEEL_TOKEN_COLOR : WHEEL_PALETTE[i%WHEEL_PALETTE.length]; }
+function buildWheelSegments(segments){
+  const n=segments.length,segAngle=360/n,cx=100,cy=100,r=95;
+  const pt=(angleDeg,radius)=>{const a=(angleDeg-90)*Math.PI/180;return [cx+radius*Math.cos(a),cy+radius*Math.sin(a)];};
+  // Taille du texte adaptée au nombre de segments (plus il y en a, moins il y a de place
+  // sur chaque part) ET à la longueur du libellé, pour éviter que le texte déborde.
+  const baseSize=n<=6?12:n<=8?11:n<=10?9.5:n<=12?8.5:7.5;
+  let defs='',svg='';
+  for(let i=0;i<n;i++){
+    const seg=segments[i],col=colorForWheelSegment(seg,i);
+    const label=String(seg.label||'');
+    let fontSize=baseSize;
+    if(label.length>10)fontSize=Math.max(6,baseSize-2.5);
+    else if(label.length>6)fontSize=Math.max(6.5,baseSize-1.3);
+    defs+='<radialGradient id="wseg'+i+'" cx="50%" cy="50%" r="75%"><stop offset="0%" stop-color="'+col.from+'"/><stop offset="100%" stop-color="'+col.to+'"/></radialGradient>';
+    const startA=i*segAngle,endA=startA+segAngle,midA=startA+segAngle/2;
+    const [x1,y1]=pt(startA,r),[x2,y2]=pt(endA,r);
+    const largeArc=segAngle>180?1:0;
+    svg+='<path d="M'+cx+','+cy+' L'+x1.toFixed(1)+','+y1.toFixed(1)+' A'+r+','+r+' 0 '+largeArc+' 1 '+x2.toFixed(1)+','+y2.toFixed(1)+' Z" fill="url(#wseg'+i+')" stroke="#0a0a0a" stroke-width="1.5"/>';
+    const [lx,ly]=pt(midA,r*0.66);
+    svg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" dominant-baseline="middle" font-size="'+fontSize+'" font-weight="800" fill="'+col.text+'" transform="rotate('+midA.toFixed(1)+','+lx.toFixed(1)+','+ly.toFixed(1)+')">'+esc(label)+'</text>';
   }
-  if (wd.status === 'paid' && wd.tokens_granted) {
-    await revokeWithdrawalTokens(wd.user_id, wd.tokens_granted);
+  // Léger reflet brillant au centre pour un effet glossy
+  svg+='<circle cx="100" cy="100" r="95" fill="url(#wshine)" opacity=".5"/>';
+  defs+='<radialGradient id="wshine" cx="35%" cy="25%" r="60%"><stop offset="0%" stop-color="#fff" stop-opacity=".22"/><stop offset="60%" stop-color="#fff" stop-opacity="0"/></radialGradient>';
+  defs+='<radialGradient id="whub" cx="35%" cy="30%" r="70%"><stop offset="0%" stop-color="#fff8dc"/><stop offset="45%" stop-color="var(--yellow)"/><stop offset="100%" stop-color="#a8791f"/></radialGradient>';
+  return '<defs>'+defs+'</defs>'+svg;
+}
+// Petites ampoules clignotantes tout autour de la roue, façon enseigne de casino
+function buildWheelBulbs(){
+  const count=16,cx=100,cy=100,r=97;
+  const colors=['#F5C842','#F0427A','#4D9EFF','#00D68F'];
+  let svg='';
+  for(let i=0;i<count;i++){
+    const angle=(i/count)*360;
+    const a=(angle-90)*Math.PI/180;
+    const x=cx+r*Math.cos(a),y=cy+r*Math.sin(a);
+    const color=colors[i%colors.length];
+    svg+='<circle class="wheel-bulb" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3.2" fill="'+color+'" style="color:'+color+';animation-delay:'+(i*0.09).toFixed(2)+'s"/>';
   }
-  await supabase.from('withdrawals').delete().eq('id', req.params.id);
-  log(req.user.id, 'retrait-supprimé', 'Retrait de $' + wd.amount + ' supprimé', req);
-  res.json({ success: true });
-});
-
-// ── USERS ──
-app.get('/api/users', auth, adminOnly, async (req, res) => {
-  const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
-  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin,discord_id,avatar_url,tokens');
-  if (!me?.is_super_admin) {
-    query = query.eq('role', 'affiliate');
-  } else {
-    query = query.neq('id', req.user.id); // don't show yourself
+  return svg;
+}
+function spawnConfetti(){
+  const emojis=['🎉','✨','🎊','⭐','💰'];
+  for(let i=0;i<24;i++){
+    const el=document.createElement('div');
+    el.className='confetti-piece';
+    el.textContent=emojis[Math.floor(Math.random()*emojis.length)];
+    el.style.left=Math.random()*100+'vw';
+    el.style.fontSize=(14+Math.random()*14)+'px';
+    el.style.animationDuration=(2.2+Math.random()*1.6)+'s';
+    el.style.animationDelay=(Math.random()*0.4)+'s';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),4200);
   }
-  const { data } = await query.order('created_at', { ascending: false });
-  const withGains = await Promise.all((data || []).map(async u => {
-    const [convsRes, commissionsRes] = await Promise.all([
-      supabase.from('conversions').select('amount').eq('user_id', u.id).eq('status', 'approved'),
-      supabase.from('referral_commissions').select('amount').eq('referrer_id', u.id)
-    ]);
-    const totalGains = (convsRes.data || []).reduce((s, c) => s + c.amount, 0) + (commissionsRes.data || []).reduce((s, c) => s + c.amount, 0);
-    return { ...u, totalGains: parseFloat(totalGains.toFixed(2)) };
-  }));
-  res.json(withGains);
-});
-// Réinitialise le mot de passe d'un affilié avec celui choisi par l'admin.
-// Force la déconnexion de toute session active et l'oblige à passer par un écran
-// de changement de mot de passe dès sa prochaine connexion.
-app.post('/api/users/:id/reset-password', auth, adminOnly, async (req, res) => {
-  const { newPassword } = req.body;
-  if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Le mot de passe doit faire au moins 6 caractères' });
-  const { data: target } = await supabase.from('users').select('name,discord_id,token_version').eq('id', req.params.id).single();
-  if (!target) return res.status(404).json({ error: 'Utilisateur introuvable' });
-  const hash = await bcrypt.hash(newPassword, 10);
-  // On incrémente token_version pour invalider immédiatement toute session déjà ouverte
-  // (déconnexion forcée), et must_change_password pour l'obliger à en définir un nouveau
-  // dès sa prochaine connexion, avant de pouvoir faire quoi que ce soit d'autre sur le site.
-  await supabase.from('users').update({ password: hash, must_change_password: true, token_version: (target.token_version || 0) + 1 }).eq('id', req.params.id);
-  invalidateAuthCache(req.params.id);
-  log(req.user.id, 'mot-de-passe-réinitialisé', 'Mot de passe réinitialisé (+ déconnexion forcée) pour ' + (target.name || '#' + req.params.id), req);
-  // Tentative d'envoi direct en DM Discord si l'affilié a un ID Discord renseigné
-  let sentViaDiscord = false;
-  if (target.discord_id) {
-    sentViaDiscord = await sendDiscordDMPlain(target.discord_id, '🔑 Ton mot de passe AffiHub a été réinitialisé par un admin.\nNouveau mot de passe : `' + newPassword + '`\nConnecte-toi avec ce mot de passe, il te sera demandé d\'en choisir un nouveau immédiatement.');
-  }
-  res.json({ success: true, sentViaDiscord });
-});
-
-app.delete('/api/users/:id', auth, adminOnly, async (req, res) => {
-  const uid = req.params.id;
-  try {
-    const { data: links } = await supabase.from('links').select('id').eq('user_id', uid);
-    if (links && links.length > 0) {
-      const linkIds = links.map(l => l.id);
-      await supabase.from('conversions').delete().in('link_id', linkIds);
-    }
-    await supabase.from('activity_logs').delete().eq('user_id', uid);
-    await supabase.from('notifications').delete().eq('user_id', uid);
-    await supabase.from('announcements_read').delete().eq('user_id', uid);
-    await supabase.from('conversions').delete().eq('user_id', uid);
-    await supabase.from('links').delete().eq('user_id', uid);
-    await supabase.from('withdrawals').delete().eq('user_id', uid);
-    await supabase.from('referral_commissions').delete().eq('referrer_id', uid);
-    await supabase.from('referral_commissions').delete().eq('referee_id', uid);
-    await supabase.from('users').update({ referred_by: null }).eq('referred_by', uid);
-    await supabase.from('custom_link_requests').delete().eq('user_id', uid);
-    const { data: tickets } = await supabase.from('tickets').select('id').eq('user_id', uid);
-    if (tickets && tickets.length > 0) {
-      const ticketIds = tickets.map(t => t.id);
-      await supabase.from('ticket_messages').delete().in('ticket_id', ticketIds);
-    }
-    await supabase.from('ticket_messages').delete().eq('user_id', uid);
-    await supabase.from('tickets').delete().eq('user_id', uid);
-    log(req.user.id, 'affilié-supprimé', 'Compte supprimé : '+uid, req);
-    const { error: delError } = await supabase.from('users').delete().eq('id', uid);
-    if (delError) return res.status(500).json({ error: delError.message });
-    res.json({ success: true });
-  } catch(e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// ── STATS ADMIN ──
-app.get('/api/stats', auth, adminOnly, async (req, res) => {
-  const [users, links, conversions, withdrawals] = await Promise.all([
-    supabase.from('users').select('id', { count: 'exact' }).eq('role', 'affiliate'),
-    supabase.from('links').select('clicks'),
-    supabase.from('conversions').select('amount,status'),
-    supabase.from('withdrawals').select('amount,status')
-  ]);
-  const totalClicks = (links.data || []).reduce((s, l) => s + l.clicks, 0);
-  const totalGains = (conversions.data || []).filter(c => c.status === 'approved').reduce((s, c) => s + c.amount, 0);
-  res.json({ affiliates: users.count || 0, totalClicks, totalConversions: (conversions.data || []).length, totalGains, pendingConversions: (conversions.data || []).filter(c => c.status === 'pending').length, pendingWithdrawals: (withdrawals.data || []).filter(w => w.status === 'pending').length, paidWithdrawals: (withdrawals.data || []).filter(w => w.status === 'paid').length, totalWithdrawals: (withdrawals.data || []).reduce((s,w) => w.status === 'paid' ? s + w.amount : s, 0) });
-});
-
-// ── ADMIN REFERRALS ──
-app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
-  const { data: affiliates } = await supabase.from('users').select('id,name,email,balance,created_at,referral_code,referral_rate').eq('role','affiliate');
-  const result = await Promise.all((affiliates||[]).map(async aff => {
-    const [filleulesRes, commissionsRes] = await Promise.all([
-      supabase.from('users').select('id,name,created_at,referral_active,referral_same_ip,referral_rate_override').eq('referred_by', aff.id),
-      supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', aff.id).order('created_at',{ascending:false})
-    ]);
-    const filleules = filleulesRes.data, commissions = commissionsRes.data;
-    const totalEarned = (commissions||[]).reduce((s,c)=>s+c.amount,0);
-    return { ...aff, filleules: filleules||[], commissions: commissions||[], totalEarned };
-  }));
-  res.json(result.filter(a => a.filleules.length > 0 || a.commissions.length > 0));
-});
-
-app.patch('/api/admin/referral/:userId/toggle', auth, adminOnly, async (req, res) => {
-  const { active } = req.body;
-  const { data: u } = await supabase.from('users').select('name').eq('id', req.params.userId).single();
-  await supabase.from('users').update({ referral_active: active }).eq('id', req.params.userId);
-  log(req.user.id, 'parrainage-' + (active ? 'réactivé' : 'arrêté'), 'Parrainage ' + (active ? 'réactivé' : 'arrêté') + ' pour ' + (u?.name || '#' + req.params.userId), req);
-  res.json({ success: true });
-});
-
-app.patch('/api/admin/referral/:userId/rate', auth, adminOnly, async (req, res) => {
-  const { rate } = req.body;
-  if (rate !== null && (isNaN(rate) || rate < 0 || rate > 100)) return res.status(400).json({ error: 'Taux invalide (0 à 100)' });
-  const { data: u } = await supabase.from('users').select('name').eq('id', req.params.userId).single();
-  await supabase.from('users').update({ referral_rate: rate === null || rate === '' ? null : parseFloat(rate) }).eq('id', req.params.userId);
-  log(req.user.id, 'taux-parrainage-modifié', 'Taux de commission de ' + (u?.name || '#' + req.params.userId) + ' fixé à ' + (rate === null || rate === '' ? '10% (défaut)' : rate + '%'), req);
-  res.json({ success: true });
-});
-
-// Taux personnalisé pour UN filleul précis (prend le dessus sur le taux global du parrain).
-// :filleulId = l'id du filleul, pas du parrain.
-app.patch('/api/admin/referral/filleul/:filleulId/rate', auth, adminOnly, async (req, res) => {
-  const { rate } = req.body;
-  if (rate !== null && rate !== '' && (isNaN(rate) || rate < 0 || rate > 100)) return res.status(400).json({ error: 'Taux invalide (0 à 100)' });
-  const { data: filleul } = await supabase.from('users').select('name,referred_by').eq('id', req.params.filleulId).single();
-  if (!filleul || !filleul.referred_by) return res.status(404).json({ error: 'Filleul introuvable ou non parrainé' });
-  await supabase.from('users').update({ referral_rate_override: rate === null || rate === '' ? null : parseFloat(rate) }).eq('id', req.params.filleulId);
-  log(req.user.id, 'taux-parrainage-filleul-modifié', 'Taux personnalisé de ' + (filleul.name || '#' + req.params.filleulId) + ' fixé à ' + (rate === null || rate === '' ? 'taux du parrain (par défaut)' : rate + '%'), req);
-  res.json({ success: true });
-});
-
-// Suppression COMPLÈTE d'un lien de parrainage (contrairement à /toggle qui ne fait que le mettre en pause).
-// Le filleul redevient "libre" (plus aucun parrain). L'historique des commissions déjà versées
-// est conservé pour la comptabilité, mais aucune nouvelle commission ne sera générée.
-app.delete('/api/admin/referral/:userId', auth, adminOnly, async (req, res) => {
-  const { data: filleul } = await supabase.from('users').select('name,referred_by').eq('id', req.params.userId).single();
-  if (!filleul || !filleul.referred_by) return res.status(404).json({ error: 'Ce parrainage n\'existe pas' });
-  await supabase.from('users').update({ referred_by: null, referral_active: null, referral_rate_override: null, referral_same_ip: null }).eq('id', req.params.userId);
-  log(req.user.id, 'parrainage-supprimé', 'Lien de parrainage supprimé pour ' + (filleul.name || '#' + req.params.userId), req);
-  res.json({ success: true });
-});
-
-app.post('/api/admin/referrals/link', auth, adminOnly, async (req, res) => {
-  const { referrer_id, referee_id } = req.body;
-  if (!referrer_id || !referee_id) return res.status(400).json({ error: 'Parrain et filleul requis' });
-  if (referrer_id === referee_id) return res.status(400).json({ error: 'Un affilié ne peut pas être son propre parrain' });
-  const { data: referrer } = await supabase.from('users').select('id,name').eq('id', referrer_id).single();
-  const { data: referee } = await supabase.from('users').select('id,name,referred_by').eq('id', referee_id).single();
-  if (!referrer || !referee) return res.status(404).json({ error: 'Affilié introuvable' });
-  await supabase.from('users').update({ referred_by: referrer_id, referral_active: true }).eq('id', referee_id);
-  log(req.user.id, 'parrainage-lié-manuellement', referrer.name + ' devient le parrain de ' + referee.name, req);
-  checkReferralMilestone(referrer_id).catch(()=>{});
-  res.json({ success: true });
-});
-
-app.get('/api/referrals', auth, async (req, res) => {
-  const { data: filleules } = await supabase.from('users').select('id,name,created_at').eq('referred_by', req.user.id);
-  const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', req.user.id).order('created_at', { ascending: false });
-  const totalEarned = (commissions || []).reduce((s, c) => s + c.amount, 0);
-  res.json({ filleules: filleules || [], commissions: commissions || [], totalEarned });
-});
-
-// ── RANKING ──
-app.get('/api/ranking', auth, async (req, res) => {
-  const { data: users } = await supabase.from('users').select('id,name,created_at,avatar_url').eq('role','affiliate').eq('show_ranking',true);
-  const result = await Promise.all((users||[]).map(async u => {
-    const [convsRes, linksRes, referralRes] = await Promise.all([
-      supabase.from('conversions').select('amount,status').eq('user_id',u.id),
-      supabase.from('links').select('clicks').eq('user_id',u.id),
-      supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', u.id)
-    ]);
-    const approved = (convsRes.data||[]).filter(c=>c.status==='approved');
-    const totalClicks = (linksRes.data||[]).reduce((s,l)=>s+l.clicks,0);
-    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0), totalClicks, referralCount: referralRes.count || 0 };
-  }));
-  res.json(result);
-});
-
-app.patch('/api/me/ranking', auth, async (req, res) => {
-  const { show } = req.body;
-  await supabase.from('users').update({ show_ranking: show }).eq('id', req.user.id);
-  log(req.user.id, 'classement-'+(show?'visible':'masqué'), 'Profil '+(show?'visible':'masqué')+' dans le classement', req);
-  res.json({ success: true });
-});
-
-// ── BADGES ──
-// Calculés à la volée à partir des données existantes (pas de table dédiée nécessaire),
-// donc automatiquement à jour pour les affiliés qui ont déjà fait ces actions par le passé.
-app.get('/api/me/badges', auth, async (req, res) => {
-  const [convsRes, referralRes, giftRes, wdRes, linksRes, customLinksRes] = await Promise.all([
-    supabase.from('conversions').select('amount,created_at').eq('user_id', req.user.id).eq('status', 'approved'),
-    supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', req.user.id),
-    supabase.from('gifts').select('id', { count: 'exact', head: true }).eq('sender_id', req.user.id).gte('amount', 5),
-    supabase.from('withdrawals').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'paid'),
-    supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id),
-    supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).not('custom_slug', 'is', null)
-  ]);
-  const convs = convsRes.data;
-  const referralCount = referralRes.count;
-  const bigGiftCount = giftRes.count;
-  const paidWithdrawals = wdRes.count;
-  const linksCount = linksRes.count;
-  const customLinksCount = customLinksRes.count;
-
-  const salesCount = (convs || []).length;
-  const totalGains = (convs || []).reduce((s, c) => s + c.amount, 0);
-
-  const badges = [
-    { id: 'first_sale', icon: '🥇', label: 'Première vente', desc: 'Réalise ta première vente', unlocked: salesCount >= 1, progress: Math.min(salesCount, 1), target: 1 },
-    { id: 'sales_10', icon: '💎', label: '10 ventes', desc: 'Réalise 10 ventes', unlocked: salesCount >= 10, progress: Math.min(salesCount, 10), target: 10 },
-    { id: 'sales_50', icon: '👑', label: '50 ventes', desc: 'Réalise 50 ventes', unlocked: salesCount >= 50, progress: Math.min(salesCount, 50), target: 50 },
-    { id: 'gains_500', icon: '💰', label: '$500 cumulés', desc: 'Atteins $500 de gains au total', unlocked: totalGains >= 500, progress: Math.min(totalGains, 500), target: 500 },
-    { id: 'gains_1000', icon: '🤑', label: '$1000 cumulés', desc: 'Atteins $1000 de gains au total', unlocked: totalGains >= 1000, progress: Math.min(totalGains, 1000), target: 1000 },
-    { id: 'super_parrain', icon: '🏆', label: 'Super Parrain', desc: 'Parraine 5 affiliés', unlocked: (referralCount || 0) >= 5, progress: Math.min(referralCount || 0, 5), target: 5 },
-    { id: 'gift_5', icon: '🎁', label: 'Généreux', desc: 'Envoie $5 ou plus à un autre affilié', unlocked: (bigGiftCount || 0) >= 1, progress: Math.min(bigGiftCount || 0, 1), target: 1 },
-    { id: 'withdrawal_1', icon: '💵', label: 'Premier retrait', desc: 'Fais ton premier retrait', unlocked: (paidWithdrawals || 0) >= 1, progress: Math.min(paidWithdrawals || 0, 1), target: 1 },
-    { id: 'withdrawal_5', icon: '💸', label: '5 retraits', desc: 'Fais 5 retraits', unlocked: (paidWithdrawals || 0) >= 5, progress: Math.min(paidWithdrawals || 0, 5), target: 5 },
-    { id: 'withdrawal_10', icon: '🏦', label: '10 retraits', desc: 'Fais 10 retraits', unlocked: (paidWithdrawals || 0) >= 10, progress: Math.min(paidWithdrawals || 0, 10), target: 10 },
-    { id: 'first_link', icon: '🔗', label: 'Premier lien', desc: 'Crée ton premier lien', unlocked: (linksCount || 0) >= 1, progress: Math.min(linksCount || 0, 1), target: 1 },
-    { id: 'custom_link', icon: '🎨', label: 'Sur-mesure', desc: 'Personnalise ton premier lien', unlocked: (customLinksCount || 0) >= 1, progress: Math.min(customLinksCount || 0, 1), target: 1 }
-  ];
-  const unlockedCount = badges.filter(b => b.unlocked).length;
-
-  // Bonus unique de $35 dès que TOUS les badges sont débloqués (une seule fois, même logique
-  // que le bonus de collection complète).
-  let bonusJustClaimed = false;
-  if (unlockedCount === badges.length) {
-    const { data: u } = await supabase.from('users').select('balance,badges_bonus_claimed,discord_id,name').eq('id', req.user.id).single();
-    if (u && !u.badges_bonus_claimed) {
-      await supabase.from('users').update({ balance: u.balance + 35, badges_bonus_claimed: true }).eq('id', req.user.id);
-      await supabase.from('notifications').insert({ user_id: req.user.id, type: 'badges_complete', message: '🏅 Tous les badges débloqués ! $35 de bonus ajoutés à ton solde 🎉', read: false });
-      log(req.user.id, 'badges-complétés', u.name + ' a débloqué tous les badges — $35 de bonus crédités', req);
-      if (u.discord_id) {
-        await sendDiscordDM(u.discord_id, '🏅 Tous les badges débloqués !', 0xE8B84B, [
-          { name: '🏆 Bravo', value: 'Tu as débloqué tous les badges disponibles !', inline: true },
-          { name: '💰 Bonus', value: '$35 ajoutés à ton solde', inline: true }
-        ]);
+}
+async function spinWheel(){
+  const btn=document.getElementById('wheel-spin-btn');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='⏳ Ça tourne...';btn.classList.remove('wheel-spin-btn');}
+  try{
+    const r=await api('POST','/api/me/wheel/spin');
+    const isTokens=r.type==='tokens';
+    const segAngle=360/CURRENT_WHEEL_SEGMENTS.length;
+    const targetCenter=r.segmentIndex*segAngle+segAngle/2;
+    const finalRotation=5*360+(360-targetCenter);
+    const svg=document.getElementById('wheel-svg');
+    if(svg)svg.style.transform='rotate('+finalRotation+'deg)';
+    setTimeout(()=>{
+      const resultEl=document.getElementById('wheel-result');
+      const rewardLabel=isTokens?r.reward+' 🪙 jeton'+(r.reward>1?'s':''):'$'+r.reward;
+      if(resultEl){
+        resultEl.className='wheel-result-pop';
+        if(r.reward>0){resultEl.innerHTML='<span style="color:var(--yellow);font-size:20px">🎉 Tu as gagné '+rewardLabel+' !</span>';spawnConfetti();}
+        else{resultEl.innerHTML='<span style="color:var(--muted)">😢 Pas de chance cette fois — retente la semaine prochaine !</span>';}
       }
-      bonusJustClaimed = true;
+      if(r.reward>0){
+        if(isTokens)ME.tokens=(ME.tokens||0)+r.reward;else ME.balance=(ME.balance||0)+r.reward;
+        localStorage.setItem('affihub_user',JSON.stringify(ME));
+      }
+      toast(r.reward>0?'🎁 Roue gagnée : '+rewardLabel:'Roue tournée','s');
+      setTimeout(()=>goPage('aff-wheel'),1600);
+    },4600);
+  }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='🎡 Tourner la roue';btn.classList.add('wheel-spin-btn');}}
+}
+
+const CATS=[
+  {key:'casino',label:'🎰 Casino',color:'#F5C842',bg:'rgba(245,200,66,.08)',border:'rgba(245,200,66,.3)'},
+  {key:'dating',label:'💕 Dating',color:'#F0427A',bg:'rgba(240,66,122,.08)',border:'rgba(240,66,122,.3)'},
+  {key:'influenceuse',label:'👑 Influenceuse',color:'#a855f7',bg:'rgba(168,85,247,.08)',border:'rgba(168,85,247,.3)'},
+  {key:'ia',label:'🤖 IA',color:'#4D9EFF',bg:'rgba(77,158,255,.08)',border:'rgba(77,158,255,.3)'},
+  {key:'autre',label:'📦 Autre',color:'#888',bg:'rgba(136,136,136,.08)',border:'rgba(136,136,136,.25)'}
+];
+
+// Convertit n'importe quel format d'image (HEIC/HEIF iPhone, PNG, WEBP, BMP, etc.)
+// en JPEG standard avant l'envoi, pour garantir la compatibilité peu importe
+// ce que l'affilié envoie depuis son téléphone/ordinateur. Redimensionne aussi
+// les images trop grandes (utile pour les photos 4000x3000+ des smartphones récents).
+async function normalizeImageFile(file){
+  try{
+    let workingFile=file;
+    const isHeic=/heic|heif/i.test(file.type)||/\.(heic|heif)$/i.test(file.name);
+    if(isHeic&&window.heic2any){
+      const converted=await heic2any({blob:file,toType:'image/jpeg',quality:0.9});
+      workingFile=Array.isArray(converted)?converted[0]:converted;
     }
+    const bitmap=await createImageBitmap(workingFile);
+    const maxDim=1920;
+    let{width,height}=bitmap;
+    if(width>maxDim||height>maxDim){
+      const scale=maxDim/Math.max(width,height);
+      width=Math.round(width*scale);height=Math.round(height*scale);
+    }
+    const canvas=document.createElement('canvas');
+    canvas.width=width;canvas.height=height;
+    canvas.getContext('2d').drawImage(bitmap,0,0,width,height);
+    const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/jpeg',0.88));
+    if(!blob)return file; // fallback si le navigateur n'a pas réussi à encoder
+    const jpgName=file.name.replace(/\.[^.]+$/,'')+'.jpg';
+    return new File([blob],jpgName,{type:'image/jpeg'});
+  }catch(e){
+    console.warn('Conversion image échouée, envoi du fichier original:',e.message);
+    return file; // en cas d'échec (format non supporté par le navigateur), on tente quand même l'original
   }
-  res.json({ badges, unlockedCount, total: badges.length, bonusJustClaimed });
-});
+}
+async function uploadImg(file,bucket){
+  bucket=bucket||'offers';
+  const normalized=await normalizeImageFile(file);
+  const fileName=Date.now()+'-'+normalized.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const r=await fetch(SURL+'/storage/v1/object/'+bucket+'/'+fileName,{method:'POST',headers:{'Authorization':'Bearer '+SKEY,'Content-Type':normalized.type,'x-upsert':'true'},body:normalized});
+  if(!r.ok)throw new Error('Upload échoué');
+  return SURL+'/storage/v1/object/public/'+bucket+'/'+fileName;
+}
+async function renderPage(page){
+  try{ME=await api('GET','/api/me');localStorage.setItem('affihub_user',JSON.stringify(ME));}catch(e){}
 
-// ── MA SÉRIE (streak) ──
-app.get('/api/me/streak', auth, async (req, res) => {
-  const { data: convs } = await supabase.from('conversions').select('created_at').eq('user_id', req.user.id).eq('status', 'approved');
-  const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
-
-  let current = 0;
-  const cursor = new Date();
-  const todayStr = cursor.toISOString().slice(0, 10);
-  if (!days.has(todayStr)) cursor.setDate(cursor.getDate() - 1);
-  while (days.has(cursor.toISOString().slice(0, 10))) { current++; cursor.setDate(cursor.getDate() - 1); }
-
-  let longest = 0, run = 0;
-  const sortedDays = [...days].sort();
-  for (let i = 0; i < sortedDays.length; i++) {
-    if (i === 0 || (new Date(sortedDays[i]) - new Date(sortedDays[i - 1])) === 86400000) run++;
-    else run = 1;
-    longest = Math.max(longest, run);
+  if(page==='aff-dash'){
+    const [convs,links,ref]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/links'),api('GET','/api/referrals')]);
+    const approved=convs.filter(c=>c.status==='approved');const pending=convs.filter(c=>c.status==='pending');
+    const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
+    const convGains=approved.reduce((s,c)=>s+c.amount,0);const refGains=ref.totalEarned||0;
+    const streak=ME.streak||0;
+    const streakBadge=streak<1?'':'<div style="display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.12));border:1px solid rgba(245,200,66,.3);border-radius:14px;padding:14px 18px;margin-bottom:20px"><div style="font-size:28px">'+(streak>=30?'🏆':streak>=7?'🔥🔥':'🔥')+'</div><div><div style="font-weight:900;font-size:15px">'+streak+' jour'+(streak>1?'s':'')+' d\'affilée !</div><div style="font-size:12px;color:var(--muted)">Au moins une vente chaque jour'+(streak>=30?' — série légendaire 🏆':streak>=7?' — tu es en feu 🔥':'')+'</div></div></div>';
+    const rows=convs.slice(0,5).map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td style="color:var(--yellow);font-weight:700">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
+    return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Solde disponible</div><div class="bal-amount">$'+(ME.balance||0)+'</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Retrait minimum : $25</div></div><button class="btn" onclick="goPage(\'aff-pay\')" style="background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.3);font-size:13px;padding:11px 22px">💸 Retirer</button></div>'
+    +streakBadge
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics total</div><div class="stat-val gy">'+totalClicks+'</div><div class="stat-sub">sur '+links.length+' lien(s)</div></div><div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">'+convs.length+'</div><div class="stat-sub">'+approved.length+' approuvées · '+pending.length+' en attente</div></div><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Gains en attente</div><div class="stat-val" style="color:var(--yellow)">$'+pending.reduce((s,c)=>s+c.amount,0)+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gg">$'+(convGains+refGains).toFixed(2)+'</div></div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">Dernières conversions</div><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-conv\')">Voir tout →</button></div>'+(convs.length===0?'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>':'<div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Montant</th><th>Statut</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
   }
 
-  // Les 35 derniers jours, pour un petit calendrier visuel façon "streak"
-  const last35 = [];
-  const d = new Date();
-  for (let i = 34; i >= 0; i--) {
-    const day = new Date(d);
-    day.setDate(d.getDate() - i);
-    const key = day.toISOString().slice(0, 10);
-    last35.push({ date: key, hasSale: days.has(key) });
+  if(page==='aff-links'){
+    const [offers,links,customReqs,allSettings]=await Promise.all([api('GET','/api/offers'),api('GET','/api/links'),api('GET','/api/custom-requests'),api('GET','/api/settings/all')]);
+    if(offers.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre disponible.</p></div></div>';
+    const origin=window.location.origin;
+    let html='<div style="margin-bottom:16px"><div style="font-size:20px;font-weight:800;margin-bottom:6px">'+offers.length+' offre(s) disponibles</div></div>'
+      +'<input type="text" id="aff-links-search" placeholder="🔍 Rechercher une offre par nom..." oninput="filterAffOffers(this.value)" style="width:100%;box-sizing:border-box;padding:12px 16px;border-radius:12px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:20px;font-family:inherit;font-size:14px">';
+    CATS.forEach(cat=>{
+      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
+      const catEnabled=allSettings['cat_'+cat.key+'_enabled'];
+      if(!catEnabled){
+        const msg=cat.key==='influenceuse'?'🔒 Bientôt disponible':'🔒 Désactivé';
+        const badgeColor=cat.key==='influenceuse'?'background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3)':'background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3)';
+        html+='<div class="aff-cat-locked" style="margin-bottom:16px"><div style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;opacity:.6"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="'+badgeColor+';font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">'+msg+'</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div></div></div>';
+        return;
+      }
+      html+='<div class="aff-cat-section" data-cat="'+cat.key+'" style="margin-bottom:16px"><div onclick="toggleCat(\'aff-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer;margin-bottom:0"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:15px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catOffers.length+' offre(s)</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-aff-cat-'+cat.key+'">▸</span></div>';
+      html+='<div id="aff-cat-'+cat.key+'" style="display:none;padding-top:12px"><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">';
+      catOffers.forEach(o=>{
+        const el=links.find(l=>l.offer_id===o.id);
+        let bottomHtml='';
+        if(!o.active){
+          if(el){
+            const linkUrl=origin+'/go/'+el.id;
+            bottomHtml='<div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px;display:flex;align-items:center;gap:8px"><code style="flex:1;font-family:monospace;font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+linkUrl+'</code><button class="copy-btn" onclick="cpLink(\''+el.id+'\',this)">📋</button></div><span class="badge br2">🔒 Offre temporairement indisponible</span>';
+          } else {
+            bottomHtml='<span class="badge br2" style="width:100%;justify-content:center">🔒 Offre temporairement indisponible</span>';
+          }
+        } else if(o.id===54||o.id===55){
+          const crList=customReqs.filter(r=>r.offer_id===o.id);
+          const approvedList=crList.filter(r=>r.status==='approved'&&r.custom_link);
+          const pendingReq=crList.find(r=>r.status==='pending');
+          bottomHtml=approvedList.map(cr=>{
+            const crUrl=cr.links?.custom_slug?(origin+'/'+cr.links.custom_slug):cr.custom_link;
+            return '<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:9px;padding:10px 14px;margin-bottom:8px"><div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><code style="flex:1;font-size:11px;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+crUrl+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+crUrl+'\');toast(\'Lien copié !\',\'s\')">📋</button><button class="copy-btn" title="Personnaliser le lien" onclick="editSlug(\''+cr.link_id+'\',\''+(cr.links?.custom_slug||'')+'\')">✏️</button></div><div style="display:flex;align-items:center;gap:10px"><div style="font-size:12px;color:var(--muted)">🖱️ <b style="color:var(--text)">'+(cr.links?.clicks||0)+'</b> clics</div></div></div>';
+          }).join('');
+          if(pendingReq){
+            bottomHtml+='<span class="badge by2">⏳ Nouvelle demande en cours</span><br><button class="btn btn-gst btn-sm" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="margin-top:8px;width:100%;justify-content:center">✏️ Modifier</button>';
+          } else {
+            bottomHtml+='<button class="btn btn-grad" onclick="openCustomRequest('+o.id+',\''+o.name.replace(/'/g,"\\'")+'\')" style="width:100%;justify-content:center">🎨 '+(approvedList.length?'Demander un autre lien':'Personnaliser & Demander')+'</button>';
+          }
+        } else if(el){
+          const linkUrl=el.custom_slug?(origin+'/'+el.custom_slug):(origin+'/go/'+el.id);
+          const regenBtn=el.active?'<button class="btn btn-gst btn-sm" onclick="regenLink(\''+el.id+'\','+o.id+')" style="font-size:10px">🔄</button>':'';
+          const previewBtn='<button class="btn btn-gst btn-sm" title="Aperçu (ne compte pas comme un clic)" onclick="previewLink(\''+el.id+'\')" style="font-size:10px">👁️</button>';
+          const slugBtn='<button class="btn btn-gst btn-sm" title="Personnaliser le lien" onclick="editSlug(\''+el.id+'\',\''+(el.custom_slug||'')+'\')" style="font-size:10px">✏️</button>';
+          const statusBadge=el.active?'<span class="badge bg2">✓ Actif</span>':'<span class="badge br2">🚫 Désactivé</span>';
+          bottomHtml='<div style="background:rgba(0,0,0,.3);border:1px solid #2a2a2a;border-radius:9px;padding:8px 12px;margin-bottom:12px"><div style="display:flex;align-items:center;gap:8px"><code style="flex:1;font-family:monospace;font-size:11px;color:'+(el.active?cat.color:'var(--muted)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+linkUrl+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+linkUrl+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div><div style="display:flex;align-items:center;justify-content:space-between"><div style="text-align:center"><div style="font-size:16px;font-weight:800">'+el.clicks+'</div><div style="font-size:10px;color:var(--muted)">CLICS</div></div><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">'+statusBadge+previewBtn+slugBtn+regenBtn+'</div></div>';
+        } else {
+          bottomHtml='<button class="btn btn-grad" onclick="genLink('+o.id+')" style="width:100%;justify-content:center">🔗 Générer mon lien</button>';
+        }
+        const imgHtml=o.image_url?'<div style="width:100%;height:155px;overflow:hidden"><img src="'+o.image_url+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.style.display=\'none\'"></div>':'';
+        const borderColor=o.active?cat.border:'rgba(255,71,87,.2)';
+        const isNew=o.created_at&&(Date.now()-new Date(o.created_at).getTime())<7*24*60*60*1000;
+        html+='<div class="aff-offer-card" data-name="'+o.name.toLowerCase().replace(/"/g,'&quot;')+'" style="background:#111;border:1px solid '+borderColor+';border-radius:14px;overflow:hidden;position:relative'+(o.active?'':';opacity:.7')+'"><div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,'+(o.active?cat.color:'var(--red)')+',transparent);z-index:1"></div>'+imgHtml+'<div style="padding:18px"><div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:14px"><div><div style="font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px">'+o.name+(isNew?'<span style="background:var(--grad);color:#000;font-size:9px;font-weight:900;padding:2px 7px;border-radius:20px;letter-spacing:.3px">🆕 NOUVEAU</span>':'')+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div></div><div style="background:'+cat.bg+';border:1px solid '+cat.border+';border-radius:10px;padding:6px 12px;text-align:center;flex-shrink:0"><div style="font-size:18px;font-weight:900;color:'+cat.color+'">$'+o.commission+'</div><div style="font-size:10px;color:var(--muted)">/ vente</div></div></div>'+bottomHtml+'</div></div>';
+      });
+      html+='</div></div></div>';
+    });
+    return html;
   }
 
-  res.json({ current, longest, last35 });
-});
-
-// ── ROUE DE LA CHANCE ──
-// Disponible une fois par semaine (reset chaque lundi), uniquement si l'affilié a réalisé
-// au moins une vente approuvée depuis le début de la semaine en cours.
-// Les segments (montants + probabilités) sont configurables depuis le panel admin, stockés
-// en base (table settings, clé 'wheel_segments'). Ces valeurs par défaut ne servent que
-// tant que l'admin n'a jamais rien personnalisé.
-const DEFAULT_WHEEL_SEGMENTS = [
-  { reward: 0, weight: 20, label: 'Perdu', type: 'money' },
-  { reward: 1, weight: 30, label: '$1', type: 'money' },
-  { reward: 2, weight: 20, label: '$2', type: 'money' },
-  { reward: 5, weight: 15, label: '$5', type: 'money' },
-  { reward: 10, weight: 10, label: '$10', type: 'money' },
-  { reward: 20, weight: 8, label: '20 🪙', type: 'tokens' },
-  { reward: 25, weight: 5, label: '$25 JACKPOT', type: 'money' }
-];
-async function getWheelSegments() {
-  try {
-    const { data } = await supabase.from('settings').select('value').eq('key', 'wheel_segments').single();
-    if (!data?.value) return DEFAULT_WHEEL_SEGMENTS;
-    const parsed = JSON.parse(data.value);
-    if (!Array.isArray(parsed) || parsed.length < 2) return DEFAULT_WHEEL_SEGMENTS;
-    // Rétrocompatibilité : les anciens segments enregistrés avant l'ajout du système
-    // de jetons n'ont pas de champ "type" — on les considère comme des gains en $.
-    return parsed.map(s => ({ ...s, type: s.type === 'tokens' ? 'tokens' : 'money' }));
-  } catch (e) { return DEFAULT_WHEEL_SEGMENTS; }
-}
-function getMondayOf(date) {
-  const d = new Date(date);
-  const day = d.getDay(); // 0=dimanche, 1=lundi...
-  const diff = (day === 0 ? -6 : 1) - day;
-  d.setDate(d.getDate() + diff);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-function pickWeightedSegment(segments) {
-  const total = segments.reduce((s, seg) => s + seg.weight, 0);
-  let r = Math.random() * total;
-  for (let i = 0; i < segments.length; i++) {
-    r -= segments[i].weight;
-    if (r <= 0) return i;
+  if(page==='aff-stats'){
+    const [links,convs,offers]=await Promise.all([api('GET','/api/links'),api('GET','/api/conversions'),api('GET','/api/offers')]);
+    if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📈</div><p>Aucun lien généré.</p></div></div>';
+    const totalClicks=links.reduce((s,l)=>s+l.clicks,0);
+    const totalGains=convs.filter(c=>c.status==='approved').reduce((s,c)=>s+c.amount,0);
+    const totalApproved=convs.filter(c=>c.status==='approved').length;
+    const rows=links.map(l=>{
+      const approved=convs.filter(c=>c.link_id===l.id&&c.status==='approved').length;
+      const pending=convs.filter(c=>c.link_id===l.id&&c.status==='pending').length;
+      const gains=convs.filter(c=>c.link_id===l.id&&c.status==='approved').reduce((s,c)=>s+c.amount,0);
+      const offerName=offers.find(o=>o.id===l.offer_id)?.name||'?';
+      return '<tr><td style="font-weight:700">'+offerName+'</td>'
+        +'<td style="text-align:center;font-weight:800">'+l.clicks+'</td>'
+        +'<td style="text-align:center"><span style="color:var(--green);font-weight:800">'+approved+'</span>'+(pending>0?' <span style="color:var(--yellow);font-size:11px">(+'+pending+')</span>':'')+'</td>'
+        +'<td style="text-align:center;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+gains+'</td>'
+        +'<td style="text-align:center">'+(l.active?'<span class="badge bg2">✓</span>':'<span class="badge br2">Off</span>')+'</td>'
+      +'</tr>';
+    }).join('');
+    return '<div class="stats-grid" style="margin-bottom:24px">'
+      +'<div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics totaux</div><div class="stat-val gy">'+totalClicks+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Conversions</div><div class="stat-val gg">'+totalApproved+'</div></div>'
+      +'<div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totaux</div><div class="stat-val gy">$'+totalGains+'</div></div>'
+      +'</div>'
+      +'<div class="card"><div class="tw"><table><thead><tr>'
+      +'<th>🎯 Offre</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">✅ Conv.</th><th style="text-align:center">💰 Gains</th><th style="text-align:center">📌</th>'
+      +'</tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
-  return 0;
-}
-app.get('/api/me/wheel', auth, async (req, res) => {
-  const monday = getMondayOf(new Date());
-  const weekKey = monday.toISOString().slice(0, 10);
-  const [{ data: user }, { count: salesThisWeek }, segments] = await Promise.all([
-    supabase.from('users').select('last_wheel_week,last_wheel_reward,last_wheel_reward_type').eq('id', req.user.id).single(),
-    supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString()),
-    getWheelSegments()
-  ]);
-  const nextMonday = new Date(monday); nextMonday.setDate(nextMonday.getDate() + 7);
-  res.json({
-    eligible: (salesThisWeek || 0) >= 1,
-    alreadySpun: user?.last_wheel_week === weekKey,
-    lastReward: user?.last_wheel_week === weekKey ? user.last_wheel_reward : null,
-    lastRewardType: user?.last_wheel_week === weekKey ? (user.last_wheel_reward_type || 'money') : null,
-    nextResetAt: nextMonday.toISOString(),
-    segments: segments.map(s => ({ label: s.label, reward: s.reward, type: s.type })) // le poids reste caché aux affiliés
-  });
-});
-app.post('/api/me/wheel/spin', auth, async (req, res) => {
-  const monday = getMondayOf(new Date());
-  const weekKey = monday.toISOString().slice(0, 10);
-  const { data: user } = await supabase.from('users').select('balance,tokens,last_wheel_week').eq('id', req.user.id).single();
-  if (user?.last_wheel_week === weekKey) return res.status(409).json({ error: 'Tu as déjà tourné la roue cette semaine' });
-  const { count: salesThisWeek } = await supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString());
-  if (!salesThisWeek) return res.status(403).json({ error: 'Fais au moins une vente cette semaine pour débloquer la roue' });
 
-  const segments = await getWheelSegments();
-  const segmentIndex = pickWeightedSegment(segments);
-  const seg = segments[segmentIndex];
-  const reward = seg.reward;
-  const isTokens = seg.type === 'tokens';
-  const updates = { last_wheel_week: weekKey, last_wheel_reward: reward, last_wheel_reward_type: seg.type };
-  if (isTokens) updates.tokens = (user.tokens || 0) + reward;
-  else updates.balance = user.balance + reward;
-  await supabase.from('users').update(updates).eq('id', req.user.id);
-  await supabase.from('wheel_spins').insert({ user_id: req.user.id, reward, label: seg.label, reward_type: seg.type });
-  log(req.user.id, 'roue-tournée', req.user.name + ' a tourné la roue et gagné ' + (isTokens ? reward + ' 🪙 jetons' : '$' + reward), req);
-  res.json({ segmentIndex, reward, type: seg.type });
-});
-
-// Panel admin : consulter/modifier les segments de la roue
-app.get('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
-  res.json(await getWheelSegments());
-});
-app.patch('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
-  const { segments } = req.body;
-  if (!Array.isArray(segments) || segments.length < 2 || segments.length > 15) {
-    return res.status(400).json({ error: 'Il faut entre 2 et 15 segments' });
+  if(page==='aff-conv'){
+    const convs=await api('GET','/api/conversions');
+    AFF_CONVS_CACHE=convs;
+    const mkRows=list=>list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
+    const tabs=[['all','Toutes',convs.length],['approved','✅ Approuvées',convs.filter(c=>c.status==='approved').length],['pending','⏳ En attente',convs.filter(c=>c.status==='pending').length],['rejected','❌ Rejetées',convs.filter(c=>c.status==='rejected').length]];
+    const tabHtml=tabs.map(([f,l,n])=>'<button class="tab'+(f==='all'?' active':'\"')+'" onclick="filterConv(this,\''+f+'\')">'+l+' ('+n+')</button>').join('');
+    return '<div class="card"><div class="card-title" style="margin-bottom:16px">Mes conversions</div><div class="tabs">'+tabHtml+'</div><div id="ctable"><div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(mkRows(convs)||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div></div></div>';
   }
-  for (const s of segments) {
-    if (typeof s.label !== 'string' || !s.label.trim()) return res.status(400).json({ error: 'Chaque segment doit avoir un nom' });
-    if (typeof s.reward !== 'number' || s.reward < 0) return res.status(400).json({ error: 'Montant invalide (doit être ≥ 0)' });
-    if (typeof s.weight !== 'number' || s.weight <= 0) return res.status(400).json({ error: 'Probabilité invalide (doit être > 0)' });
+
+  if(page==='aff-pay'){
+    const wds=await api('GET','/api/withdrawals');const bal=ME.balance||0;
+    const wrows=wds.map(w=>'<tr><td style="color:var(--muted)">'+fmt(w.created_at)+'</td><td style="color:var(--yellow);font-weight:800">$'+w.amount+'</td><td><span class="badge bp2">'+w.crypto+'</span></td><td><code style="font-size:11px;color:var(--muted)">'+w.address.substring(0,22)+'...</code></td><td>'+sbadge(w.status)+(w.status==='rejected'&&w.reason?'<div style="font-size:11px;color:var(--red)">↳ '+w.reason+'</div>':'')+'</td></tr>').join('');
+    return '<div style="display:grid;grid-template-columns:1fr 300px;gap:20px;align-items:start;margin-bottom:20px">'
+    +'<div class="card" style="margin-bottom:0"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px"><div><div style="font-size:11px;color:var(--yellow);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Solde disponible</div><div style="font-size:32px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">$'+bal+'</div></div>'+(bal>=25?'<span class="badge bg2">✓ Retrait disponible</span>':'<span class="badge by2">⚠ Minimum $25</span>')+'</div>'
+    +'<div class="warning-box"><div style="font-size:16px;flex-shrink:0">⚠️</div><p style="font-size:12px;color:var(--yellow);line-height:1.7"><strong>Vérifiez votre adresse crypto.</strong><br>Aucun remboursement en cas d\'adresse incorrecte.</p></div>'
+    +'<div style="height:1px;background:linear-gradient(90deg,transparent,rgba(245,200,66,.2),transparent);margin:20px 0"></div>'
+    +(!ME.discord_id ?
+      '<div style="text-align:center;padding:30px 10px"><div style="font-size:40px;margin-bottom:12px">🔔</div><div style="font-weight:800;font-size:15px;margin-bottom:8px">ID Discord requis pour retirer</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Renseigne ton ID Discord dans tes paramètres avant de pouvoir demander un retrait (pour recevoir tes alertes de vente en DM).</div><button class="btn btn-grad" onclick="goPage(\'aff-settings\')">⚙️ Aller dans Paramètres</button></div>'
+      :
+      '<div class="fi" id="wd-amt-field"><label>Montant ($)</label><div style="display:flex;gap:8px"><input type="number" id="wd-amt" min="25" placeholder="Minimum $25" style="flex:1" oninput="updateWdCalc()"><button class="btn btn-grad btn-sm" onclick="document.getElementById(\'wd-amt\').value='+bal+';updateWdCalc()">MAX $'+bal+'</button></div><div id="wd-net-calc" style="font-size:12px;color:var(--muted);margin-top:8px"></div></div>'
+    +'<div class="fi"><label>Moyen de paiement</label><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:8px">'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'CRYPTO\',this)"><div style="width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#F7931A,#9945FF);display:flex;align-items:center;justify-content:center;margin:0 auto 6px;font-size:14px">🪙</div>Crypto</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'REVOLUT\',this)"><div style="width:28px;height:28px;background:#191C20;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M14.5 2H6v20h3.5v-7H13l3.5 7H20l-3.8-7.4C18.3 13.5 19 11.8 19 9.5 19 5.4 17.1 2 14.5 2zm-.3 8.5H9.5V5.5h4.7c1.2 0 2.3.9 2.3 2.5s-1.1 2.5-2.3 2.5z"/></svg></div>Revolut</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'VIREMENT\',this)"><div style="font-size:22px;margin-bottom:6px">🏦</div>Virement</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'PAYPAL\',this)"><div style="width:28px;height:28px;display:flex;align-items:center;justify-content:center;margin:0 auto 6px"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="28" height="28"><path d="M7.076 21.337H2.47a.641.641 0 0 1-.633-.74L4.944.901C5.026.382 5.474 0 5.998 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797h-2.19c-.524 0-.968.382-1.05.9l-1.12 7.106zm14.146-14.42a3.35 3.35 0 0 0-.607-.541c-.013.076-.026.175-.041.254-.93 4.778-4.005 7.201-9.138 7.201h-2.19a.563.563 0 0 0-.556.479l-1.187 7.527h-.99l-.094.596a.56.56 0 0 0 .554.647h3.882c.46 0 .85-.334.922-.788l.038-.196.735-4.653.047-.256a.932.932 0 0 1 .92-.788h.58c3.76 0 6.705-1.528 7.565-5.946.36-1.847.174-3.388-.44-4.536z" fill="#009cde"/><path d="M6.723 21.337H2.118a.641.641 0 0 1-.633-.74L4.592.901C4.675.382 5.123 0 5.647 0h7.46c2.57 0 4.578.543 5.69 1.81 1.01 1.15 1.304 2.42 1.012 4.287-.023.143-.047.288-.077.437-.983 5.05-4.349 6.797-8.647 6.797H8.895c-.524 0-.968.382-1.05.9l-1.122 7.106z" fill="#012169"/></svg></div>PayPal<span style="font-size:9px;display:block;color:var(--muted)">min. $50</span></div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'CADEAU\',this)"><div style="font-size:22px;margin-bottom:6px">🎁</div>Carte cadeau</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'TAPTAP\',this)"><div style="font-size:22px;margin-bottom:6px">📲</div>TapTap Send</div>'
+    +'<div class="crypto-opt" onclick="pickCrypto(\'PSC\',this)"><div style="font-size:22px;margin-bottom:6px">💳</div>PaysafeCard</div>'
+    +'</div></div>'
+    +'<div class="fi" id="crypto-sub-field" style="display:none">'
+      +'<label>Choisis ta cryptomonnaie</label>'
+      +'<input type="hidden" id="crypto-coin" value="">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px">'
+        +Object.entries(CRYPTO_COINS_FRONT).map(([k,v])=>'<div class="crypto-coin-card" data-key="'+k+'" onclick="selectCryptoCoin(\''+k+'\',this)" style="background:var(--bg3);border:1.5px solid #2a2a2a;border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:border-color .15s">'+v.svg+'<div style="font-size:11px;font-weight:700;margin-top:6px">'+v.label+'</div></div>').join('')
+      +'</div>'
+    +'</div>'
+    +'<div class="fi" id="addr-field"><label id="addr-label">Adresse / Coordonnées</label><input type="text" id="wd-addr" placeholder="Selon le moyen choisi"></div>'
+    +'<div class="fi" id="virement-name-field" style="display:none"><label id="virement-name-label">Nom & Prénom (titulaire du compte)</label><input type="text" id="wd-name" placeholder="Ex: Jean Dupont"></div>'
+    +'<div class="fi" id="giftcard-field" style="display:none">'
+      +'<label>Choisis ta carte cadeau</label>'
+      +'<input type="hidden" id="gc-provider" value="">'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:10px;margin-bottom:16px">'
+        +Object.entries(GIFT_CARDS_FRONT).map(([k,v])=>'<div class="gc-provider-card" data-key="'+k+'" onclick="selectGiftProvider(\''+k+'\','+bal+',this)" style="background:var(--bg3);border:1.5px solid #2a2a2a;border-radius:12px;padding:12px 6px;text-align:center;cursor:pointer;transition:border-color .15s"><div style="width:36px;height:36px;border-radius:50%;background:'+v.color+'22;border:1.5px solid '+v.color+';display:flex;align-items:center;justify-content:center;font-size:16px;margin:0 auto 6px">'+v.icon+'</div><div style="font-size:10px;font-weight:700;line-height:1.2">'+v.label+'</div></div>').join('')
+      +'</div>'
+      +'<div id="gc-amounts" style="display:none"><label style="font-size:11px;font-weight:700;color:rgba(245,200,66,.8);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:8px">Montant disponible</label><div id="gc-amounts-list" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>'
+    +'</div>'
+    +'<button class="btn btn-grad" onclick="doWd()" style="width:100%;justify-content:center">💸 Soumettre</button>')
+    +'</div>'
+    +'<div class="card" style="margin-bottom:0;border-color:rgba(245,200,66,.2)"><div style="font-size:13px;font-weight:800;color:var(--yellow);margin-bottom:14px">💰 Frais de retrait</div><div style="background:rgba(245,200,66,.06);border:1px solid rgba(245,200,66,.2);border-radius:10px;padding:14px;text-align:center;margin-bottom:12px"><div style="font-size:28px;font-weight:900;color:var(--yellow)">5%</div><div style="font-size:12px;color:var(--muted);margin-top:2px">Tous les moyens de paiement</div></div><div style="font-size:11px;color:var(--muted);line-height:1.8"><div>✅ Bitcoin, Solana, Litecoin, Ethereum — dès $25</div><div>✅ Revolut, Virement, TapTap Send — dès $25</div><div>✅ PaysafeCard — dès $25</div><div>🎁 Carte cadeau — montants fixes selon la carte choisie</div><div>⚠️ PayPal — minimum $50</div></div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Historique</div>'+(wds.length===0?'<div class="empty"><div class="empty-icon">💳</div><p>Aucun retrait</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th></tr></thead><tbody>'+wrows+'</tbody></table></div>')+'</div>';
   }
-  const cleaned = segments.map(s => ({ label: s.label.trim(), reward: s.reward, weight: s.weight, type: s.type === 'tokens' ? 'tokens' : 'money' }));
-  await supabase.from('settings').upsert({ key: 'wheel_segments', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
-  log(req.user.id, 'roue-configurée', 'Segments de la roue de la chance mis à jour (' + cleaned.length + ' segments)', req);
-  res.json({ success: true });
-});
 
-// Historique des tirages de l'affilié connecté
-app.get('/api/me/wheel-history', auth, async (req, res) => {
-  const { data } = await supabase.from('wheel_spins').select('reward,label,created_at,reward_type').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(30);
-  res.json(data || []);
-});
-
-// ── AVATAR / PHOTO DE PROFIL ──
-// L'image elle-même est uploadée directement depuis le front vers le bucket Supabase
-// "avatars" (comme pour les images d'offres), puis on enregistre juste l'URL ici.
-app.patch('/api/me/avatar', auth, async (req, res) => {
-  const { avatar_url } = req.body;
-  await supabase.from('users').update({ avatar_url: avatar_url || null }).eq('id', req.user.id);
-  log(req.user.id, 'avatar-modifié', avatar_url ? 'Photo de profil mise à jour' : 'Photo de profil supprimée', req);
-  res.json({ success: true });
-});
-
-// ── JETONS — MOYENS D'EN OBTENIR (liste informative) ──
-// Stockés dans la table settings (comme les segments de la roue), sous forme de tableau JSON.
-const DEFAULT_TOKEN_METHODS = [
-  { id: 'm1', icon: '🔁', title: 'Réaliser une vente', description: 'Chaque conversion approuvée te rapporte des jetons en plus de ta commission.', tokens: 5, active: true },
-  { id: 'm2', icon: '💸', title: 'Faire un retrait', description: 'Jetons offerts selon le montant retiré, une fois le retrait payé : $25-$50 → 5 🪙 · $50-$100 → 10 🪙 · $100-$500 → 20 🪙 · $500 et plus → 25 🪙.', tokens: 0, active: true },
-  { id: 'm3', icon: '🎁', title: 'Faire un cadeau à un affilié', description: 'Envoie un cadeau à un autre affilié et gagne des jetons à chaque envoi.', tokens: 5, active: true },
-  { id: 'm4', icon: '🤝', title: 'Parrainer 5 personnes', description: 'Atteins 5 filleuls parrainés et reçois un gros bonus de jetons, une seule fois.', tokens: 10, active: true },
-  { id: 'm5', icon: '🎡', title: 'Tourner la roue de la chance', description: 'Un tour gratuit chaque semaine (si tu as fait une vente) — certains lots rapportent directement des jetons.', tokens: 0, active: true }
-];
-async function getTokenMethods() {
-  try {
-    const { data } = await supabase.from('settings').select('value').eq('key', 'token_earn_methods').single();
-    if (!data?.value) return DEFAULT_TOKEN_METHODS;
-    const parsed = JSON.parse(data.value);
-    if (!Array.isArray(parsed)) return DEFAULT_TOKEN_METHODS;
-    return parsed;
-  } catch (e) { return DEFAULT_TOKEN_METHODS; }
-}
-app.get('/api/token-methods', auth, async (req, res) => {
-  const methods = await getTokenMethods();
-  res.json(req.user.role === 'admin' ? methods : methods.filter(m => m.active !== false));
-});
-app.patch('/api/admin/token-methods', auth, adminOnly, async (req, res) => {
-  const { methods } = req.body;
-  if (!Array.isArray(methods)) return res.status(400).json({ error: 'Liste invalide' });
-  for (const m of methods) {
-    if (typeof m.title !== 'string' || !m.title.trim()) return res.status(400).json({ error: 'Chaque moyen doit avoir un titre' });
+  if(page==='aff-ref'){
+    const ref=await api('GET','/api/referrals');const origin=window.location.origin;
+    const refLink=origin+'/?ref='+(ME.referral_code||'');
+    const fRows=ref.filleules.map(f=>{const earned=ref.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);return '<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+f.name[0]+'</div><b>'+f.name+'</b></div></td><td style="color:var(--muted)">'+fmt(f.created_at)+'</td><td style="color:var(--green)">$'+earned.toFixed(2)+'</td></tr>';}).join('');
+    const cRows=ref.commissions.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td><b>'+(c.users?.name||'?')+'</b></td><td style="color:var(--yellow)">$'+(c.conversions?.amount||0)+'</td><td style="color:var(--green)">$'+c.amount.toFixed(2)+'</td></tr>').join('');
+    return '<div class="ref-hero"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Votre lien de parrainage</div><div style="font-size:12px;color:rgba(255,255,255,.6);margin-top:4px">Gagnez <strong>10%</strong> sur chaque vente</div>'+(ref.filleules.length>=5?'<span class="badge" style="margin-top:8px;display:inline-block;background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.4);color:#fff">🏆 Super Parrain</span>':'')+'</div><div style="text-align:right"><div style="font-size:11px;color:rgba(255,255,255,.7);margin-bottom:3px">Total gagné</div><div style="font-size:22px;font-weight:900;color:#fff">$'+ref.totalEarned.toFixed(2)+'</div></div></div><div class="ref-link-box"><code>'+refLink+'</code><button style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.3);cursor:pointer;color:#fff;padding:4px 10px;border-radius:7px" onclick="navigator.clipboard?.writeText(\''+refLink+'\');toast(\'Lien copié !\',\'s\')">📋</button></div></div>'
+    +'<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Filleuls</div><div class="stat-val gy">'+ref.filleules.length+'</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Commissions</div><div class="stat-val gg">$'+ref.totalEarned.toFixed(2)+'</div></div><div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">Taux</div><div class="stat-val gy">'+(ME.referral_rate!=null?ME.referral_rate:10)+'%</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">👥 Mes filleuls</div>'+(ref.filleules.length===0?'<div class="empty"><div class="empty-icon">👥</div><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Inscrit le</th><th>💰 Gains générés</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">💸 Commissions</div>'+(ref.commissions.length===0?'<div class="empty"><div class="empty-icon">💸</div><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
   }
-  const cleaned = methods.map((m, i) => ({
-    id: m.id || 'm' + Date.now() + '_' + i,
-    icon: (m.icon || '🎟️').toString().slice(0, 8),
-    title: m.title.trim(),
-    description: (m.description || '').toString().trim(),
-    tokens: parseInt(m.tokens) || 0,
-    active: m.active !== false
-  }));
-  await supabase.from('settings').upsert({ key: 'token_earn_methods', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
-  log(req.user.id, 'jetons-moyens-modifiés', 'Moyens d\'obtenir des jetons mis à jour (' + cleaned.length + ')', req);
-  res.json(cleaned);
-});
 
-// ── JETONS — CRÉDIT RÉEL AUTOMATIQUE PAR VENTE ──
-// Nombre de jetons accordés à chaque conversion approuvée (réglable par l'admin).
-// Le montant réellement accordé est mémorisé sur la conversion elle-même
-// (colonne tokens_granted) pour pouvoir le retirer proprement en cas de rejet/suppression,
-// même si l'admin change ensuite ce réglage.
-async function getTokensPerSale() {
-  try {
-    const { data } = await supabase.from('settings').select('value').eq('key', 'tokens_per_sale').single();
-    const n = parseInt(data?.value);
-    return Number.isFinite(n) && n >= 0 ? n : 5;
-  } catch (e) { return 5; }
-}
-app.patch('/api/admin/settings/tokens-per-sale', auth, adminOnly, async (req, res) => {
-  const n = parseInt(req.body.tokens_per_sale);
-  if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'Valeur invalide' });
-  await supabase.from('settings').upsert({ key: 'tokens_per_sale', value: String(n) }, { onConflict: 'key' });
-  log(req.user.id, 'jetons-par-vente-modifié', 'Jetons accordés par vente réglés sur ' + n, req);
-  res.json({ success: true, tokens_per_sale: n });
-});
-// Crédite les jetons d'une vente qui vient d'être approuvée (appelé depuis les différents
-// endroits où une conversion passe au statut "approved"). Best-effort : une erreur ici
-// ne doit jamais faire échouer l'approbation de la vente elle-même.
-async function grantSaleTokens(userId, conversionId) {
-  try {
-    const amount = await getTokensPerSale();
-    if (amount <= 0) return;
-    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
-    await supabase.from('users').update({ tokens: (user?.tokens || 0) + amount }).eq('id', userId);
-    await supabase.from('conversions').update({ tokens_granted: amount }).eq('id', conversionId);
-  } catch (e) { console.error('grantSaleTokens error:', e.message); }
-}
-// Retire les jetons précédemment accordés pour une conversion (rejet / suppression d'une vente
-// déjà approuvée). Utilise le montant mémorisé sur la conversion, pas le réglage actuel.
-async function revokeSaleTokens(userId, tokensGranted) {
-  try {
-    if (!tokensGranted) return;
-    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
-    await supabase.from('users').update({ tokens: Math.max(0, (user?.tokens || 0) - tokensGranted) }).eq('id', userId);
-  } catch (e) { console.error('revokeSaleTokens error:', e.message); }
-}
-
-// Rattrapage rétroactif : attribue les jetons pour toutes les ventes déjà approuvées
-// avant l'existence de ce système (tokens_granted encore à 0/NULL).
-app.post('/api/admin/tokens/backfill', auth, adminOnly, async (req, res) => {
-  const amount = await getTokensPerSale();
-  const { data: convs, error } = await supabase.from('conversions').select('id,user_id').eq('status', 'approved').or('tokens_granted.is.null,tokens_granted.eq.0');
-  if (error) return res.status(500).json({ error: error.message });
-  const perUser = {};
-  (convs || []).forEach(c => { perUser[c.user_id] = (perUser[c.user_id] || 0) + amount; });
-  for (const userId of Object.keys(perUser)) {
-    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
-    await supabase.from('users').update({ tokens: (user?.tokens || 0) + perUser[userId] }).eq('id', userId);
+  if(page==='aff-gifts'){
+    const [gifts,affiliates]=await Promise.all([api('GET','/api/gifts'),api('GET','/api/affiliates-list')]);
+    const bal=ME.balance||0;
+    const affOpts=affiliates.map(a=>'<option value="'+a.id+'">'+a.name+'</option>').join('');
+    const sentRows=gifts.sent.map(g=>'<tr><td style="color:var(--muted)">'+fmt(g.created_at)+'</td><td><b>'+(g.receiver?.name||'?')+'</b></td><td style="color:var(--red);font-weight:800">-$'+g.amount+'</td><td style="color:var(--muted);font-size:12px">'+(g.message||'—')+'</td></tr>').join('');
+    const receivedRows=gifts.received.map(g=>'<tr><td style="color:var(--muted)">'+fmt(g.created_at)+'</td><td><b>'+(g.sender?.name||'?')+'</b></td><td style="color:var(--green);font-weight:800">+$'+g.amount+'</td><td style="color:var(--muted);font-size:12px">'+(g.message||'—')+'</td></tr>').join('');
+    return '<div class="card" style="margin-bottom:20px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px"><div><div class="card-title" style="margin-bottom:4px">🎁 Envoyer un cadeau</div><div style="font-size:12px;color:var(--muted)">Envoie une partie de ton solde à un autre affilié, instantanément.</div></div><div style="text-align:right"><div style="font-size:11px;color:var(--muted)">Solde disponible</div><div style="font-size:20px;font-weight:900;color:var(--yellow)">$'+bal+'</div></div></div>'
+    +(affiliates.length===0?'<div class="empty"><div class="empty-icon">🎁</div><p>Aucun autre affilié à qui envoyer un cadeau pour l\'instant</p></div>':
+      '<div class="fi"><label>Destinataire</label><select id="gift-to" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit"><option value="">— Choisir un affilié —</option>'+affOpts+'</select></div>'
+      +'<div class="fi"><label>Montant ($)</label><input type="number" id="gift-amt" min="1" step="0.01" placeholder="Ex: 10"></div>'
+      +'<div class="fi"><label>Message (optionnel)</label><input type="text" id="gift-msg" maxlength="200" placeholder="Un petit mot pour accompagner ton cadeau..."></div>'
+      +'<button class="btn btn-grad" onclick="doSendGift()" style="width:100%;justify-content:center">🎁 Envoyer le cadeau</button>')
+    +'</div>'
+    +'<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:16px">📤 Cadeaux envoyés</div>'+(gifts.sent.length===0?'<div class="empty"><p>Aucun cadeau envoyé</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 À</th><th>💰 Montant</th><th>💬 Message</th></tr></thead><tbody>'+sentRows+'</tbody></table></div>')+'</div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📥 Cadeaux reçus</div>'+(gifts.received.length===0?'<div class="empty"><p>Aucun cadeau reçu</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 De</th><th>💰 Montant</th><th>💬 Message</th></tr></thead><tbody>'+receivedRows+'</tbody></table></div>')+'</div>';
   }
-  if (amount > 0 && (convs || []).length > 0) {
-    await supabase.from('conversions').update({ tokens_granted: amount }).eq('status', 'approved').or('tokens_granted.is.null,tokens_granted.eq.0');
-  }
-  log(req.user.id, 'jetons-rattrapage', 'Rattrapage rétroactif : ' + (convs || []).length + ' vente(s) traitée(s), ' + Object.keys(perUser).length + ' affilié(s) crédité(s)', req);
-  res.json({ success: true, conversionsUpdated: (convs || []).length, usersCredited: Object.keys(perUser).length, tokensPerSale: amount });
-});
 
-// Attribution manuelle de jetons à un affilié (pour tous les "moyens" listés qui ne
-// sont pas branchés automatiquement : parrainage, événement spécial, bonus ponctuel...).
-// Un montant négatif permet aussi de retirer des jetons si besoin.
-app.post('/api/admin/tokens/grant', auth, adminOnly, async (req, res) => {
-  const { user_id, amount, reason } = req.body;
-  const amt = parseInt(amount);
-  if (!user_id) return res.status(400).json({ error: 'Affilié requis' });
-  if (!Number.isFinite(amt) || amt === 0) return res.status(400).json({ error: 'Montant invalide' });
-  const { data: user } = await supabase.from('users').select('name,tokens,discord_id').eq('id', user_id).single();
-  if (!user) return res.status(404).json({ error: 'Affilié introuvable' });
-  const newTokens = Math.max(0, (user.tokens || 0) + amt);
-  await supabase.from('users').update({ tokens: newTokens }).eq('id', user_id);
-  log(req.user.id, 'jetons-attribués', (amt > 0 ? '+' : '') + amt + ' 🪙 pour ' + user.name + (reason ? ' — ' + reason : ''), req);
-  await supabase.from('notifications').insert({ user_id, type: 'tokens_grant', message: (amt > 0 ? '🪙 Tu as reçu ' + amt + ' jetons !' : '🪙 ' + Math.abs(amt) + ' jetons ont été retirés') + (reason ? ' : ' + reason : ''), read: false });
-  if (user.discord_id) {
-    await sendDiscordDM(user.discord_id, amt > 0 ? '🪙 Jetons reçus !' : '🪙 Jetons retirés', amt > 0 ? 0xF5C842 : 0xFF4757, [
-      { name: '🪙 Montant', value: (amt > 0 ? '+' : '') + amt, inline: true },
-      ...(reason ? [{ name: '📝 Raison', value: reason, inline: false }] : [])
-    ]);
-  }
-  res.json({ success: true, tokens: newTokens });
-});
-
-// ── JETONS — RETRAITS PAR PALIER ──
-// Réglable par l'admin : une liste de paliers {min, max, tokens}. On applique le premier
-// palier où min <= montant <= max. Accordé quand le retrait passe au statut "payé"
-// (pas juste demandé), pour éviter d'accorder des jetons sur un retrait jamais honoré.
-const DEFAULT_WITHDRAWAL_TIERS = [
-  { min: 25, max: 50, tokens: 5 },
-  { min: 50, max: 100, tokens: 10 },
-  { min: 100, max: 500, tokens: 20 },
-  { min: 500, max: 999999999, tokens: 25 }
-];
-async function getWithdrawalTokenTiers() {
-  try {
-    const { data } = await supabase.from('settings').select('value').eq('key', 'withdrawal_token_tiers').single();
-    if (!data?.value) return DEFAULT_WITHDRAWAL_TIERS;
-    const parsed = JSON.parse(data.value);
-    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_WITHDRAWAL_TIERS;
-    return parsed;
-  } catch (e) { return DEFAULT_WITHDRAWAL_TIERS; }
-}
-app.get('/api/admin/withdrawal-tiers', auth, adminOnly, async (req, res) => {
-  res.json(await getWithdrawalTokenTiers());
-});
-app.patch('/api/admin/withdrawal-tiers', auth, adminOnly, async (req, res) => {
-  const { tiers } = req.body;
-  if (!Array.isArray(tiers) || tiers.length === 0) return res.status(400).json({ error: 'Liste invalide' });
-  for (const t of tiers) {
-    if (typeof t.min !== 'number' || typeof t.max !== 'number' || t.min < 0 || t.max <= t.min) return res.status(400).json({ error: 'Chaque palier doit avoir un min < max valides' });
-    if (typeof t.tokens !== 'number' || t.tokens < 0) return res.status(400).json({ error: 'Jetons invalides (doit être ≥ 0)' });
-  }
-  const cleaned = tiers.map(t => ({ min: t.min, max: t.max, tokens: t.tokens })).sort((a, b) => a.min - b.min);
-  await supabase.from('settings').upsert({ key: 'withdrawal_token_tiers', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
-  log(req.user.id, 'jetons-paliers-retrait-modifiés', 'Paliers de jetons par retrait mis à jour (' + cleaned.length + ')', req);
-  res.json(cleaned);
-});
-function tokensForWithdrawalAmount(amount, tiers) {
-  const tier = tiers.find(t => amount >= t.min && amount <= t.max);
-  return tier ? tier.tokens : 0;
-}
-async function grantWithdrawalTokens(userId, withdrawalId, amount) {
-  try {
-    const tiers = await getWithdrawalTokenTiers();
-    const tokensAmount = tokensForWithdrawalAmount(amount, tiers);
-    if (tokensAmount <= 0) return;
-    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
-    await supabase.from('users').update({ tokens: (user?.tokens || 0) + tokensAmount }).eq('id', userId);
-    await supabase.from('withdrawals').update({ tokens_granted: tokensAmount }).eq('id', withdrawalId);
-  } catch (e) { console.error('grantWithdrawalTokens error:', e.message); }
-}
-async function revokeWithdrawalTokens(userId, tokensGranted) {
-  try {
-    if (!tokensGranted) return;
-    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
-    await supabase.from('users').update({ tokens: Math.max(0, (user?.tokens || 0) - tokensGranted) }).eq('id', userId);
-  } catch (e) { console.error('revokeWithdrawalTokens error:', e.message); }
-}
-
-// ── JETONS — CADEAU ENTRE AFFILIÉS ──
-async function getGiftTokens() {
-  try {
-    const { data } = await supabase.from('settings').select('value').eq('key', 'gift_tokens').single();
-    const n = parseInt(data?.value);
-    return Number.isFinite(n) && n >= 0 ? n : 5;
-  } catch (e) { return 5; }
-}
-app.patch('/api/admin/settings/gift-tokens', auth, adminOnly, async (req, res) => {
-  const n = parseInt(req.body.gift_tokens);
-  if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'Valeur invalide' });
-  await supabase.from('settings').upsert({ key: 'gift_tokens', value: String(n) }, { onConflict: 'key' });
-  log(req.user.id, 'jetons-cadeau-modifié', 'Jetons par cadeau envoyé réglés sur ' + n, req);
-  res.json({ success: true, gift_tokens: n });
-});
-
-// ── JETONS — PALIER DE PARRAINAGE ──
-// Bonus unique (pas répétable) quand un affilié atteint le nombre de filleuls requis.
-async function getReferralMilestoneSettings() {
-  try {
-    const { data } = await supabase.from('settings').select('key,value').in('key', ['referral_milestone_count', 'referral_milestone_tokens']);
-    const obj = {};
-    (data || []).forEach(s => { obj[s.key] = s.value; });
-    const count = parseInt(obj.referral_milestone_count);
-    const tokens = parseInt(obj.referral_milestone_tokens);
-    return {
-      count: Number.isFinite(count) && count > 0 ? count : 5,
-      tokens: Number.isFinite(tokens) && tokens >= 0 ? tokens : 10
+  if(page==='aff-top'){
+    const ranking=await api('GET','/api/ranking');window._topRanking=ranking;
+    const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
+    const mkRows=sort=>{
+      const sorted=[...ranking].sort((a,b)=>sort==='gains'?b.totalGains-a.totalGains:sort==='conv'?b.totalConversions-a.totalConversions:sort==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
+      return sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12)+'<b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
     };
-  } catch (e) { return { count: 5, tokens: 10 }; }
-}
-app.patch('/api/admin/settings/referral-milestone', auth, adminOnly, async (req, res) => {
-  const count = parseInt(req.body.count);
-  const tokens = parseInt(req.body.tokens);
-  if (!Number.isFinite(count) || count <= 0) return res.status(400).json({ error: 'Nombre de filleuls invalide' });
-  if (!Number.isFinite(tokens) || tokens < 0) return res.status(400).json({ error: 'Jetons invalides' });
-  await supabase.from('settings').upsert([
-    { key: 'referral_milestone_count', value: String(count) },
-    { key: 'referral_milestone_tokens', value: String(tokens) }
-  ], { onConflict: 'key' });
-  log(req.user.id, 'jetons-palier-parrainage-modifié', 'Palier de parrainage réglé sur ' + count + ' filleuls → ' + tokens + ' jetons', req);
-  res.json({ success: true, count, tokens });
-});
-// Vérifie si un parrain vient d'atteindre le palier de filleuls, et le crédite une seule fois.
-async function checkReferralMilestone(referrerId) {
-  try {
-    const { count: total } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', referrerId);
-    const { count, tokens } = await getReferralMilestoneSettings();
-    if ((total || 0) < count || tokens <= 0) return;
-    const { data: referrer } = await supabase.from('users').select('name,tokens,referral_milestone_claimed,discord_id').eq('id', referrerId).single();
-    if (!referrer || referrer.referral_milestone_claimed) return;
-    await supabase.from('users').update({ tokens: (referrer.tokens || 0) + tokens, referral_milestone_claimed: true }).eq('id', referrerId);
-    await supabase.from('notifications').insert({ user_id: referrerId, type: 'referral_milestone', message: '🤝 Bravo, tu as parrainé ' + count + ' affiliés ! +' + tokens + ' 🪙 jetons bonus.', read: false });
-    if (referrer.discord_id) {
-      await sendDiscordDM(referrer.discord_id, '🤝 Palier de parrainage atteint !', 0xa855f7, [
-        { name: '👥 Filleuls', value: String(count), inline: true },
-        { name: '🪙 Bonus', value: '+' + tokens + ' jetons', inline: true }
-      ]);
-    }
-  } catch (e) { console.error('checkReferralMilestone error:', e.message); }
-}
-
-// ── BOUTIQUE À JETONS ──
-// Nécessite les tables "shop_items" et "shop_orders" + la colonne "tokens" sur "users"
-// (voir le SQL fourni séparément pour la création de ces objets dans Supabase).
-app.get('/api/shop/items', auth, async (req, res) => {
-  let query = supabase.from('shop_items').select('*').order('created_at', { ascending: false });
-  if (req.user.role !== 'admin') query = query.eq('active', true);
-  const { data, error } = await query;
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data || []);
-});
-app.post('/api/admin/shop/items', auth, adminOnly, async (req, res) => {
-  const { title, description, image_url, price_tokens } = req.body;
-  if (!title || !title.trim()) return res.status(400).json({ error: 'Titre requis' });
-  const price = parseInt(price_tokens);
-  if (!price || price <= 0) return res.status(400).json({ error: 'Prix en jetons invalide' });
-  const { data, error } = await supabase.from('shop_items').insert({ title: title.trim(), description: (description || '').trim(), image_url: image_url || null, price_tokens: price, active: true }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'boutique-offre-créée', 'Offre boutique "' + title + '" créée (' + price + ' jetons)', req);
-  res.json(data);
-});
-app.patch('/api/admin/shop/items/:id', auth, adminOnly, async (req, res) => {
-  const { title, description, image_url, price_tokens, active } = req.body;
-  const updates = {};
-  if (title !== undefined) { if (!title.trim()) return res.status(400).json({ error: 'Titre requis' }); updates.title = title.trim(); }
-  if (description !== undefined) updates.description = (description || '').trim();
-  if (image_url !== undefined) updates.image_url = image_url || null;
-  if (price_tokens !== undefined) { const p = parseInt(price_tokens); if (!p || p <= 0) return res.status(400).json({ error: 'Prix en jetons invalide' }); updates.price_tokens = p; }
-  if (active !== undefined) updates.active = !!active;
-  const { data, error } = await supabase.from('shop_items').update(updates).eq('id', req.params.id).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'boutique-offre-modifiée', 'Offre boutique "' + (data?.title || '?') + '" modifiée', req);
-  res.json(data);
-});
-app.delete('/api/admin/shop/items/:id', auth, adminOnly, async (req, res) => {
-  const { data: item } = await supabase.from('shop_items').select('title').eq('id', req.params.id).single();
-  await supabase.from('shop_items').delete().eq('id', req.params.id);
-  log(req.user.id, 'boutique-offre-supprimée', 'Offre boutique "' + (item?.title || '?') + '" supprimée', req);
-  res.json({ success: true });
-});
-
-// Achat d'une offre de la boutique par un affilié : débite ses jetons et l'offre est
-// acquise immédiatement, aucune validation admin nécessaire. On garde quand même une
-// trace dans "shop_orders" (statut "fulfilled" direct) pour l'historique et les stats.
-app.post('/api/shop/purchase/:id', auth, async (req, res) => {
-  const { data: item } = await supabase.from('shop_items').select('*').eq('id', req.params.id).single();
-  if (!item || item.active === false) return res.status(404).json({ error: 'Offre introuvable ou indisponible' });
-  const { data: user } = await supabase.from('users').select('name,tokens,discord_id').eq('id', req.user.id).single();
-  const balance = user?.tokens || 0;
-  if (balance < item.price_tokens) return res.status(400).json({ error: 'Jetons insuffisants' });
-  await supabase.from('users').update({ tokens: balance - item.price_tokens }).eq('id', req.user.id);
-  const { data: order, error } = await supabase.from('shop_orders').insert({ user_id: req.user.id, item_id: item.id, item_title: item.title, price_tokens: item.price_tokens, status: 'fulfilled' }).select().single();
-  if (error) { await supabase.from('users').update({ tokens: balance }).eq('id', req.user.id); return res.status(500).json({ error: error.message }); }
-  log(req.user.id, 'boutique-achat', user.name + ' a échangé ' + item.price_tokens + ' jetons contre "' + item.title + '" (obtenu immédiatement)', req);
-  await notifyDiscord2(DISCORD_WITHDRAWAL, '🛍️ Nouvel échange boutique !', 0xF5C842, [
-    { name: '👤 Affilié', value: user.name, inline: true },
-    { name: '🎁 Offre', value: item.title, inline: true },
-    { name: '🪙 Jetons', value: String(item.price_tokens), inline: true }
-  ]);
-  res.json(order);
-});
-// Historique des commandes : l'affilié voit les siennes, l'admin voit tout
-app.get('/api/shop/orders', auth, async (req, res) => {
-  let query = supabase.from('shop_orders').select('*, users(name,email)').order('created_at', { ascending: false });
-  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
-  const { data, error } = await query;
-  if (error) return res.status(500).json({ error: error.message });
-  res.json(data || []);
-});
-
-// ── TICKETS ──
-app.get('/api/tickets', auth, async (req, res) => {
-  let query = supabase.from('tickets').select('*, users(name,email), ticket_messages(id,read_by_admin,read_by_user,user_id)').order('created_at', { ascending: false });
-  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
-  const { data } = await query;
-  const isAdmin = req.user.role === 'admin';
-  const result = (data||[]).map(t => {
-    const unread = (t.ticket_messages||[]).filter(m => {
-      if(isAdmin) return !m.read_by_admin && m.user_id !== req.user.id;
-      return !m.read_by_user && m.user_id !== req.user.id;
-    }).length;
-    return { ...t, unread };
-  });
-  res.json(result);
-});
-
-app.post('/api/tickets', auth, async (req, res) => {
-  const { reason, content, image_url } = req.body;
-  if (!reason || !content) return res.status(400).json({ error: 'Raison et message requis' });
-  // Check if affiliate already has an open ticket
-  if (req.user.role !== 'admin') {
-    const { data: existing } = await supabase.from('tickets').select('id').eq('user_id', req.user.id).eq('status', 'open').single();
-    if (existing) return res.status(400).json({ error: 'Tu as déjà un ticket ouvert. Ferme-le avant d\'en créer un nouveau.' });
+    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px"><div style="font-size:13px;color:var(--muted)">'+ranking.length+' affilié(s)</div><div style="display:flex;gap:6px"><button class="btn btn-grad btn-sm" id="sort-gains" onclick="doSortTop(\'gains\')">💰 Gains</button><button class="btn btn-gst btn-sm" id="sort-conv" onclick="doSortTop(\'conv\')">🔁 Conv.</button><button class="btn btn-gst btn-sm" id="sort-clicks" onclick="doSortTop(\'clicks\')">🖱️ Clics</button><button class="btn btn-gst btn-sm" id="sort-date" onclick="doSortTop(\'date\')">📅 Date</button></div></div>'
+    +'<div class="card"><div class="tw"><table><thead><tr><th style="text-align:center">🏅 Rang</th><th>👤 Affilié</th><th>📅 Inscrit le</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">🔁 Conv.</th><th style="text-align:center">💰 Gains</th></tr></thead><tbody id="top-tbody">'+mkRows('gains')+'</tbody></table></div></div>';
   }
-  const { data: ticket, error } = await supabase.from('tickets').insert({ user_id: req.user.id, reason, status: 'open' }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  await supabase.from('ticket_messages').insert({ ticket_id: ticket.id, user_id: req.user.id, content, image_url: image_url || null });
-  // Discord notification
-  const reasons = {'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
-  log(req.user.id, 'ticket-créé', 'Ticket créé : '+reason, req);
-  await notifyDiscord2(DISCORD_TICKET, '🎫 Nouveau ticket support !', 0x4D9EFF, [
-    { name: '👤 Affilié', value: req.user.name, inline: true },
-    { name: '🏷️ Raison', value: reasons[reason] || reason, inline: true },
-    { name: '💬 Message', value: content.substring(0, 100) + (content.length > 100 ? '...' : ''), inline: false }
-  ], '<@1504481208266915861>');
-  res.json(ticket);
-});
 
-app.get('/api/tickets/:id', auth, async (req, res) => {
-  const { data: ticket } = await supabase.from('tickets').select('*, users(name,email)').eq('id', req.params.id).single();
-  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-  if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
-  const { data: messages } = await supabase.from('ticket_messages').select('*, users(name,role)').eq('ticket_id', req.params.id).order('created_at', { ascending: true });
-  const isAdmin = req.user.role === 'admin';
-  const unreadIds = (messages||[]).filter(m => isAdmin ? !m.read_by_admin : !m.read_by_user).map(m => m.id);
-  if(unreadIds.length > 0) await supabase.from('ticket_messages').update(isAdmin ? { read_by_admin: true } : { read_by_user: true }).in('id', unreadIds);
-  res.json({ ...ticket, messages: messages || [] });
-});
+  if(page==='aff-support'){
+    return '<div class="support-hero"><div style="font-size:80px;margin-bottom:12px">🍍</div><div style="font-size:26px;font-weight:800;color:#000;margin-bottom:4px">ananas</div><div style="font-size:12px;color:rgba(0,0,0,.6);font-weight:800;letter-spacing:1px;text-transform:uppercase">✦ FONDATEUR ✦</div><p style="font-size:13px;color:rgba(255,255,255,.7);margin-top:12px;max-width:400px;margin-left:auto;margin-right:auto;line-height:1.6">Pour toute question, contacte-moi sur Discord. Je réponds dans les 24h.</p></div>'
+    +'<div class="discord-card"><div style="display:flex;align-items:center;gap:14px"><div style="width:46px;height:46px;border-radius:12px;background:rgba(88,101,242,.15);border:1px solid rgba(88,101,242,.25);display:flex;align-items:center;justify-content:center;font-size:22px">💬</div><div><div style="font-family:\'JetBrains Mono\',monospace;font-size:14px;font-weight:600">ananous.</div><div style="font-size:12px;color:var(--muted)">Disponible sur Discord</div></div></div><button class="btn btn-grad" onclick="navigator.clipboard?.writeText(\'ananous.\');toast(\'Pseudo copié !\',\'s\')">📋 Copier</button></div>';
+  }
 
-app.post('/api/tickets/:id/reply', auth, async (req, res) => {
-  const { content, image_url } = req.body;
-  if (!content && !image_url) return res.status(400).json({ error: 'Message requis' });
-  const { data: ticket } = await supabase.from('tickets').select('user_id').eq('id', req.params.id).single();
-  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-  if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
-  await supabase.from('ticket_messages').insert({ ticket_id: parseInt(req.params.id), user_id: req.user.id, content: content || '', image_url: image_url || null });
-  log(req.user.id, 'ticket-répondu', (req.user.role === 'admin' ? 'Réponse admin' : 'Réponse affilié') + ' sur le ticket #' + req.params.id, req);
-  res.json({ success: true });
-});
+  if(page==='aff-settings'){
+    const showRanking=ME.show_ranking!==false;
+    return '<div class="settings-section"><div class="settings-section-title">🖼️ Photo de profil</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">'+avatarHtml(ME.name,ME.avatar_url,80,30)+'<div><div style="font-weight:700;margin-bottom:4px">Ta photo</div><div style="font-size:12px;color:var(--muted)">Visible dans la sidebar et les classements</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'avatar-file\').click()"><input type="file" id="avatar-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewAvatar(this)"><div id="avatar-prev" style="display:none;margin-bottom:10px"><img id="avatar-prev-img" style="max-width:120px;max-height:120px;border-radius:50%;object-fit:cover"></div><div id="avatar-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer une photo</div></div></div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-grad" onclick="saveAvatar()" style="flex:1;justify-content:center">💾 Sauvegarder</button>'+(ME.avatar_url?'<button class="btn btn-red" onclick="removeAvatar()">🗑 Retirer</button>':'')+'</div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">👤 Informations</div><div class="info-row"><div class="info-label">Nom</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">Email</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">Date d\'arrivée</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">Code parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\'Code copié !\',\'s\')">📋</button></div></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🏆 Classement</div><div class="info-row"><div><div class="info-label" style="margin-bottom:4px">Apparaître dans le TOP</div><div style="font-size:12px;color:var(--muted)">Vos stats seront visibles</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(showRanking?'var(--green)':'var(--muted)')+'">'+(showRanking?'✅ Visible':'🚫 Masqué')+'</span><button class="btn '+(showRanking?'btn-red':'btn-grn')+' btn-sm" onclick="toggleRanking('+(showRanking?'false':'true')+')">'+(showRanking?'Masquer':'Afficher')+'</button></div></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🔑 Mot de passe</div><div class="fi"><label>Actuel</label><input type="password" id="cp-cur" placeholder="••••••••"></div><div class="fi"><label>Nouveau</label><input type="password" id="cp-new" placeholder="••••••••"></div><div class="fi"><label>Confirmer</label><input type="password" id="cp-conf" placeholder="••••••••"></div><button class="btn btn-grad" onclick="changePass()">🔑 Modifier</button></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🔌 Postback vers mon système</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici. Quand une conversion est approuvée, AffiHub enverra automatiquement les infos à ton système.<br><br>Variables disponibles : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL de postback</label><input type="text" id="pb-url" placeholder="https://ta-plateforme.com/postback?sub1={LINK_ID}&amount={AMOUNT}" value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">💾 Sauvegarder</button></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🔔 Alerte Discord privée</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Renseigne ton ID Discord pour recevoir un message privé (DM) à chaque fois qu\'une de tes ventes est créditée.<br><br>Pour trouver ton ID : Discord → Paramètres → Avancés → active le "Mode développeur", puis clic droit sur ton profil → "Copier l\'identifiant".</div><div class="fi"><label>Ton ID Discord</label><input type="text" id="discord-id-input" placeholder="Ex: 123456789012345678" value="'+(ME.discord_id||'')+'"></div><button class="btn btn-grad" onclick="saveDiscordId()">💾 Sauvegarder</button></div>';
+  }
 
-app.patch('/api/tickets/:id/status', auth, async (req, res) => {
-  const { status } = req.body;
-  const { data: ticket } = await supabase.from('tickets').select('user_id').eq('id', req.params.id).single();
-  if (!ticket) return res.status(404).json({ error: 'Ticket introuvable' });
-  if (req.user.role !== 'admin' && ticket.user_id !== req.user.id) return res.status(403).json({ error: 'Non autorisé' });
-  if (req.user.role !== 'admin' && status !== 'closed') return res.status(403).json({ error: 'Non autorisé' });
-  await supabase.from('tickets').update({ status }).eq('id', req.params.id);
-  log(req.user.id, 'ticket-'+status, 'Ticket #'+req.params.id+' '+(status==='resolved'?'résolu':status==='closed'?'fermé':'mis à jour'), req);
-  res.json({ success: true });
-});
+  if(page==='aff-guide'){
+    const sections=[
+      {id:'dash',icon:'🏠',title:'Dashboard',html:'Ta page d\'accueil, la vue d\'ensemble. Tu y retrouves :<br>• Ton <b>solde disponible</b> + bouton pour retirer directement<br>• Un badge <b>🔥 streak</b> si tu as vendu plusieurs jours d\'affilée<br>• Tes <b>clics totaux</b> (tous liens confondus)<br>• Tes <b>conversions</b> (approuvées + en attente)<br>• Tes <b>gains en attente</b> (conversions pas encore validées)<br>• Tes <b>gains totaux</b> (ventes + commissions de parrainage)<br>• Tes <b>5 dernières conversions</b>'},
+      {id:'links',icon:'🔗',title:'Mes liens',html:'C\'est ici que tu <b>génères tes liens personnels</b>. Les offres sont classées par catégorie (🎰 Casino, 💕 Dating, 🤖 IA, 👑 Influenceuse...). Pour chaque offre : clique sur <b>"Générer mon lien"</b>, copie-le, et partage-le. Tu vois direct le nombre de clics sur chaque lien, et un bouton <b>👁️ aperçu</b> pour voir la page de destination sans que ça compte comme un clic.<br><br>Pour les <b>offres sur-mesure</b> (ta propre offre influenceuse ou une page VIP Discord), le bouton est différent : <b>"🎨 Personnaliser & Demander"</b> — tu remplis un formulaire (nom du serveur, slogan, logo, photos...) et l\'admin te prépare ton lien à la main. Tu peux en demander plusieurs.'},
+      {id:'stats',icon:'📈',title:'Statistiques',html:'Le détail complet de tes performances : clics totaux, conversions, gains — <b>et le détail offre par offre</b>, pour voir quel lien performe le mieux.'},
+      {id:'conv',icon:'🔁',title:'Conversions',html:'L\'historique de <b>toutes tes ventes</b>, avec un statut sur chacune :<br>✅ <b>Approuvée</b> → payée sur ton solde<br>⏳ <b>En attente</b> → en cours de vérification<br>❌ <b>Rejetée</b> → non comptabilisée<br><br>Tu peux filtrer par statut en haut de la page.'},
+      {id:'pay',icon:'💸',title:'Paiements',html:'Ta page pour <b>demander un retrait</b> :<br>• Minimum <b>$25</b> (Bitcoin, Solana, Litecoin, Ethereum, Revolut, Virement, TapTap Send, PaysafeCard, Carte cadeau)<br>• Minimum <b>$50</b> pour PayPal<br>• 5% de frais, tous moyens confondus<br>• Historique de tous tes retraits passés avec leur statut<br><br>⚠️ Ton ID Discord doit être renseigné dans Paramètres avant de pouvoir retirer. Vérifie bien ton adresse crypto/coordonnées avant d\'envoyer — aucun remboursement en cas d\'erreur de ta part.'},
+      {id:'gifts',icon:'🎁',title:'Cadeaux',html:'Envoie une partie de ton solde à un autre affilié, instantanément et sans frais.<br>• Choisis le destinataire, le montant, et un message optionnel<br>• Le montant est déduit de ton solde et ajouté au sien immédiatement<br>• Il reçoit une notification (et un DM Discord si son ID est configuré)<br><br>Retrouve l\'historique de tes cadeaux envoyés et reçus directement sur la page.'},
+      {id:'ref',icon:'👥',title:'Parrainage',html:'Ton lien personnel à partager pour ramener <b>d\'autres affiliés</b> sur AffiHub. Dès qu\'un filleul commence à vendre, tu touches <b>10% de chaque vente qu\'il génère</b>, à vie. Tu retrouves ici la liste de tes filleuls et l\'historique de toutes tes commissions de parrainage.'},
+      {id:'top',icon:'🏆',title:'TOP Affiliés',html:'Le classement de tous les affiliés, triable par gains, conversions, clics ou date d\'inscription. Tu peux choisir de ne pas y apparaître dans tes <b>Paramètres</b> si tu préfères rester discret.'},
+      {id:'collection',icon:'🎴',title:'Collection',html:'Chaque offre a sa propre carte à débloquer, façon carte à collectionner. Dès ta première vente sur une offre, sa carte apparaît — rareté selon la catégorie (Casino en Légendaire, Influenceuse en Épique, Dating et Meuf IA en Rare, le reste en Commune). Vise la collection complète !'},
+      {id:'discord',icon:'💬',title:'Aide Discord',html:'Une bibliothèque de serveurs Discord utiles, classés par catégorie (🎰 Casino, 🤖 Meuf IA, 💕 Dating, 👑 Influenceuse). Filtre par catégorie, puis <b>copie le lien</b> ou <b>ouvre-le direct</b> en un clic.'},
+      {id:'manager',icon:'👨‍💼',title:'Mon manager',html:'Toutes les infos pour contacter directement ton manager sur Discord en cas de question.'},
+      {id:'tickets',icon:'🎫',title:'Ticket / Aide',html:'Un problème, une question ? Ouvre un ticket ici, tu seras recontacté rapidement.'},
+      {id:'settings',icon:'⚙️',title:'Paramètres',html:'• Tes infos de compte (nom, email, date d\'inscription, ton code de parrainage à copier)<br>• Choix d\'apparaître ou non dans le classement TOP Affiliés<br>• Changer ton mot de passe<br>• Ton <b>ID Discord</b>, pour recevoir une alerte privée à chaque vente créditée (obligatoire pour retirer)<br>• Configurer un <b>postback vers ton propre système</b> si tu gères ta propre plateforme d\'affiliation (optionnel, pour les plus avancés)'}
+    ];
+    const html=sections.map((s,i)=>
+      '<div style="margin-bottom:12px">'
+      +'<div onclick="toggleCat(\'guide-'+s.id+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid #2a2a2a;border-radius:14px;cursor:pointer">'
+      +'<span style="font-size:20px">'+s.icon+'</span><span style="font-size:15px;font-weight:800;flex:1">'+s.title+'</span>'
+      +'<span style="font-size:14px;transition:transform .2s;color:var(--yellow);transform:'+(i===0?'rotate(90deg)':'rotate(0deg)')+'" id="chev-guide-'+s.id+'">▸</span></div>'
+      +'<div id="guide-'+s.id+'" style="display:'+(i===0?'block':'none')+';padding:16px 18px;background:#0a0a0a;border:1px solid #2a2a2a;border-top:none;border-radius:0 0 14px 14px;font-size:13px;color:var(--muted);line-height:1.8">'+s.html+'</div>'
+      +'</div>'
+    ).join('');
+    return '<div style="margin-bottom:20px;background:var(--grad);border-radius:18px;padding:22px 28px;box-shadow:0 8px 40px rgba(240,66,122,.35)"><div style="font-size:18px;font-weight:900;color:#000">📖 Guide complet AffiHub</div><div style="font-size:13px;color:rgba(0,0,0,.7);margin-top:4px">Toutes les pages du site expliquées — clique sur une section pour l\'ouvrir.</div></div>'
+      +html;
+  }
+  if(page==='aff-collection'){
+    const coll=await api('GET','/api/me/collection');
+    const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842',rarity:'Légendaire'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF',rarity:'Rare'},dating:{icon:'💕',label:'Dating',color:'#F0427A',rarity:'Rare'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7',rarity:'Épique'},autre:{icon:'🎨',label:'Autre',color:'#00D68F',rarity:'Commune'}};
+    const unlockedCount=coll.filter(c=>c.unlocked).length;
+    const pct=coll.length?Math.round(unlockedCount/coll.length*100):0;
+    const cards=coll.map(o=>{
+      const m=catMeta[o.category]||catMeta.autre;
+      if(!o.unlocked){
+        return '<div style="border-radius:16px;background:#0d0d0d;border:2px dashed #2a2a2a;padding:16px;text-align:center;aspect-ratio:3/4;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px"><div style="font-size:36px;opacity:.3">🔒</div><div style="font-size:12px;color:var(--muted);font-weight:700">??? </div><div style="font-size:10px;color:var(--muted)">Fais ta 1ère vente<br>pour débloquer</div></div>';
+      }
+      return '<div style="border-radius:16px;background:linear-gradient(160deg,'+m.color+'22,#0d0d0d 60%);border:2px solid '+m.color+';padding:14px;aspect-ratio:3/4;display:flex;flex-direction:column;box-shadow:0 0 20px '+m.color+'33;position:relative;overflow:hidden">'
+        +'<div style="position:absolute;top:8px;right:10px;font-size:9px;font-weight:900;color:'+m.color+';text-transform:uppercase;letter-spacing:.5px">'+m.rarity+'</div>'
+        +'<div style="flex:1;display:flex;align-items:center;justify-content:center;font-size:36px">'+(o.image_url?'<img src="'+o.image_url+'" style="width:100%;height:70px;object-fit:cover;border-radius:8px">':m.icon)+'</div>'
+        +'<div style="font-weight:900;font-size:12px;text-align:center;margin-top:8px">'+o.name+'</div>'
+        +'<div style="font-size:10px;color:'+m.color+';text-align:center;margin-top:2px">'+m.icon+' '+m.label+'</div>'
+        +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-top:6px;border-top:1px solid rgba(255,255,255,.08);padding-top:6px">🏅 '+o.sales_count+' vente'+(o.sales_count>1?'s':'')+'<br>Débloquée le '+fmt(o.unlocked_at)+'</div>'
+        +'</div>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="card-title">🎴 Ta collection</div><div style="font-weight:900;font-size:14px">'+unlockedCount+'/'+coll.length+'</div></div><div style="background:#111;border-radius:20px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:var(--grad);border-radius:20px;transition:width .3s"></div></div><div style="font-size:11px;color:var(--muted);margin-top:8px">Débloque une carte à chaque première vente sur une nouvelle offre.'+(pct<100?' Termine ta collection à <b style="color:var(--yellow)">100%</b> et gagne <b style="color:var(--yellow)">$50</b> de bonus 🎁':'')+'</div></div>'
+      +(pct===100&&coll.length?'<div style="background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.12));border:1px solid rgba(245,200,66,.35);border-radius:16px;padding:20px;text-align:center;margin-bottom:22px"><div style="font-size:32px;margin-bottom:8px">🏆</div><div style="font-weight:900;font-size:15px;margin-bottom:4px">Collection complète !</div><div style="font-size:12px;color:var(--muted)">Bravo, tu as débloqué toutes les cartes — $50 de bonus ajoutés à ton solde 🎉</div></div>':'')
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:14px">'+cards+'</div>';
+  }
 
-app.delete('/api/tickets/:id', auth, adminOnly, async (req, res) => {
-  const { data: t } = await supabase.from('tickets').select('reason,users(name)').eq('id', req.params.id).single();
-  await supabase.from('ticket_messages').delete().eq('ticket_id', req.params.id);
-  await supabase.from('tickets').delete().eq('id', req.params.id);
-  log(req.user.id, 'ticket-supprimé', 'Ticket "' + (t?.reason || '?') + '" de ' + (t?.users?.name || '?') + ' supprimé', req);
-  res.json({ success: true });
-});
+  if(page==='aff-badges'){
+    const {badges,unlockedCount,total,bonusJustClaimed}=await api('GET','/api/me/badges');
+    if(bonusJustClaimed){ME.balance=(ME.balance||0)+35;localStorage.setItem('affihub_user',JSON.stringify(ME));}
+    const pct=Math.round(unlockedCount/total*100);
+    const cardsB=badges.map(b=>{
+      const barPct=Math.round((b.progress/b.target)*100);
+      const isMoney=b.id.startsWith('gains_');
+      return '<div class="card" style="text-align:center;padding:20px 14px;'+(b.unlocked?'border-color:rgba(245,200,66,.4);background:linear-gradient(180deg,rgba(245,200,66,.06),transparent)':'opacity:.55')+'">'
+      +'<div style="font-size:40px;margin-bottom:10px;filter:'+(b.unlocked?'none':'grayscale(1)')+'">'+b.icon+'</div>'
+      +'<div style="font-weight:800;font-size:14px;margin-bottom:4px">'+b.label+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:10px;min-height:28px">'+b.desc+'</div>'
+      +(b.unlocked?'<span class="badge bg2" style="font-size:10px">✅ Débloqué</span>':'<div><div style="background:#111;border-radius:20px;height:7px;overflow:hidden;margin-bottom:5px"><div style="width:'+barPct+'%;height:100%;background:var(--grad);border-radius:20px"></div></div><div style="font-size:10px;color:var(--muted)">'+(isMoney?'$'+b.progress.toFixed(0)+' / $'+b.target:b.progress+' / '+b.target)+'</div></div>')
+      +'</div>';
+    }).join('');
+    return (bonusJustClaimed?'<div style="background:linear-gradient(135deg,rgba(245,200,66,.12),rgba(240,66,122,.12));border:1px solid rgba(245,200,66,.35);border-radius:16px;padding:20px;text-align:center;margin-bottom:22px"><div style="font-size:32px;margin-bottom:8px">🏅</div><div style="font-weight:900;font-size:15px;margin-bottom:4px">Tous les badges débloqués !</div><div style="font-size:12px;color:var(--muted)">Bravo, tu les as tous eus — $35 de bonus ajoutés à ton solde 🎉</div></div>':'')
+    +'<div class="card" style="margin-bottom:22px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px"><div class="card-title">🏅 Mes badges</div><div style="font-weight:900;font-size:14px">'+unlockedCount+'/'+total+'</div></div><div style="background:#111;border-radius:20px;height:10px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:var(--grad);border-radius:20px;transition:width .3s"></div></div>'+(pct<100?'<div style="font-size:11px;color:var(--muted);margin-top:8px">Débloque tous les badges et gagne <b style="color:var(--yellow)">$35</b> de bonus 🎁</div>':'')+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px">'+cardsB+'</div>';
+  }
 
-// ── IMAGE UPLOAD ──
-app.post('/api/upload-image', auth, adminOnly, async (req, res) => {
-  const { data: base64, fileName, mimeType } = req.body;
-  if (!base64 || !fileName) return res.status(400).json({ error: 'Données manquantes' });
-  const buffer = Buffer.from(base64, 'base64');
-  const uniqueName = `${Date.now()}-${fileName.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
-  const { data, error } = await supabase.storage.from('offers').upload(uniqueName, buffer, { contentType: mimeType || 'image/jpeg', upsert: false });
-  if (error) return res.status(500).json({ error: error.message });
-  const { data: urlData } = supabase.storage.from('offers').getPublicUrl(uniqueName);
-  log(req.user.id, 'image-uploadée', 'Image "' + fileName + '" uploadée', req);
-  res.json({ url: urlData.publicUrl });
-});
+  if(page==='aff-streak'){
+    const s=await api('GET','/api/me/streak');
+    const dayLabels=['L','M','M','J','V','S','D'];
+    const cal=s.last35.map(d=>{
+      const dt=new Date(d.date+'T00:00:00');
+      const isToday=d.date===new Date().toISOString().slice(0,10);
+      return '<div title="'+d.date+(d.hasSale?' — vente ✅':'')+'" style="width:100%;aspect-ratio:1;border-radius:6px;background:'+(d.hasSale?'linear-gradient(135deg,#F0427A,#F5C842)':'#161616')+';border:'+(isToday?'2px solid var(--yellow)':'1px solid #222')+';display:flex;align-items:center;justify-content:center;font-size:9px;color:'+(d.hasSale?'#000':'#555')+';font-weight:700">'+dt.getDate()+'</div>';
+    }).join('');
+    return '<div class="card" style="text-align:center;padding:32px 20px;margin-bottom:20px;background:linear-gradient(180deg,rgba(240,66,122,.08),transparent)">'
+    +'<div style="font-size:64px;line-height:1;margin-bottom:6px">'+(s.current>0?'🔥':'💤')+'</div>'
+    +'<div style="font-size:42px;font-weight:900;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+s.current+'</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-top:2px">'+(s.current>0?'jour'+(s.current>1?'s':'')+' d\'affilée avec au moins une vente':'Fais une vente aujourd\'hui pour démarrer ta série !')+'</div>'
+    +'</div>'
+    +'<div class="stats-grid" style="margin-bottom:20px"><div class="stat-card"><div class="stat-icon">🔥</div><div class="stat-label">Série actuelle</div><div class="stat-val gy">'+s.current+' j</div></div><div class="stat-card"><div class="stat-icon">🏆</div><div class="stat-label">Meilleure série</div><div class="stat-val gg">'+s.longest+' j</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:14px">📅 5 dernières semaines</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">'+dayLabels.map(l=>'<div style="text-align:center;font-size:10px;color:var(--muted);font-weight:700">'+l+'</div>').join('')+'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px">'+cal+'</div>'
+    +'<div style="display:flex;align-items:center;gap:8px;margin-top:14px;font-size:11px;color:var(--muted)"><div style="width:12px;height:12px;border-radius:3px;background:linear-gradient(135deg,#F0427A,#F5C842)"></div>Vente ce jour-là<div style="width:12px;height:12px;border-radius:3px;background:#161616;border:1px solid #222;margin-left:12px"></div>Aucune vente</div>'
+    +'</div>';
+  }
+
+  if(page==='aff-wheel'){
+    const [w,history]=await Promise.all([api('GET','/api/me/wheel'),api('GET','/api/me/wheel-history')]);
+    const resetDate=new Date(w.nextResetAt);
+    const resetStr=resetDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    CURRENT_WHEEL_SEGMENTS=w.segments||[];
+    const histRows=history.map(h=>{const isTok=h.reward_type==='tokens';const label=h.reward>0?(isTok?'+'+h.reward+' 🪙':'+$'+h.reward):'—';return '<tr><td style="color:var(--muted)">'+fmt(h.created_at)+'</td><td>'+esc(h.label||'—')+'</td><td style="font-weight:800;text-align:right;color:'+(h.reward>0?'var(--green)':'var(--muted)')+'">'+label+'</td></tr>';}).join('');
+    const lastRewardLabel=w.lastRewardType==='tokens'?w.lastReward+' 🪙 jeton'+(w.lastReward>1?'s':''):'$'+w.lastReward;
+    return '<div class="card wheel-stage" style="text-align:center;padding:36px 20px;border-color:rgba(245,200,66,.25);margin-bottom:20px">'
+    +'<div class="card-title" style="justify-content:center;margin-bottom:6px;font-size:19px">🎡 Roue de la chance</div>'
+    +'<p style="font-size:12px;color:var(--muted);margin-bottom:30px">Un tour gratuit chaque semaine si tu as fait au moins une vente. Certains lots rapportent des $, d\'autres des 🪙 jetons (utilisables dans la Boutique).</p>'
+    +'<div style="position:relative;width:340px;max-width:92vw;margin:0 auto 26px">'
+    +'<div class="wheel-pointer" style="position:absolute;top:-8px;left:50%;z-index:3;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:22px solid var(--yellow);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))"></div>'
+    +'<svg viewBox="0 0 200 200" style="width:100%;display:block;position:absolute;top:0;left:0;pointer-events:none">'+buildWheelBulbs()+'</svg>'
+    +'<svg id="wheel-svg" viewBox="0 0 200 200" style="width:100%;display:block;transition:transform 4.5s cubic-bezier(.17,.67,.12,1);filter:drop-shadow(0 8px 22px rgba(0,0,0,.6))">'+buildWheelSegments(CURRENT_WHEEL_SEGMENTS)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><circle cx="100" cy="100" r="19" fill="none" stroke="#fff" stroke-opacity=".3" stroke-width="1"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg>'
+    +'</div>'
+    +'<div id="wheel-result" style="min-height:30px;margin-bottom:18px"></div>'
+    +(w.alreadySpun
+      ?'<div><span class="badge bg2" style="font-size:13px;padding:8px 16px">✅ Déjà tourné cette semaine — gagné '+lastRewardLabel+'</span><div style="font-size:11px;color:var(--muted);margin-top:10px">Rendez-vous <b>'+resetStr+'</b> pour un nouveau tour</div></div>'
+      :w.eligible
+        ?'<button class="btn btn-grad wheel-spin-btn" id="wheel-spin-btn" onclick="spinWheel()" style="padding:13px 34px;font-size:14px;justify-content:center;border-radius:50px">🎡 Tourner la roue</button>'
+        :'<div><span class="badge by2" style="font-size:13px;padding:8px 16px">🔒 Fais au moins une vente cette semaine pour débloquer</span></div>')
+    +'</div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📜 Historique de mes tirages</div>'+(history.length===0?'<div class="empty"><div class="empty-icon">🎡</div><p>Aucun tirage pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎁 Lot</th><th style="text-align:right">💰 Gain</th></tr></thead><tbody>'+histRows+'</tbody></table></div>')+'</div>';
+  }
+
+  if(page==='aff-shop'){
+    const [methods,items,orders]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items'),api('GET','/api/shop/orders')]);
+    const tokens=ME.tokens||0;
+    const methodCards=methods.map(m=>'<div class="card" style="padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px"><div style="font-size:26px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div>'+(m.tokens>0?'<span class="badge by2" style="flex-shrink:0">+'+m.tokens+' 🪙</span>':'')+'</div>').join('');
+    const itemCards=items.map(it=>{
+      const canAfford=tokens>=it.price_tokens;
+      return '<div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">'
+      +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:140px;object-fit:cover;display:block">':'<div style="width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:38px">🎁</div>')
+      +'<div style="padding:16px;display:flex;flex-direction:column;flex:1"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;flex:1;min-height:32px">'+esc(it.description||'')+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span class="badge by2" style="font-size:13px">🪙 '+it.price_tokens+'</span>'
+      +(canAfford?'<button class="btn btn-grad btn-sm" onclick="confirmPurchaseShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\','+it.price_tokens+')">Échanger</button>':'<span class="badge br2" style="font-size:11px">🔒 Pas assez</span>')
+      +'</div></div></div>';
+    }).join('');
+    const orderRows=orders.slice(0,15).map(o=>'<tr><td style="color:var(--muted)">'+fmt(o.created_at)+'</td><td>'+esc(o.item_title)+'</td><td style="color:var(--yellow);font-weight:700">🪙 '+o.price_tokens+'</td><td><span class="badge bg2">✅ Obtenu</span></td></tr>').join('');
+    return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Tes jetons</div><div class="bal-amount">🪙 '+tokens+'</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:14px">🪙 Comment obtenir des jetons</div>'+(methods.length===0?'<div class="empty"><div class="empty-icon">🪙</div><p>Aucun moyen renseigné pour l\'instant</p></div>':methodCards)+'</div>'
+    +'<div style="margin-bottom:16px"><div style="font-size:18px;font-weight:800;margin-bottom:4px">🛍️ Boutique</div><div style="font-size:12px;color:var(--muted)">Échange tes jetons contre des offres — c\'est à toi immédiatement, sans validation.</div></div>'
+    +(items.length===0?'<div class="card"><div class="empty"><div class="empty-icon">🛍️</div><p>Aucune offre disponible pour le moment.</p></div></div>':'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:22px">'+itemCards+'</div>')
+    +(orders.length>0?'<div class="card"><div class="card-title" style="margin-bottom:14px">📋 Mes échanges</div><div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Coût</th><th>Statut</th></tr></thead><tbody>'+orderRows+'</tbody></table></div></div>':'');
+  }
+
+  if(page==='aff-discord'){
+    const servers=await api('GET','/api/discord-servers');
+    const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF'},dating:{icon:'💕',label:'Dating',color:'#F0427A'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7'}};
+    const filter=discordCatFilter;
+    const filtered=filter==='all'?servers:servers.filter(s=>(s.categories||'').split(',').includes(filter));
+    const tabs=['all',...Object.keys(catMeta)].map(k=>{
+      const active=filter===k;
+      const label=k==='all'?'Tous':catMeta[k].icon+' '+catMeta[k].label;
+      return '<button onclick="filterDiscordCat(\''+k+'\')" class="btn '+(active?'btn-grn':'btn-gst')+' btn-sm" style="margin-right:8px;margin-bottom:8px">'+label+'</button>';
+    }).join('');
+    const cards=filtered.map(s=>{
+      const cats=(s.categories||'').split(',').filter(Boolean).map(c=>catMeta[c]?('<span style="display:inline-block;font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;margin:0 4px 4px 0;background:'+catMeta[c].color+'22;color:'+catMeta[c].color+'">'+catMeta[c].icon+' '+catMeta[c].label+'</span>'):'').join('');
+      return '<div class="card" style="padding:20px">'
+        +'<div style="font-weight:800;font-size:16px;margin-bottom:10px">'+s.name+'</div>'
+        +'<div style="margin-bottom:16px">'+cats+'</div>'
+        +'<div style="display:flex;gap:8px">'
+        +'<button class="btn btn-gst btn-sm" data-link="'+escAttr(s.link)+'" onclick="copyDiscordLink(this)" style="flex:1">📋 Copier</button>'
+        +'<button class="btn btn-grn btn-sm" data-link="'+escAttr(s.link)+'" onclick="openDiscordLink(this)" style="flex:1">↗️ Ouvrir</button>'
+        +'</div></div>';
+    }).join('');
+    return '<div style="margin-bottom:18px">'+tabs+'</div>'
+      +(filtered.length===0?'<div class="empty"><div class="empty-icon">💬</div><p>Aucun serveur disponible pour le moment</p></div>':
+        '<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px">'+cards+'</div>');
+  }
+  if(page==='aff-tickets'){
+    const tickets=await api('GET','/api/tickets');
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
+    const rows=tickets.map(t=>'<tr><td><b>#'+t.id+'</b></td><td>'+(reasons[t.reason]||t.reason)+'</td><td style="color:var(--muted)">'+fmt(t.created_at)+'</td><td>'+statusBadge(t.status)+'</td><td>'+(t.unread>0?'<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px">'+t.unread+'</span>':'<span style="color:var(--muted)">'+(t.ticket_messages||[]).length+' msg(s)</span>')+'</td><td><button class="btn '+(t.unread>0?'btn-grad':'btn-gst')+' btn-sm" onclick="goPage(\'aff-ticket-'+t.id+'\')">👁 Voir</button></td></tr>').join('');
+    return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px"><div style="font-size:13px;color:var(--muted)">'+tickets.length+' ticket(s)</div><button class="btn btn-grad" onclick="openCreateTicket()">+ Nouveau ticket</button></div>'
+    +'<div class="card">'+(tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>Aucun ticket</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>🏷️ Raison</th><th>📅 Date</th><th>📌 Statut</th><th>💬 Messages</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
+  }
+
+  if(page.startsWith('aff-ticket-')){
+    const tid=page.replace('aff-ticket-','');const ticket=await api('GET','/api/tickets/'+tid);
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const msgs=ticket.messages.map(m=>{const isMe=m.user_id===ME.id;const isAdmin=m.users?.role==='admin';return '<div style="display:flex;flex-direction:column;align-items:'+(isMe?'flex-end':'flex-start')+';margin-bottom:16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+(isAdmin?'👑 Admin':'👤 '+esc(m.users?.name))+' • '+fmt(m.created_at)+'</div><div style="background:'+(isMe?'var(--grad)':'var(--bg3)')+';color:'+(isMe?'#000':'var(--text)')+';border-radius:'+(isMe?'14px 14px 4px 14px':'14px 14px 14px 4px')+';padding:12px 16px;max-width:70%">'+(m.content?'<div style="font-size:13px;line-height:1.6">'+esc(m.content)+'</div>':'')+(m.image_url?'<img src="'+m.image_url+'" style="max-width:100%;max-height:200px;border-radius:8px;margin-top:'+(m.content?'8px':'0')+';object-fit:cover;cursor:pointer" onclick="window.open(\''+m.image_url+'\',\'_blank\')">':'')+'</div></div>';}).join('');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px"><button class="btn btn-gst btn-sm" onclick="goPage(\'aff-tickets\')">← Retour</button>'+(ticket.status==='open'?'<button class="btn btn-red btn-sm" onclick="closeMyTicket('+ticket.id+')">🔴 Fermer</button>':'')+'</div>'
+    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:16px;font-weight:800">Ticket #'+ticket.id+' — '+(reasons[ticket.reason]||ticket.reason)+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Créé le '+fmt(ticket.created_at)+'</div></div>'+(ticket.status==='open'?'<span class="badge by2">🟡 Ouvert</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 Résolu</span>':'<span class="badge br2">🔴 Fermé</span>')+'</div></div>'
+    +'<div class="card" style="min-height:300px;margin-bottom:16px">'+(msgs||'<div class="empty"><p>Aucun message</p></div>')+'</div>'
+    +(ticket.status==='open'?'<div class="card"><div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Écrivez votre message..." style="resize:vertical;min-height:80px"></textarea></div><div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'reply-img-file\').click()"><input type="file" id="reply-img-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div><button class="btn btn-grad" onclick="sendReply('+ticket.id+')" style="width:100%;justify-content:center">📨 Envoyer</button></div>':'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==='resolved'?'✅':'🔴')+'</div><div style="font-weight:700">'+(ticket.status==='resolved'?'Ticket résolu':'Ticket fermé')+'</div></div>');
+  }
+
+  if(page==='admin-dash'){
+    const [stats,convs,wds,tickets,customs]=await Promise.all([api('GET','/api/stats'),api('GET','/api/conversions'),api('GET','/api/withdrawals'),api('GET','/api/tickets'),api('GET','/api/custom-requests')]);
+    const pending=convs.filter(c=>c.status==='pending');const pendWd=wds.filter(w=>w.status==='pending');
+
+    // Build last 7 days chart data
+    const days=[];const gainsByDay=[];const convsByDay=[];
+    for(let i=6;i>=0;i--){
+      const d=new Date();d.setDate(d.getDate()-i);
+      const dayStr=d.toISOString().split('T')[0];
+      days.push(d.toLocaleDateString('fr-FR',{weekday:'short',day:'numeric'}));
+      gainsByDay.push(convs.filter(c=>c.status==='approved'&&c.created_at?.startsWith(dayStr)).reduce((s,c)=>s+c.amount,0));
+      convsByDay.push(convs.filter(c=>c.created_at?.startsWith(dayStr)).length);
+    }
+
+    const prows=pending.slice(0,4).map(c=>'<div class="act-item"><div class="act-icon" style="background:rgba(245,200,66,.1)">🔁</div><div style="flex:1;font-size:13px"><b>'+(c.users?.name||'?')+'</b> — '+(c.offers?.name||'?')+'<div style="font-size:11px;color:var(--yellow)">$'+c.amount+'</div></div><div style="display:flex;gap:4px"><button class="btn btn-grn btn-sm" onclick="apprC('+c.id+')">✔</button><button class="btn btn-red btn-sm" onclick="rejtC('+c.id+')">✕</button></div></div>').join('');
+    const wrows=pendWd.slice(0,4).map(w=>'<div class="act-item"><div class="act-icon" style="background:rgba(240,66,122,.1)">💳</div><div style="flex:1;font-size:13px"><b>'+(w.users?.name||'?')+'</b><div style="font-size:11px;color:var(--muted)">'+w.crypto+' — $'+w.amount+'</div></div><button class="btn btn-grn btn-sm" onclick="apprW('+w.id+')">✔ Payé</button></div>').join('');
+
+    const pendingTickets=tickets.filter(t=>t.status==='open'&&t.unread>0).length;
+    const pendingCustoms=customs.filter(c=>c.status==='pending').length;
+
+    setTimeout(()=>{
+      const ctx=document.getElementById('gains-chart');
+      if(ctx){new Chart(ctx,{type:'bar',data:{labels:days,datasets:[{label:'Gains ($)',data:gainsByDay,backgroundColor:'rgba(245,200,66,.3)',borderColor:'rgba(245,200,66,.8)',borderWidth:2,borderRadius:6},{label:'Conversions',data:convsByDay,backgroundColor:'rgba(240,66,122,.2)',borderColor:'rgba(240,66,122,.7)',borderWidth:2,borderRadius:6}]},options:{responsive:true,plugins:{legend:{labels:{color:'#888',font:{size:11}}},tooltip:{callbacks:{label:ctx=>ctx.dataset.label+': '+(ctx.dataset.label==='Gains ($)'?'$':'')+ctx.parsed.y}}},scales:{x:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#666',font:{size:11}}},y:{grid:{color:'rgba(255,255,255,.05)'},ticks:{color:'#666',font:{size:11}}}}}});}
+    },100);
+
+    return '<div class="stats-grid"><div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">Affiliés</div><div class="stat-val gy">'+stats.affiliates+'</div></div><div class="stat-card"><div class="stat-icon">🖱️</div><div class="stat-label">Clics</div><div class="stat-val gy">'+stats.totalClicks+'</div></div><div class="stat-card"><div class="stat-icon">🔁</div><div class="stat-label">Conversions</div><div class="stat-val gy">'+stats.totalConversions+'</div><div class="stat-sub">'+stats.pendingConversions+' en attente</div></div><div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">Gains totale</div><div class="stat-val gg">$'+stats.totalGains+'</div></div><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">Retraits en attente</div><div class="stat-val">'+stats.pendingWithdrawals+'</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Retraits payés</div><div class="stat-val gg">'+stats.paidWithdrawals+'</div></div></div>'
+
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">📊 Activité des 7 derniers jours</div><canvas id="gains-chart" height="80"></canvas></div>'
+
+    +(pendingTickets>0||pendingCustoms>0?'<div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">'+(pendingTickets>0?'<div class="card" style="margin-bottom:0;flex:1;min-width:200px;border-color:rgba(255,71,87,.3);cursor:pointer" onclick="goPage(\'admin-tickets\')"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:13px;font-weight:700">🎫 Tickets non lus</div><div style="font-size:24px;font-weight:900;color:var(--red);margin-top:4px">'+pendingTickets+'</div></div><div style="font-size:32px;opacity:.3">🔔</div></div></div>':'')+(pendingCustoms>0?'<div class="card" style="margin-bottom:0;flex:1;min-width:200px;border-color:rgba(168,85,247,.3);cursor:pointer" onclick="goPage(\'admin-custom\')"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:13px;font-weight:700">🎨 Liens perso en attente</div><div style="font-size:24px;font-weight:900;color:#a855f7;margin-top:4px">'+pendingCustoms+'</div></div><div style="font-size:32px;opacity:.3">⏳</div></div></div>':'')+'</div>':'')
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px"><div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">⏳ Conversions à valider</div><button class="btn btn-gst btn-sm" onclick="goPage(\'admin-conv\')">Voir tout →</button></div>'+(pending.length===0?'<div class="empty" style="padding:20px"><p>✅ Tout à jour</p></div>':prows)+'</div><div class="card" style="margin-bottom:0"><div class="card-header"><div class="card-title">💸 Retraits en attente</div><button class="btn btn-gst btn-sm" onclick="goPage(\'admin-wd\')">Voir tout →</button></div>'+(pendWd.length===0?'<div class="empty" style="padding:20px"><p>✅ Aucun en attente</p></div>':wrows)+'</div></div>';
+  }
+
+  if(page==='admin-aff'){
+    const users=await api('GET','/api/users');
+    if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
+    const isSuperAdmin=ME.is_super_admin===true;
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12)+'<div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Attribuer des jetons" onclick="openGrantTokens(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🪙</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' utilisateur(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>💎 Gains totale</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  }
+
+  if(page==='admin-conv'){
+    const [convs,users,offers]=await Promise.all([api('GET','/api/conversions'),api('GET','/api/users'),api('GET','/api/offers')]);
+    const pending=convs.filter(c=>c.status==='pending');
+    const rows=convs.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.users?.name||'?')+'</td><td>'+(c.offers?.name||'?')+'</td><td style="font-weight:900;color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+(c.status==='rejected'&&c.reason?'<div style="font-size:11px;color:var(--red)">↳ '+c.reason+'</div>':'')+'</td><td><div style="display:flex;gap:4px">'+(c.status==='pending'?'<button class="btn btn-grn btn-sm" onclick="apprC('+c.id+')">✔</button>':'')+(c.status==='pending'||c.status==='approved'?'<button class="btn btn-red btn-sm" onclick="openRejectConv('+c.id+','+c.amount+',\''+((c.users?.name||'?').replace(/'/g,"\\'"))+'\','+(c.status==='approved')+')">✕ Rejeter</button>':'')+'<button class="btn btn-gst btn-sm" onclick="confirmDeleteConv('+c.id+','+c.amount+',\''+((c.users?.name||'?').replace(/'/g,"\\'"))+'\')">🗑</button></div></td></tr>').join('');
+    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">Conversions</div><div style="display:flex;gap:8px;align-items:center">'+(pending.length>0?'<span class="badge by2">⏳ '+pending.length+' à valider</span>':'<span class="badge bg2">✓ Tout validé</span>')+'<button class="btn btn-gst btn-sm" onclick="exportCSV(\'conversions\')">📥 CSV</button><button class="btn btn-grad btn-sm" onclick="openAddConv()">+ Ajouter</button></div></div>'
+    +'<div class="card">'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>🎯 Offre</th><th>💰 Montant</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">🔁</div><p>Aucune conversion</p></div>')+'</div>';
+  }
+
+  if(page==='admin-wd'){
+    const wds=await api('GET','/api/withdrawals');
+    const rows=wds.map(w=>'<tr><td style="color:var(--muted)">'+fmt(w.created_at)+'</td><td>'+(w.users?.name||'?')+'</td><td style="font-weight:900;color:var(--yellow)">$'+w.amount+'</td><td><span class="badge bp2">'+w.crypto+'</span></td><td><code style="font-size:11px;color:var(--muted)">'+w.address.substring(0,20)+'</code></td><td>'+sbadge(w.status)+(w.status==='rejected'&&w.reason?'<div style="font-size:11px;color:var(--red)">↳ '+w.reason+'</div>':'')+'</td><td><div style="display:flex;gap:4px;flex-wrap:wrap">'+(w.status==='pending'?'<button class="btn btn-grn btn-sm" onclick="apprW('+w.id+')">✔ Payé</button><button class="btn btn-red btn-sm" onclick="openRejtW('+w.id+')">✕</button>':'<span style="color:var(--muted)">—</span>')+'<button class="btn btn-gst btn-sm" onclick="confirmDeleteWd('+w.id+')">🗑</button></div></td></tr>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">Retraits</div><button class="btn btn-gst btn-sm" onclick="exportCSV(\'withdrawals\')">📥 CSV</button></div>'+(rows?'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Affilié</th><th>💰 Montant</th><th>💳 Moyen</th><th>📬 Adresse</th><th>📌 Statut</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>':'<div class="empty"><div class="empty-icon">💸</div><p>Aucune demande</p></div>')+'</div>';
+  }
+
+  if(page==='admin-ref'){
+    const [affiliates,allUsers]=await Promise.all([api('GET','/api/admin/referrals'),api('GET','/api/users')]);
+    const affOptions=allUsers.filter(u=>u.role==='affiliate').map(u=>'<option value="'+u.id+'">'+u.name+' ('+u.email+')</option>').join('');
+    const linkTool='<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:14px">🔗 Lier un parrainage manuellement</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Relie deux comptes déjà inscrits, même s\'ils ne se sont pas parrainés à l\'inscription.</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px"><div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Parrain</label><select id="link-referrer" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px;color:var(--text);font-family:inherit"><option value="">— Choisir —</option>'+affOptions+'</select></div><div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Filleul</label><select id="link-referee" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px;color:var(--text);font-family:inherit"><option value="">— Choisir —</option>'+affOptions+'</select></div></div><button class="btn btn-grad" onclick="linkReferral()">Lier ces deux comptes</button></div>';
+    if(affiliates.length===0)return linkTool+'<div class="card"><div class="empty"><div class="empty-icon">🤝</div><p>Aucun parrainage</p></div></div>';
+    const cards=affiliates.map(aff=>'<div class="card" style="cursor:pointer;margin-bottom:12px" onclick="goPage(\'admin-ref-'+aff.id+'\')"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><div style="display:flex;align-items:center;gap:12px"><div class="avatar" style="width:44px;height:44px;font-size:18px">'+aff.name[0]+'</div><div><div style="font-size:15px;font-weight:700">'+aff.name+(aff.referral_rate!=null?' <span class="badge by2" style="font-size:10px">'+aff.referral_rate+'%</span>':'')+(aff.filleules.length>=5?' <span class="badge by2" style="font-size:10px">🏆 Super Parrain</span>':'')+'</div><div style="font-size:12px;color:var(--muted)">'+aff.email+'</div></div></div><div style="display:flex;gap:20px;text-align:center"><div><div style="font-size:20px;font-weight:800;color:var(--yellow)">'+aff.filleules.length+'</div><div style="font-size:10px;color:var(--muted)">Filleuls</div></div><div><div style="font-size:20px;font-weight:800;color:var(--green)">$'+aff.totalEarned.toFixed(2)+'</div><div style="font-size:10px;color:var(--muted)">Commissions</div></div><span style="color:var(--muted);font-size:18px;align-self:center">→</span></div></div></div>').join('');
+    return linkTool+'<div style="margin-bottom:20px;font-size:13px;color:var(--muted)">Cliquez pour voir le détail</div>'+cards;
+  }
+
+  if(page.startsWith('admin-ref-')){
+    const affId=page.replace('admin-ref-','');const affiliates=await api('GET','/api/admin/referrals');const aff=affiliates.find(a=>a.id===affId);
+    if(!aff)return '<div class="card"><div class="empty"><p>Introuvable</p></div></div>';
+    const fRows=aff.filleules.map(f=>{const isActive=f.referral_active!==false;const earned=aff.commissions.filter(c=>c.referee_id===f.id).reduce((s,c)=>s+c.amount,0);const rateDisplay=f.referral_rate_override!=null?f.referral_rate_override+'%':(aff.referral_rate!=null?aff.referral_rate:10)+'% (défaut)';return '<tr><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+f.name[0]+'</div><b>'+f.name+'</b>'+(f.referral_same_ip?'<span class="badge br2" title="Inscrit depuis la même IP que le parrain" style="margin-left:6px">⚠️ Double compte ?</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(f.created_at)+'</td><td style="color:var(--green)">$'+earned.toFixed(2)+'</td><td>'+(isActive?'<span class="badge bg2">✅ Actif</span>':'<span class="badge br2">🚫 Arrêté</span>')+'</td><td><span class="badge '+(f.referral_rate_override!=null?'by2':'bp2')+'" style="cursor:pointer" onclick="editFilleulRate(\''+f.id+'\','+(f.referral_rate_override!=null?f.referral_rate_override:'null')+',\''+affId+'\')" title="Cliquer pour modifier">'+rateDisplay+' ✏️</span></td><td style="white-space:nowrap"><div style="display:flex;gap:6px">'+(isActive?'<button class="btn btn-red btn-sm" onclick="toggleRef(\''+f.id+'\',false,\''+affId+'\')">🚫 Arrêter</button>':'<button class="btn btn-grn btn-sm" onclick="toggleRef(\''+f.id+'\',true,\''+affId+'\')">✅ Réactiver</button>')+'<button class="btn btn-red btn-sm" onclick="confirmDeleteRef(\''+f.id+'\',\''+f.name+'\',\''+affId+'\')" title="Supprimer définitivement ce parrainage">🗑️</button></div></td></tr>';}).join('');
+    const cRows=aff.commissions.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td><b>'+(c.users?.name||'?')+'</b></td><td style="color:var(--yellow)">$'+(c.conversions?.amount||0)+'</td><td style="color:var(--green)">$'+c.amount.toFixed(2)+'</td></tr>').join('');
+    return '<button class="btn btn-gst btn-sm" onclick="goPage(\'admin-ref\')" style="margin-bottom:20px">← Retour</button>'
+    +'<div style="background:var(--grad);border-radius:16px;padding:24px;margin-bottom:22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px"><div style="display:flex;align-items:center;gap:14px"><div class="avatar" style="width:52px;height:52px;font-size:22px">'+aff.name[0]+'</div><div><div style="font-size:20px;font-weight:800;color:#000">'+aff.name+'</div><div style="font-size:13px;color:rgba(0,0,0,.7)">'+aff.email+'</div></div></div><div style="display:flex;gap:24px"><div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#000">'+aff.filleules.length+'</div><div style="font-size:11px;color:rgba(0,0,0,.6)">Filleuls</div></div><div style="text-align:center"><div style="font-size:28px;font-weight:800;color:#000">$'+aff.totalEarned.toFixed(2)+'</div><div style="font-size:11px;color:rgba(0,0,0,.6)">Commissions</div></div></div></div>'
+    +'<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:14px">⚙️ Taux de commission de ce parrain</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px">Laisse vide pour utiliser le taux par défaut (10%).</div><div style="display:flex;gap:10px;align-items:center"><input type="number" id="ref-rate-input" min="0" max="100" step="0.5" placeholder="10" value="'+(aff.referral_rate!=null?aff.referral_rate:'')+'" style="width:100px;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px;color:var(--text);font-family:inherit"><span style="color:var(--muted)">%</span><button class="btn btn-grad btn-sm" onclick="saveRefRate(\''+affId+'\')">Enregistrer</button></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">👥 Filleuls</div>'+(aff.filleules.length===0?'<div class="empty"><p>Aucun filleul</p></div>':'<div class="tw"><table><thead><tr><th>👤 Filleul</th><th>📅 Date</th><th>💰 Gains</th><th>📌 Statut</th><th>📊 Taux</th><th>⚙️</th></tr></thead><tbody>'+fRows+'</tbody></table></div>')+'</div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:16px">💸 Commissions</div>'+(aff.commissions.length===0?'<div class="empty"><p>Aucune commission</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>👤 Filleul</th><th>💵 Vente</th><th>💸 Commission</th></tr></thead><tbody>'+cRows+'</tbody></table></div>')+'</div>';
+  }
+
+  if(page==='admin-discord'){
+    const servers=await api('GET','/api/discord-servers');
+    DISCORD_SERVERS_CACHE=servers;
+    const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF'},dating:{icon:'💕',label:'Dating',color:'#F0427A'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7'}};
+    const catCheckboxes=Object.keys(catMeta).map(k=>
+      '<label style="display:inline-flex;align-items:center;gap:6px;padding:10px 14px;border:1px solid #2a2a2a;border-radius:10px;margin:0 8px 8px 0;cursor:pointer">'
+      +'<input type="checkbox" id="dcat-'+k+'" style="accent-color:var(--yellow)"> '+catMeta[k].icon+' '+catMeta[k].label+'</label>'
+    ).join('');
+    const rows=servers.map(s=>{
+      const cats=(s.categories||'').split(',').filter(Boolean).map(c=>catMeta[c]?catMeta[c].icon:'').join(' ');
+      return '<tr><td><b>'+s.name+'</b></td><td>'+cats+'</td><td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)">'+s.link+'</td><td><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="editDiscordServer('+s.id+')">✏️</button><button class="btn btn-red btn-sm" onclick="deleteDiscordServer('+s.id+')">🗑️</button></div></td></tr>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:22px"><div class="card-title" style="margin-bottom:16px" id="discord-form-title">➕ Ajouter un serveur Discord</div>'
+      +'<input id="ds-name" placeholder="Nom du serveur (ex: VIP Casino #1)" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:12px;font-family:inherit">'
+      +'<div style="margin-bottom:12px">'+catCheckboxes+'</div>'
+      +'<input id="ds-link" placeholder="Lien d\'invitation Discord (https://discord.gg/...)" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:14px;font-family:inherit">'
+      +'<input type="hidden" id="ds-edit-id" value="">'
+      +'<div style="display:flex;gap:8px"><button class="btn btn-grn" id="ds-submit-btn" onclick="submitDiscordServer()">Créer</button><button class="btn btn-gst" id="ds-cancel-btn" onclick="goPage(\'admin-discord\')" style="display:none">Annuler</button></div>'
+      +'</div>'
+      +'<div class="card"><div class="card-title" style="margin-bottom:16px">📋 Serveurs existants</div>'
+      +(servers.length===0?'<div class="empty"><div class="empty-icon">💬</div><p>Aucun serveur créé</p></div>':'<div class="tw"><table><thead><tr><th>Nom</th><th>Catégories</th><th>Lien</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+      +'</div>';
+  }
+  if(page==='admin-tickets'){
+    const tickets=await api('GET','/api/tickets');
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const statusBadge=s=>s==='open'?'<span class="badge by2">🟡 Ouvert</span>':s==='closed'?'<span class="badge br2">🔴 Fermé</span>':'<span class="badge bg2">🟢 Résolu</span>';
+    const open=tickets.filter(t=>t.status==='open').length;
+    const rows=tickets.map(t=>'<tr><td><b>#'+t.id+'</b></td><td>'+(t.users?.name||'?')+'</td><td>'+(reasons[t.reason]||t.reason)+'</td><td style="color:var(--muted)">'+fmt(t.created_at)+'</td><td>'+statusBadge(t.status)+'</td><td>'+(t.unread>0?'<span style="background:var(--red);color:#fff;font-weight:800;font-size:12px;padding:3px 9px;border-radius:20px">'+t.unread+'</span>':'<span style="color:var(--muted)">'+(t.ticket_messages||[]).length+' msg(s)</span>')+'</td><td><button class="btn '+(t.unread>0?'btn-red':'btn-grad')+' btn-sm" onclick="goPage(\'admin-ticket-'+t.id+'\')">💬 Répondre</button></td></tr>').join('');
+    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎫 Tickets support</div>'+(open>0?'<span class="badge by2">🟡 '+open+' ouvert(s)</span>':'')+'</div>'
+    +'<div class="card">'+(tickets.length===0?'<div class="empty"><div class="empty-icon">🎫</div><p>Aucun ticket</p></div>':'<div class="tw"><table><thead><tr><th>#</th><th>👤 Affilié</th><th>🏷️ Raison</th><th>📅 Date</th><th>📌 Statut</th><th>💬 Messages</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>')+'</div>';
+  }
+
+  if(page.startsWith('admin-ticket-')){
+    const tid=page.replace('admin-ticket-','');const ticket=await api('GET','/api/tickets/'+tid);
+    const reasons={'question':'❓ Question','bug':'🐛 Bug','payement':'💸 Paiement','compte':'👤 Compte','offre':'🎯 Offre','mes-liens':'🔗 Mes liens','suggestion':'💡 Suggestion'};
+    const msgs=ticket.messages.map(m=>{const isAdmin=m.users?.role==='admin';return '<div style="display:flex;flex-direction:column;align-items:'+(isAdmin?'flex-end':'flex-start')+';margin-bottom:16px"><div style="font-size:11px;color:var(--muted);margin-bottom:4px">'+(isAdmin?'👑 Admin':'👤 '+esc(m.users?.name))+' • '+fmt(m.created_at)+'</div><div style="background:'+(isAdmin?'var(--grad)':'var(--bg3)')+';color:'+(isAdmin?'#000':'var(--text)')+';border-radius:'+(isAdmin?'14px 14px 4px 14px':'14px 14px 14px 4px')+';padding:12px 16px;max-width:70%">'+(m.content?'<div style="font-size:13px;line-height:1.6">'+esc(m.content)+'</div>':'')+(m.image_url?'<img src="'+m.image_url+'" style="max-width:100%;max-height:200px;border-radius:8px;cursor:pointer" onclick="window.open(\''+m.image_url+'\',\'_blank\')">':'')+'</div></div>';}).join('');
+    return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:20px"><button class="btn btn-gst btn-sm" onclick="goPage(\'admin-tickets\')">← Retour</button>'+(ticket.status==='open'?'<button class="btn btn-grn btn-sm" onclick="closeTicket('+ticket.id+',\'resolved\')">✅ Résolu</button><button class="btn btn-gst btn-sm" onclick="closeTicket('+ticket.id+',\'closed\')">🔴 Fermer</button>':'')+'<button class="btn btn-red btn-sm" onclick="confirmDeleteTicket('+ticket.id+')" style="margin-left:auto">🗑</button></div>'
+    +'<div class="card" style="margin-bottom:16px"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-size:16px;font-weight:800">Ticket #'+ticket.id+' — '+(reasons[ticket.reason]||ticket.reason)+'</div><div style="font-size:12px;color:var(--muted);margin-top:4px">De <b>'+ticket.users?.name+'</b> • '+fmt(ticket.created_at)+'</div></div>'+(ticket.status==='open'?'<span class="badge by2">🟡 Ouvert</span>':ticket.status==='resolved'?'<span class="badge bg2">🟢 Résolu</span>':'<span class="badge br2">🔴 Fermé</span>')+'</div></div>'
+    +'<div class="card" style="min-height:300px;margin-bottom:16px">'+(msgs||'<div class="empty"><p>Aucun message</p></div>')+'</div>'
+    +(ticket.status==='open'?'<div class="card"><div class="fi"><label>Votre réponse</label><textarea id="reply-msg" placeholder="Répondre..." style="resize:vertical;min-height:80px"></textarea></div><div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'reply-img-file\').click()"><input type="file" id="reply-img-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewReplyImg(this)"><div id="reply-img-prev" style="display:none;margin-bottom:8px"><img id="reply-img-prev-img" style="max-height:120px;border-radius:8px"></div><div id="reply-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Cliquer pour ajouter une image</div></div></div></div><button class="btn btn-grad" onclick="sendReply('+ticket.id+')" style="width:100%;justify-content:center">📨 Envoyer</button></div>':'<div class="card" style="text-align:center;padding:20px"><div style="font-size:28px;margin-bottom:8px">'+(ticket.status==='resolved'?'✅':'🔴')+'</div><div style="font-weight:700">'+(ticket.status==='resolved'?'Ticket résolu':'Ticket fermé')+'</div></div>');
+  }
+
+  if(page==='admin-custom'){
+    const requests=await api('GET','/api/custom-requests');
+    const pending=requests.filter(r=>r.status==='pending');
+    const treated=requests.filter(r=>r.status!=='pending');
+    if(requests.length===0)return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎨 Liens personnalisés</div></div><div class="card"><div class="empty"><div class="empty-icon">🎨</div><p>Aucune demande</p></div></div>';
+    const renderFullCard=(r)=>{
+      const photoHtml=[r.photo1_url,r.photo2_url,r.photo3_url,r.photo4_url,r.photo5_url,r.photo6_url].filter(Boolean).map(p=>'<img src="'+p+'" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;'+(r.photos_blurred?'filter:blur(4px)':'')+'" onclick="window.open(\''+p+'\',\'_blank\')" onerror="this.outerHTML=\'<div style=&quot;width:80px;height:80px;border-radius:8px;background:#1a1a1a;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;padding:4px&quot;>⚠️ Format non supporté (HEIC ?)</div>\'">').join('');
+      const isStarOF=r.offer_id===55;
+      const tags=isStarOF?[]:[r.tag1,r.tag2,r.tag3].filter(Boolean).map(t=>'<span class="badge bp2">'+esc(t)+'</span>').join('');
+      const linkSection=r.status==='approved'
+        ?'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+esc(r.custom_link)+'</code><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>'
+        :'<div style="display:flex;gap:8px;align-items:center"><input type="text" id="clink-'+r.id+'" placeholder="URL de destination (page créée pour cet affilié)..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendCustomLink('+r.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>';
+      return '<div class="card" style="margin-bottom:14px;border-color:'+(r.status==='pending'?'rgba(245,200,66,.3)':'#2a2a2a')+'"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px">'+(r.logo_url?'<img src="'+r.logo_url+'" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid #2a2a2a;cursor:pointer" onclick="window.open(\''+r.logo_url+'\',\'_blank\')">':'<div style="width:48px;height:48px;border-radius:12px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:20px">🎮</div>')+'<div><div style="font-size:16px;font-weight:800">'+esc(r.server_name||'Sans nom')+'</div><div style="font-size:12px;color:var(--muted)">'+esc(r.users?.name)+' • '+esc(r.offers?.name)+' • '+fmt(r.created_at)+'</div></div></div>'+(r.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px">'+(isStarOF?
+        '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Prénom</div><div style="font-size:13px">'+esc(r.server_name||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Nom</div><div style="font-size:13px">'+esc(r.slogan||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Bio</div><div style="font-size:12px;line-height:1.5">'+esc(r.salons||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">📦 Contenus</div><div style="font-size:18px;font-weight:800">'+esc(r.tag1||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">🎥 Vidéos</div><div style="font-size:18px;font-weight:800">'+esc(r.tag2||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">❤️ Likes</div><div style="font-size:18px;font-weight:800">'+esc(r.tag3||'—')+'</div></div>'
+        :
+        '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Slogan</div><div style="font-size:13px">'+esc(r.slogan||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">Étiquettes</div><div style="display:flex;gap:4px;flex-wrap:wrap">'+(tags||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Salons</div><div style="font-size:13px">'+esc(r.salons||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Texte photos</div><div style="font-size:13px">'+esc(r.photo_text||'—')+'</div></div>'
+        +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Photos floutées</div><div style="font-size:13px">'+(r.photos_blurred?'✅ Oui':'❌ Non')+'</div></div>'
+        )+'</div>'
+      +(photoHtml?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+photoHtml+'</div>':'')+linkSection+'</div>';
+    };
+    const pendingHtml=pending.map(r=>renderFullCard(r)).join('');
+    const treatedHtml=treated.map(r=>'<div class="card custom-compact" data-search="'+esc((r.users?.name||'')+' '+(r.offers?.name||'')+' '+(r.server_name||'')).toLowerCase()+'" style="margin-bottom:8px;padding:12px 16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:200px">'+(r.logo_url?'<img src="'+r.logo_url+'" style="width:32px;height:32px;border-radius:8px;object-fit:cover">':'<div style="width:32px;height:32px;border-radius:8px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🎮</div>')+'<div><b style="font-size:13px">'+esc(r.server_name||'Sans nom')+'</b><div style="font-size:11px;color:var(--muted)">'+esc(r.users?.name)+' • '+esc(r.offers?.name)+' • '+fmt(r.created_at)+'</div></div></div><span class="badge bg2" style="font-size:10px">✅ Traité</span><button class="btn btn-gst btn-sm" onclick="toggleCustomDetail('+r.id+')">Détails</button></div><div id="custom-detail-'+r.id+'" style="display:none;margin-top:14px">'+renderFullCard(r)+'</div></div>').join('');
+    return '<div class="card-header" style="margin-bottom:16px"><div class="card-title">🎨 Liens personnalisés</div></div>'
+    +'<div class="stats-grid" style="margin-bottom:20px"><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">En attente</div><div class="stat-val gy">'+pending.length+'</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Traités</div><div class="stat-val gg">'+treated.length+'</div></div></div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--yellow);margin-bottom:10px">⏳ En attente ('+pending.length+')</div>'
+    +(pending.length===0?'<div class="card" style="margin-bottom:24px"><div class="empty"><p>Aucune demande en attente 🎉</p></div></div>':'<div style="margin-bottom:24px">'+pendingHtml+'</div>')
+    +(treated.length>0?'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;font-weight:700;color:var(--muted)">✅ Traités ('+treated.length+')</div><input type="text" id="custom-search" placeholder="🔎 Rechercher un affilié ou une offre..." oninput="filterCustomTreated(this.value)" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:9px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:12px;width:240px"></div><div id="custom-treated-list">'+treatedHtml+'</div>':'');
+  }
+
+  if(page==='admin-wheel'){
+    const segments=await api('GET','/api/admin/wheel-segments');
+    window.wheelEditSegments=segments.map(s=>({...s}));
+    return renderWheelEditor();
+  }
+
+  if(page==='admin-shop-settings'){
+    const [methods,items,settings,withdrawalTiers]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items'),api('GET','/api/settings/all'),api('GET','/api/admin/withdrawal-tiers')]);
+    window.tokenMethodsEdit=methods.map(m=>({...m}));
+    window.withdrawalTiersEdit=withdrawalTiers.map(t=>({...t}));
+    const tokensPerSale=settings.tokens_per_sale!=null?settings.tokens_per_sale:5;
+    const giftTokens=settings.gift_tokens!=null?settings.gift_tokens:5;
+    const refMilestoneCount=settings.referral_milestone_count!=null?settings.referral_milestone_count:5;
+    const refMilestoneTokens=settings.referral_milestone_tokens!=null?settings.referral_milestone_tokens:10;
+    const tierRows=window.withdrawalTiersEdit.map((t,i)=>'<div style="display:grid;grid-template-columns:1fr 1fr 100px auto;gap:8px;align-items:end;margin-bottom:8px"><div class="fi" style="margin-bottom:0"><label>Min ($)</label><input type="number" min="0" value="'+t.min+'" onchange="updateWdTier('+i+',\'min\',this.value)"></div><div class="fi" style="margin-bottom:0"><label>Max ($)</label><input type="number" min="0" value="'+t.max+'" onchange="updateWdTier('+i+',\'max\',this.value)"></div><div class="fi" style="margin-bottom:0"><label>🪙 Jetons</label><input type="number" min="0" value="'+t.tokens+'" onchange="updateWdTier('+i+',\'tokens\',this.value)"></div><button class="btn btn-red btn-sm" onclick="removeWdTier('+i+')" '+(window.withdrawalTiersEdit.length<=1?'disabled style="opacity:.3"':'')+'>🗑</button></div>').join('');
+    const methodRows=window.tokenMethodsEdit.map((m,i)=>'<div class="card" style="margin-bottom:10px;padding:14px 16px;'+(m.active===false?'opacity:.5':'')+'"><div style="display:flex;align-items:center;gap:14px"><div style="font-size:24px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div><div style="text-align:center;flex-shrink:0"><span class="badge by2">🪙 '+(m.tokens||0)+'</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn '+(m.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleTokenMethod('+i+')">'+(m.active===false?'✅':'🚫')+'</button><button class="btn btn-gst btn-sm" onclick="openEditTokenMethod('+i+')">✏️</button><button class="btn btn-red btn-sm" onclick="removeTokenMethod('+i+')">🗑</button></div></div></div>').join('');
+    const itemCards=items.map(it=>'<div class="card" style="padding:0;overflow:hidden;'+(it.active===false?'opacity:.5':'')+'">'
+      +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:120px;object-fit:cover;display:block">':'<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px">🎁</div>')
+      +'<div style="padding:16px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:32px">'+esc(it.description||'')+'</div><div style="display:flex;align-items:center;justify-content:space-between"><span class="badge by2">🪙 '+it.price_tokens+'</span><div style="display:flex;gap:6px">'
+      +'<button class="btn '+(it.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleShopItem('+it.id+','+(it.active===false?'true':'false')+')">'+(it.active===false?'✅':'🚫')+'</button>'
+      +'<button class="btn btn-gst btn-sm" onclick="openEditShopItem('+it.id+')">✏️</button>'
+      +'<button class="btn btn-red btn-sm" onclick="confirmDeleteShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\')">🗑</button>'
+      +'</div></div></div></div>').join('');
+    window.SHOP_ITEMS_CACHE=items;
+    return '<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🪙 Jetons par vente</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Nombre de jetons crédités <b>automatiquement</b> à chaque vente approuvée (en plus de la commission en $). Ça se déclenche pour toute nouvelle vente approuvée.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / vente</label><input type="number" id="tokens-per-sale-input" min="0" value="'+tokensPerSale+'"></div><button class="btn btn-grad" onclick="saveTokensPerSale()">💾 Enregistrer</button></div>'
+      +'<div class="hdiv"></div>'
+      +'<div style="font-size:13px;font-weight:800;margin-bottom:8px">⏪ Rattrapage rétroactif</div><p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Les affiliés qui ont déjà des ventes approuvées <b>avant la mise en place du système de jetons</b> n\'en ont pas reçu automatiquement. Clique ici pour créditer, en une fois, les jetons manquants sur toutes ces ventes passées (au tarif actuel ci-dessus). Cette action est sûre à relancer : les ventes déjà traitées ne seront jamais recréditées deux fois.</p><button class="btn btn-gst" onclick="confirmTokensBackfill()" style="width:100%;justify-content:center">⏪ Attribuer les jetons manquants sur les ventes passées</button></div>'
+      +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">💸 Jetons par retrait</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Jetons crédités <b>automatiquement</b> selon le montant retiré, dès que le retrait est marqué "payé" (pas juste demandé). Ajoute, modifie ou supprime des paliers.</p>'
+      +'<div id="wd-tiers-body">'+tierRows+'</div>'
+      +'<div style="display:flex;gap:10px;margin-top:8px"><button class="btn btn-gst" onclick="addWdTier()" style="flex:1;justify-content:center">+ Ajouter un palier</button><button class="btn btn-grad" onclick="saveWdTiers()" style="flex:1;justify-content:center">💾 Enregistrer les paliers</button></div></div>'
+      +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🎁 Jetons par cadeau envoyé</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Jetons crédités <b>automatiquement</b> à l\'expéditeur, à chaque fois qu\'il envoie un cadeau (quel que soit le montant du cadeau) à un autre affilié.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / cadeau</label><input type="number" id="gift-tokens-input" min="0" value="'+giftTokens+'"></div><button class="btn btn-grad" onclick="saveGiftTokens()">💾 Enregistrer</button></div></div>'
+      +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🤝 Bonus de parrainage</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Bonus de jetons <b>unique</b> (une seule fois) quand un affilié atteint le nombre de filleuls parrainés indiqué.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1"><label>Nombre de filleuls</label><input type="number" id="ref-milestone-count-input" min="1" value="'+refMilestoneCount+'"></div><div class="fi" style="margin-bottom:0;flex:1"><label>🪙 Jetons bonus</label><input type="number" id="ref-milestone-tokens-input" min="0" value="'+refMilestoneTokens+'"></div><button class="btn btn-grad" onclick="saveReferralMilestone()">💾 Enregistrer</button></div></div>'
+      +'<div class="settings-section"><div class="settings-section-title">🎁 Attribuer des jetons manuellement</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Pour tout ce qui n\'est pas couvert automatiquement ci-dessus (événement spécial, bonus ponctuel...) : crédite (ou retire, avec un montant négatif) des jetons toi-même à un affilié précis.</p><button class="btn btn-grad" onclick="openGrantTokens()" style="width:100%;justify-content:center">🪙 Attribuer des jetons à un affilié</button></div>'
+      +'<div class="settings-section"><div class="settings-section-title">🪙 Moyens d\'obtenir des jetons</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Cette liste est affichée aux affiliés dans leur page Boutique, pour leur expliquer comment gagner des jetons.</p>'
+      +methodRows
+      +'<button class="btn btn-gst" onclick="openAddTokenMethod()" style="width:100%;justify-content:center;margin-top:6px">+ Ajouter un moyen</button></div>'
+      +'<div class="card-header" style="margin-bottom:16px"><div class="card-title">🛍️ Offres de la boutique</div><button class="btn btn-grad btn-sm" onclick="openAddShopItem()">+ Ajouter une offre</button></div>'
+      +(items.length===0?'<div class="card"><div class="empty"><div class="empty-icon">🛍️</div><p>Aucune offre pour le moment.</p></div></div>':'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px">'+itemCards+'</div>');
+  }
+
+  if(page==='admin-offers'){
+    const offers=await api('GET','/api/offers');
+    let html='<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎯 Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter</button></div>';
+    if(offers.length===0){return html+'<div class="card"><div class="empty"><div class="empty-icon">🎯</div><p>Aucune offre.</p></div></div>';}
+    CATS.forEach(cat=>{
+      const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);if(catOffers.length===0)return;
+      html+='<div style="margin-bottom:12px"><div onclick="toggleCat(\'adm-cat-'+cat.key+'\')" style="display:flex;align-items:center;gap:10px;padding:14px 18px;background:#111;border:1px solid '+cat.border+';border-radius:14px;cursor:pointer"><div style="height:2px;flex:1;background:linear-gradient(90deg,'+cat.border+',transparent)"></div><span style="font-size:14px;font-weight:800;color:'+cat.color+'">'+cat.label+'</span><span style="font-size:11px;color:var(--muted)">'+catOffers.length+'</span><div style="height:2px;flex:1;background:linear-gradient(90deg,transparent,'+cat.border+')"></div><span style="color:'+cat.color+';font-size:14px;transition:transform .2s" id="chev-adm-cat-'+cat.key+'">▸</span></div>';
+      html+='<div id="adm-cat-'+cat.key+'" style="display:none;padding-top:10px">';
+      catOffers.forEach(o=>{
+        const n=o.name.replace(/'/g,"\\'");const d=(o.description||'').replace(/'/g,"\\'");const u=o.url.replace(/'/g,"\\'");const img=(o.image_url||'').replace(/'/g,"\\'");
+        html+='<div class="offer-card"><div style="display:flex;align-items:center;gap:14px;flex:1">'+(o.image_url?'<img src="'+o.image_url+'" style="width:56px;height:56px;border-radius:10px;object-fit:cover;flex-shrink:0;border:1px solid #2a2a2a" onerror="this.style.display=\'none\'">':`<div style="width:56px;height:56px;border-radius:10px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0">🎯</div>`)+'<div><div style="font-size:14px;font-weight:700;margin-bottom:4px">'+o.name+'</div><div style="font-size:12px;color:var(--muted)">'+(o.description||'')+'</div><div style="font-size:11px;color:var(--muted);margin-top:4px">🔗 '+o.url.substring(0,40)+'...</div></div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px">'+gtext('$'+o.commission)+'<div>'+sbadge(o.active?'active':'disabled')+'</div><div style="display:flex;gap:6px"><button class="btn btn-gst btn-sm" onclick="openOfferVisibility(\'+o.id+\',\'+n+\')">👁</button><button class="btn '+(o.active?'btn-red':'btn-grn')+' btn-sm" onclick="toggleOffer('+o.id+','+(o.active?'false':'true')+')">'+(o.active?'🚫':'✅')+'</button><button class="btn btn-gst btn-sm" onclick="openEditOffer('+o.id+',\''+n+'\',\''+d+'\',\''+u+'\','+o.commission+',\''+(o.category||'autre')+'\',\''+img+'\')">✏️</button><button class="btn btn-red btn-sm" onclick="confirmDeleteOffer('+o.id+',\''+n+'\')">🗑</button></div></div></div>';
+      });
+      html+='</div></div>';
+    });
+    return html;
+  }
+
+  if(page==='admin-links'){
+    const [links,offers,users]=await Promise.all([api('GET','/api/links'),api('GET','/api/offers'),api('GET','/api/users')]);
+    const origin=window.location.origin;
+    if(links.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">🔗</div><p>Aucun lien généré</p></div></div>';
+    // Group links by user_id, include users not in the users list (e.g. admin)
+    const allUserIds=[...new Set(links.map(l=>l.user_id))];
+    const allUsers=allUserIds.map(uid=>{
+      const u=users.find(u=>u.id===uid);
+      if(u)return u;
+      // Get user info from link data if available
+      const l=links.find(l=>l.user_id===uid);
+      return {id:uid,name:l?.users?.name||'Admin',email:l?.users?.email||''};
+    });
+    let html='<div class="card-header" style="margin-bottom:20px"><div class="card-title">🔗 Liens par affilié</div><span style="font-size:12px;color:var(--muted)">'+links.length+' lien(s)</span></div>';
+    allUsers.forEach(u=>{
+      const userLinks=links.filter(l=>l.user_id===u.id);if(userLinks.length===0)return;
+      const totalClicks=userLinks.reduce((s,l)=>s+l.clicks,0);
+      html+='<div class="card" style="cursor:pointer;margin-bottom:12px" onclick="toggleAffLinks(\'aff-links-'+u.id+'\',this)"><div style="display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:12px"><div class="avatar" style="width:42px;height:42px;font-size:18px;flex-shrink:0">'+u.name[0]+'</div><div><div style="font-size:15px;font-weight:800">'+u.name+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+userLinks.length+' lien(s) • '+totalClicks+' clics</div></div></div><span style="color:var(--muted);font-size:18px;transition:transform .2s" class="chevron-'+u.id+'">▸</span></div>';
+      html+='<div id="aff-links-'+u.id+'" style="display:none;margin-top:16px">';
+      CATS.forEach(cat=>{
+        const catOffers=offers.filter(o=>(o.category||'autre')===cat.key);
+        const catLinks=userLinks.filter(l=>catOffers.find(o=>o.id===l.offer_id));
+        if(catLinks.length===0)return;
+        html+='<div style="margin-bottom:14px"><div style="font-size:11px;font-weight:800;color:'+cat.color+';text-transform:uppercase;letter-spacing:.8px;margin-bottom:8px">'+cat.label+'</div>';
+        catLinks.forEach(l=>{
+          html+='<div style="background:var(--bg3);border:1px solid '+(l.active?cat.border:'rgba(255,71,87,.2)')+';border-radius:10px;padding:12px 14px;margin-bottom:6px;display:flex;align-items:center;gap:10px;flex-wrap:wrap"><code style="flex:1;min-width:80px;font-family:monospace;font-size:11px;color:'+(l.active?cat.color:'var(--muted)')+';overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+origin+'/go/'+l.id+'</code><span style="font-size:11px;color:var(--muted);flex-shrink:0">🖱️ '+l.clicks+'</span>'+(l.active?'<span class="badge bg2" style="flex-shrink:0">Actif</span>':'<span class="badge br2" style="flex-shrink:0">Off</span>')+'<div style="display:flex;gap:4px;flex-shrink:0"><button class="copy-btn" onclick="event.stopPropagation();cpLink(\''+l.id+'\',this)">📋</button><button class="copy-btn" title="Aperçu (ne compte pas comme un clic)" onclick="event.stopPropagation();previewLink(\''+l.id+'\')">👁️</button>'+(l.active?'<button class="btn btn-red btn-sm" onclick="event.stopPropagation();toggleLnk(\''+l.id+'\',false)">🚫</button>':'<button class="btn btn-grn btn-sm" onclick="event.stopPropagation();toggleLnk(\''+l.id+'\',true)">✅</button>')+'<button class="btn btn-gst btn-sm" onclick="event.stopPropagation();confirmDeleteLnk(\''+l.id+'\')">🗑</button></div></div>';
+        });
+        html+='</div>';
+      });
+      html+='</div></div>';
+    });
+    return html;
+  }
+
+  if(page==='admin-discordid'){
+    const users=await api('GET','/api/users');
+    const affs=users.filter(u=>u.role==='affiliate');
+    const rows=affs.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12)+'<b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+u.email+'</td><td><div style="display:flex;gap:8px;align-items:center"><input type="text" id="did-'+u.id+'" value="'+(u.discord_id||'')+'" placeholder="Aucun ID renseigné" style="width:180px;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:monospace;font-size:12px"><button class="btn btn-grad btn-sm" onclick="saveAdminDiscordId(\''+u.id+'\')">💾</button>'+(u.discord_id?'<button class="btn btn-red btn-sm" onclick="removeAdminDiscordId(\''+u.id+'\')">🗑</button>':'')+'</div></td></tr>').join('');
+    return '<div class="card"><div class="card-title" style="margin-bottom:8px">🆔 ID Discord des affiliés</div><div style="font-size:12px;color:var(--muted);margin-bottom:16px">Ajoute ou modifie manuellement l\'ID Discord de n\'importe quel affilié — utile s\'il n\'a pas renseigné le sien.</div>'
+      +(affs.length===0?'<div class="empty"><div class="empty-icon">🆔</div><p>Aucun affilié</p></div>':'<div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>🆔 ID Discord</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
+      +'</div>';
+  }
+
+  if(page==='admin-logs'){
+    const logs=await api('GET','/api/logs');
+    ADMIN_LOGS_CACHE=logs;
+    if(logs.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">📋</div><p>Aucune activité enregistrée</p></div></div>';
+    const actions=[...new Set(logs.map(l=>l.action))].sort();
+    const admins=[...new Map(logs.filter(l=>l.users?.role==='admin').map(l=>[l.user_id,l.users.name])).entries()];
+    const actionOptions='<option value="">Toutes les actions</option>'+actions.map(a=>'<option value="'+a+'">'+a+'</option>').join('');
+    const adminOptions='<option value="">Tous les admins</option>'+admins.map(([id,name])=>'<option value="'+id+'">'+name+'</option>').join('');
+    return '<div class="card"><div class="card-header"><div class="card-title">📋 Logs d\'activité</div><button class="btn btn-red btn-sm" onclick="clearAllLogs()">🗑 Tout effacer</button></div>'
+      +'<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"><select id="log-filter-action" onchange="filterLogs()" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:12px">'+actionOptions+'</select><select id="log-filter-admin" onchange="filterLogs()" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:9px 12px;color:var(--text);font-family:inherit;font-size:12px">'+adminOptions+'</select></div>'
+      +'<div id="logs-table-wrap">'+renderLogsTable(logs)+'</div></div>';
+  }
+
+  if(page==='admin-settings'){
+    const currentLogo=localStorage.getItem('affihub_logo')||'';
+    const settings=await api('GET','/api/settings/all');
+    const dmHistory=await api('GET','/api/admin/dm-broadcasts');
+    const maintenance=settings.maintenance_mode;
+    const welcomeMsg=settings.welcome_message||'';
+    const catRows=CATS.map(cat=>{
+      const enabled=settings['cat_'+cat.key+'_enabled'];
+      return '<div class="info-row"><div style="display:flex;align-items:center;gap:10px"><span style="font-size:16px">'+cat.label.split(' ')[0]+'</span><span style="font-weight:700;font-size:13px">'+cat.label.split(' ').slice(1).join(' ')+'</span></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(enabled?'var(--green)':'var(--red)')+'">'+(enabled?'✅ Activé':'🔒 Désactivé')+'</span><button class="btn '+(enabled?'btn-red':'btn-grn')+' btn-sm" onclick="toggleCategorySetting(\''+cat.key+'\','+(enabled?'false':'true')+')">'+(enabled?'Désactiver':'Activer')+'</button></div></div>';
+    }).join('');
+    return '<div class="settings-section"><div class="settings-section-title">🖼️ Logo du site</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px"><div style="width:80px;height:80px;border-radius:14px;background:#1a1a1a;border:1px solid #2a2a2a;display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0">'+(currentLogo?'<img src="'+currentLogo+'" style="width:100%;height:100%;object-fit:contain">':'<span style="font-size:36px">🔗</span>')+'</div><div><div style="font-weight:700;margin-bottom:4px">Logo actuel</div><div style="font-size:12px;color:var(--muted)">Sidebar et page de connexion</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'logo-file\').click()"><input type="file" id="logo-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewLogo(this)"><div id="logo-prev" style="display:none;margin-bottom:10px"><img id="logo-prev-img" style="max-width:120px;max-height:120px;border-radius:10px;object-fit:contain"></div><div id="logo-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer</div></div></div><button class="btn btn-grad" onclick="saveLogo()" style="width:100%;justify-content:center;margin-top:14px">💾 Sauvegarder</button></div>'
+    +'<div class="settings-section" style="border-color:'+(maintenance?'rgba(255,71,87,.3)':'rgba(34,34,34,1)')+'"><div class="settings-section-title">🔧 Mode maintenance</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Quand activé, les affiliés ne peuvent plus se connecter et voient un message de maintenance. Toi (admin) tu gardes l\'accès.</div><div class="info-row" style="border-bottom:none;padding-top:0"><div><div class="info-label" style="margin-bottom:4px">Statut du site</div><div style="font-size:12px;color:'+(maintenance?'var(--red)':'var(--green)')+'">'+(maintenance?'🔧 En maintenance':'✅ En ligne')+'</div></div><button class="btn '+(maintenance?'btn-grn':'btn-red')+'" onclick="toggleMaintenance('+(maintenance?'false':'true')+')">'+(maintenance?'✅ Remettre en ligne':'🔧 Activer la maintenance')+'</button></div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">👋 Message de bienvenue</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">S\'affiche en popup à la <b>première inscription</b> de chaque nouvel affilié.</div><div class="fi"><label>Message</label><textarea id="welcome-msg" placeholder="Ex: Bienvenue sur AffiHub ! 🎉" style="resize:vertical;min-height:140px">'+welcomeMsg+'</textarea></div><button class="btn btn-grad" onclick="saveWelcomeMsg()">💾 Sauvegarder</button></div>'
+    +'<div class="settings-section"><div class="settings-section-title">🔗 Mes liens — par catégorie</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Active/désactive chaque catégorie individuellement dans "Mes liens" côté affilié.</div>'+catRows+'</div>'
+    +'<div class="settings-section"><div class="settings-section-title">📢 DM groupé Discord</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Envoie un message privé Discord à tous les affiliés ayant renseigné leur ID Discord dans leurs paramètres.</div><div class="fi"><label>Message</label><textarea id="dm-all-msg" placeholder="Ex: Nouvelle offre disponible, va checker Mes liens !" style="resize:vertical;min-height:120px"></textarea></div><div class="fi"><label>Image (optionnel)</label><input type="file" id="dm-all-img" accept="image/*,.heic,.heif" onchange="previewDmAllImg(this)"><div id="dm-all-img-preview" style="margin-top:10px"></div></div><div style="display:flex;gap:8px;margin-bottom:16px"><button class="btn btn-grad" onclick="confirmDmAll()">📢 Envoyer à tous</button><button class="btn btn-gst" onclick="openDmAllCustom()">🎯 Personnalisé</button></div>'
+      +'<div onclick="toggleDmHistory()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding-top:12px;border-top:1px solid #222"><span style="font-size:12px;font-weight:700;color:var(--muted)">📜 Historique des envois ('+dmHistory.length+')</span><span id="dm-hist-chev" style="font-size:11px;color:var(--muted);transition:transform .2s">▸</span></div>'
+      +'<div id="dm-history-list" style="display:none;margin-top:12px">'+(dmHistory.length===0?'<div style="font-size:12px;color:var(--muted)">Aucun envoi pour le moment</div>':dmHistory.map(h=>'<div style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:12px 14px;margin-bottom:8px"><div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:6px"><span style="font-size:11px;color:var(--muted)">'+fmt(h.created_at)+' • par '+(h.users?.name||'?')+'</span><span style="font-size:11px;color:var(--green)">✅ '+h.sent_count+'/'+h.target_count+(h.failed_count?' <span style="color:var(--red)">('+h.failed_count+' échec)</span>':'')+'</span></div><div style="font-size:13px;line-height:1.5">'+h.message.replace(/</g,'&lt;')+'</div>'+(h.image_url?'<img src="'+h.image_url+'" style="max-width:120px;max-height:80px;border-radius:6px;margin-top:8px">':'')+(h.custom_selection?'<div style="font-size:10px;color:var(--yellow);margin-top:6px">🎯 Sélection personnalisée</div>':'')+'</div>').join(''))+'</div>'
+      +'</div>';
+  }
+
+  return '';
+}
+
+// ── ACTION FUNCTIONS ──
+async function genLink(offerId){try{await api('POST','/api/links',{offer_id:offerId});toast('Lien généré !','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
+async function regenLink(linkId,offerId){document.getElementById('m-title').textContent='Regénérer le lien';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔄</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Voulez-vous regénérer ce lien ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doRegenLink(\''+linkId+'\','+offerId+')" style="flex:1">Regénérer</button></div></div>';document.getElementById('mo').classList.add('open');}
+async function doRegenLink(linkId,offerId){try{await api('DELETE','/api/links/'+linkId);await api('POST','/api/links',{offer_id:offerId});closeMo();toast('Lien regénéré ✓','s');goPage('aff-links');}catch(e){toast(e.message,'e');}}
+function cpLink(id,btn){navigator.clipboard?.writeText(window.location.origin+'/go/'+id);if(btn){btn.textContent='✅';setTimeout(()=>btn.textContent='📋',2000);}toast('Lien copié !','s');}
+async function previewLink(id){
+  const win=window.open('','_blank'); // ouvert tout de suite pour éviter le blocage popup (appel async ensuite)
+  try{
+    const r=await api('GET','/api/links/'+id+'/preview');
+    if(win)win.location.href=r.url; else window.open(r.url,'_blank');
+  }catch(e){if(win)win.close();toast(e.message,'e');}
+}
+function editSlug(linkId,current){
+  document.getElementById('m-title').textContent='✏️ Personnaliser le lien';
+  document.getElementById('m-body').innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Choisis un texte court et unique (lettres, chiffres, tirets). Laisse vide pour revenir au lien par défaut.</div><div class="fi"><label>'+window.location.origin+'/</label><input type="text" id="slug-input" value="'+(current||'')+'" placeholder="ex: mathys-casino"></div><div style="display:flex;gap:10px;margin-top:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveSlug(\''+linkId+'\')" style="flex:1">Enregistrer</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function saveSlug(linkId){
+  const slug=document.getElementById('slug-input').value.trim();
+  try{await api('PATCH','/api/links/'+linkId+'/slug',{slug});closeMo();toast('Lien mis à jour ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}
+}
+function toggleDmHistory(){
+  const el=document.getElementById('dm-history-list');
+  const chev=document.getElementById('dm-hist-chev');
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  chev.style.transform=open?'rotate(0deg)':'rotate(90deg)';
+}
+function previewDmAllImg(input){
+  const prev=document.getElementById('dm-all-img-preview');
+  if(!input.files[0]){prev.innerHTML='';return;}
+  const url=URL.createObjectURL(input.files[0]);
+  prev.innerHTML='<img src="'+url+'" style="max-width:200px;max-height:140px;border-radius:10px;border:1px solid #2a2a2a">';
+}
+async function openDmAllCustom(){
+  const msg=document.getElementById('dm-all-msg').value.trim();
+  if(!msg){toast('Écris un message','e');return;}
+  const users=(await api('GET','/api/users')).filter(u=>u.role==='affiliate'&&u.discord_id);
+  if(users.length===0){toast('Aucun affilié avec un ID Discord renseigné','e');return;}
+  const rows=users.map(u=>'<label class="dm-pick-row" style="display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid #222;cursor:pointer"><input type="checkbox" class="dm-pick-cb" value="'+u.id+'" style="accent-color:var(--yellow)"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+u.name[0]+'</div><span style="font-size:13px">'+u.name+'</span></label>').join('');
+  document.getElementById('m-title').textContent='🎯 Choisir les destinataires';
+  document.getElementById('m-body').innerHTML='<input type="text" id="dm-pick-search" placeholder="Rechercher un affilié..." oninput="filterDmPick(this.value)" style="width:100%;box-sizing:border-box;padding:10px 14px;border-radius:10px;background:#111;border:1px solid #2a2a2a;color:#fff;margin-bottom:12px;font-family:inherit">'
+    +'<div style="max-height:280px;overflow-y:auto;margin-bottom:14px" id="dm-pick-list">'+rows+'</div>'
+    +'<div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doDmAllCustom()" style="flex:1">Envoyer à la sélection</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+function filterDmPick(q){
+  q=q.toLowerCase();
+  document.querySelectorAll('.dm-pick-row').forEach(row=>{
+    row.style.display=row.textContent.toLowerCase().includes(q)?'flex':'none';
+  });
+}
+async function doDmAllCustom(){
+  const ids=[...document.querySelectorAll('.dm-pick-cb:checked')].map(cb=>cb.value);
+  if(ids.length===0){toast('Choisis au moins un affilié','e');return;}
+  const msg=document.getElementById('dm-all-msg').value.trim();
+  const f=document.getElementById('dm-all-img').files[0];
+  closeMo();
+  toast('Envoi en cours...','s');
+  try{
+    let image_url=null;
+    if(f)image_url=await uploadImg(f,'offers');
+    const r=await api('POST','/api/admin/dm-all',{message:msg,image_url,user_ids:ids});
+    toast('Envoyé à '+r.sent+'/'+r.total+' affilié(s)'+(r.failed?(' — '+r.failed+' échec(s)'):''),'s');
+  }catch(e){toast(e.message,'e');}
+}
+function confirmDmAll(){
+  const msg=document.getElementById('dm-all-msg').value.trim();
+  if(!msg){toast('Écris un message','e');return;}
+  document.getElementById('m-title').textContent='Envoyer à tous les affiliés ?';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">📢</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Ce message sera envoyé en DM Discord à tous les affiliés ayant renseigné leur ID Discord.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doDmAll()" style="flex:1">Envoyer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doDmAll(){
+  const msg=document.getElementById('dm-all-msg').value.trim();
+  const f=document.getElementById('dm-all-img').files[0];
+  closeMo();
+  toast('Envoi en cours...','s');
+  try{
+    let image_url=null;
+    if(f)image_url=await uploadImg(f,'offers');
+    const r=await api('POST','/api/admin/dm-all',{message:msg,image_url});
+    toast('Envoyé à '+r.sent+'/'+r.total+' affilié(s)'+(r.failed?(' — '+r.failed+' échec(s)'):''),'s');
+  }catch(e){toast(e.message,'e');}
+}
+const GIFT_CARDS_FRONT={
+  playstation:{icon:'🎮',label:'PlayStation',color:'#0070D1',amounts:[20,50]},
+  xbox:{icon:'🎮',label:'Xbox',color:'#107C10',amounts:[10,25,50]},
+  roblox:{icon:'🎮',label:'Roblox',color:'#888888',amounts:[10,20,50]},
+  nintendo:{icon:'🎮',label:'Nintendo',color:'#E60012',amounts:[15,25,50,75,100]},
+  twitch:{icon:'📺',label:'Twitch',color:'#9146FF',amounts:[15,25,50]},
+  amazon:{icon:'📦',label:'Amazon',color:'#FF9900',amounts:[10,25,50]},
+  zalando:{icon:'👗',label:'Zalando',color:'#FF6900',amounts:[20,50,100]},
+  airbnb:{icon:'🏠',label:'Airbnb',color:'#FF5A5F',amounts:[50]},
+  footlocker:{icon:'👟',label:'Footlocker',color:'#ED1C24',amounts:[25,50]},
+  netflix:{icon:'🎬',label:'Netflix',color:'#E50914',amounts:[25,50,100]},
+  adidas:{icon:'👟',label:'Adidas',color:'#555555',amounts:[25]},
+  primark:{icon:'🛍️',label:'Primark',color:'#00AEEF',amounts:[15,25]},
+  flixbus:{icon:'🚌',label:'FlixBus',color:'#73D700',amounts:[20,50,100]},
+  safemoni:{icon:'💳',label:'Safemoni',color:'#6C5CE7',amounts:[10,20,50]},
+  tripgift:{icon:'✈️',label:'Tripgift',color:'#00B8A9',amounts:[50,100,250]},
+  hotelsgift:{icon:'🏨',label:'Hotelsgift',color:'#F7B32B',amounts:[50,100,250]}
+};
+const CRYPTO_COINS_FRONT={
+  BTC:{label:'Bitcoin',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="#F7931A"/><path d="M22.2 13.8c.3-2-1.2-3.1-3.3-3.8l.7-2.7-1.6-.4-.6 2.6-1.3-.3.6-2.6-1.6-.4-.7 2.7-1-.3v-.1l-2.2-.5-.4 1.7s1.2.3 1.1.3c.6.2.7.6.7.9l-1.7 6.8c-.1.2-.3.5-.8.4 0 .1-1.1-.3-1.1-.3l-.8 1.8 2.1.5 1.1.3-.7 2.7 1.6.4.7-2.7 1.3.3-.7 2.7 1.6.4.7-2.7c2.7.5 4.7.3 5.5-2.1.7-1.9-.1-3-1.4-3.7 1-.2 1.7-.9 1.9-2.3zm-3.4 4.8c-.5 2-3.8.9-4.9.6l.9-3.5c1.1.3 4.5.8 4 2.9zm.5-4.8c-.4 1.8-3.2.9-4.1.7l.8-3.2c.9.2 3.8.6 3.3 2.5z" fill="white"/></svg>'},
+  SOL:{label:'Solana',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="url(#solGrad)"/><defs><linearGradient id="solGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:#9945FF"/><stop offset="100%" style="stop-color:#14F195"/></linearGradient></defs><path d="M10 21.5h12.5l-2 1.8H8L10 21.5zm0-6h12.5l-2 1.8H8L10 15.5zm2-6h12.5l-2 1.8H10L12 9.5z" fill="white"/></svg>'},
+  LTC:{label:'Litecoin',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="#BFBBBB"/><text x="16" y="23" text-anchor="middle" font-size="18" font-weight="bold" fill="white">Ł</text></svg>'},
+  ETH:{label:'Ethereum',svg:'<svg width="28" height="28" viewBox="0 0 32 32" style="display:block;margin:0 auto"><circle cx="16" cy="16" r="16" fill="#627EEA"/><path d="M16 4.8 9.6 16.3 16 20l6.4-3.7L16 4.8z" fill="#fff" opacity=".85"/><path d="M16 4.8 9.6 16.3 16 20V4.8z" fill="#fff"/><path d="M16 21.3 9.6 17.6 16 27.2l6.4-9.6-6.4 3.7z" fill="#fff" opacity=".85"/><path d="M16 27.2V21.3l-6.4-3.7L16 27.2z" fill="#fff"/></svg>'}
+};
+const CRYPTO_LABELS={BTC:'Adresse Bitcoin',SOL:'Adresse Solana',LTC:'Adresse Litecoin',ETH:'Adresse Ethereum',REVOLUT:'Tag Revolut (ex: @pseudo)',VIREMENT:'IBAN',PAYPAL:'Email PayPal',TAPTAP:'Numéro de téléphone',PSC:'Email (pour recevoir le code PaysafeCard)'};
+const CRYPTO_PLACEHOLDERS={BTC:'bc1q...',SOL:'...',LTC:'L...',ETH:'0x...',REVOLUT:'@votrepseudo',VIREMENT:'FR76 ...',PAYPAL:'email@paypal.com',TAPTAP:'+33 6 12 34 56 78',PSC:'email@exemple.com'};
+function selectCryptoCoin(coin,el){
+  selCrypto=coin;
+  document.getElementById('crypto-coin').value=coin;
+  document.querySelectorAll('.crypto-coin-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});
+  el.style.borderColor='var(--yellow)';el.style.background='rgba(245,200,66,.08)';
+  document.getElementById('addr-field').style.display='block';
+  const lbl=document.getElementById('addr-label');const inp=document.getElementById('wd-addr');
+  if(lbl)lbl.textContent=CRYPTO_LABELS[coin];
+  if(inp)inp.placeholder=CRYPTO_PLACEHOLDERS[coin];
+  updateWdCalc();
+}
+let selGiftAmount=null;
+function pickCrypto(c,el){
+  selCrypto=c;selGiftAmount=null;
+  document.querySelectorAll('.crypto-opt').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  const lbl=document.getElementById('addr-label');const inp=document.getElementById('wd-addr');
+  if(lbl)lbl.textContent=CRYPTO_LABELS[c]||'Adresse';
+  if(inp)inp.placeholder=CRYPTO_PLACEHOLDERS[c]||'';
+  // Show name field for VIREMENT et TapTap Send
+  const nameField=document.getElementById('virement-name-field');
+  const nameLabel=document.getElementById('virement-name-label');
+  if(nameField)nameField.style.display=(c==='VIREMENT'||c==='TAPTAP')?'block':'none';
+  if(nameLabel)nameLabel.textContent=c==='TAPTAP'?'Nom & Prénom (destinataire TapTap Send)':'Nom & Prénom (titulaire du compte)';
+  // Carte cadeau : logique dédiée, on masque le montant libre + l'adresse classique
+  const isGift=c==='CADEAU';
+  // Crypto : on affiche d'abord le choix de la pièce (BTC/SOL/LTC/ETH), l'adresse apparaît après
+  const isCryptoGroup=c==='CRYPTO';
+  document.getElementById('giftcard-field').style.display=isGift?'block':'none';
+  document.getElementById('crypto-sub-field').style.display=isCryptoGroup?'block':'none';
+  document.getElementById('addr-field').style.display=(isGift||isCryptoGroup)?'none':'block';
+  document.getElementById('wd-amt-field').style.display=isGift?'none':'block';
+  if(isGift){document.getElementById('gc-provider').value='';document.getElementById('gc-amounts').style.display='none';document.querySelectorAll('.gc-provider-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});}
+  if(isCryptoGroup){document.getElementById('crypto-coin').value='';document.querySelectorAll('.crypto-coin-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});}
+  updateWdCalc();
+}
+function selectGiftProvider(key,bal,el){
+  document.getElementById('gc-provider').value=key;
+  document.querySelectorAll('.gc-provider-card').forEach(c=>{c.style.borderColor='#2a2a2a';c.style.background='var(--bg3)';});
+  el.style.borderColor='var(--yellow)';el.style.background='rgba(245,200,66,.08)';
+  onGiftProviderChange(bal);
+}
+function onGiftProviderChange(bal){
+  const key=document.getElementById('gc-provider').value;
+  const wrap=document.getElementById('gc-amounts');const list=document.getElementById('gc-amounts-list');
+  selGiftAmount=null;
+  if(!key){wrap.style.display='none';return;}
+  const card=GIFT_CARDS_FRONT[key];
+  wrap.style.display='block';
+  list.innerHTML=card.amounts.map(a=>{
+    const belowMin=a<25;
+    const cantAfford=a>bal;
+    const disabled=belowMin||cantAfford;
+    const reason=belowMin?'Retrait minimum $25':'Solde insuffisant';
+    return '<button type="button" id="gc-amt-'+a+'" '+(disabled?'disabled title="'+reason+'"':'onclick="selectGiftAmount('+a+',this)"')+' style="padding:10px 18px;border-radius:10px;font-family:inherit;font-weight:700;font-size:14px;'+(disabled?'background:#1a1a1a;border:1px solid #333;color:#555;cursor:not-allowed':'background:var(--bg3);border:1.5px solid rgba(245,200,66,.5);color:#fff;cursor:pointer')+'">$'+a+'</button>';
+  }).join('');
+}
+function selectGiftAmount(amount,btn){
+  selGiftAmount=amount;
+  btn.parentElement.querySelectorAll('button:not([disabled])').forEach(b=>{
+    b.style.background='var(--bg3)';b.style.color='#fff';b.style.border='1.5px solid rgba(245,200,66,.5)';
+  });
+  btn.style.background='var(--grad)';btn.style.color='#000';btn.style.border='1.5px solid transparent';
+  const out=document.getElementById('wd-net-calc');
+  const net=(amount*0.95).toFixed(2);
+  if(out)out.innerHTML='Tu recevras <b style="color:var(--green)">$'+net+'</b> après 5% de frais';
+}
+function renderWheelEditor(){
+  return '<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:10px">🎡 Configurer la roue de la chance</div><p style="font-size:12px;color:var(--muted)">Définis les lots possibles et leur probabilité relative (plus le nombre est grand par rapport aux autres, plus la chance de tomber dessus est élevée — ce ne sont pas forcément des %). Entre 2 et 15 segments. La colonne "Chance" se recalcule après ajout/suppression d\'un segment ou l\'enregistrement.</p></div>'
+  +'<div style="display:grid;grid-template-columns:320px 1fr;gap:24px;align-items:start" class="wheel-editor-grid">'
+  +'<div class="card" style="text-align:center;padding:20px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Aperçu</div><div id="wheel-preview-container" style="position:relative;width:100%;max-width:260px;margin:0 auto"><svg viewBox="0 0 200 200" style="width:100%;display:block;filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))" id="wheel-preview-svg">'+buildWheelSegments(window.wheelEditSegments)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg></div></div>'
+  +'<div><div id="wheel-editor-body">'+renderWheelEditorRows()+'</div></div>'
+  +'</div>';
+}
+function renderWheelEditorRows(){
+  const segs=window.wheelEditSegments||[];
+  const totalWeight=segs.reduce((s,x)=>s+(parseFloat(x.weight)||0),0);
+  const rows=segs.map((s,i)=>{
+    const pct=totalWeight>0?((parseFloat(s.weight)||0)/totalWeight*100).toFixed(1):'0.0';
+    const type=s.type==='tokens'?'tokens':'money';
+    return '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:grid;grid-template-columns:auto 1fr 110px 100px 100px 70px auto;gap:10px;align-items:end">'
+    +'<div style="display:flex;flex-direction:column;gap:3px"><button class="btn btn-gst btn-sm" onclick="moveWheelSegment('+i+',-1)" title="Monter"'+(i===0?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▲</button><button class="btn btn-gst btn-sm" onclick="moveWheelSegment('+i+',1)" title="Descendre"'+(i===segs.length-1?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▼</button></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Nom affiché</label><input type="text" value="'+esc(s.label)+'" onchange="updateWheelField('+i+',\'label\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Type de gain</label><select onchange="updateWheelField('+i+',\'type\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 6px;color:var(--text);font-family:inherit;font-size:12px"><option value="money" '+(type==='money'?'selected':'')+'>💰 Dollars</option><option value="tokens" '+(type==='tokens'?'selected':'')+'>🪙 Jetons</option></select></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Montant ('+(type==='tokens'?'🪙':'$')+')</label><input type="number" min="0" step="'+(type==='tokens'?'1':'0.5')+'" value="'+s.reward+'" onchange="updateWheelField('+i+',\'reward\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Probabilité</label><input type="number" min="0.1" step="1" value="'+s.weight+'" onchange="updateWheelField('+i+',\'weight\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
+    +'<div style="text-align:center"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Chance</label><span class="badge bp2" style="font-size:12px">'+pct+'%</span></div>'
+    +'<button class="btn btn-red btn-sm" onclick="removeWheelSegment('+i+')" title="Supprimer"'+(segs.length<=2?' disabled style="opacity:.3;cursor:not-allowed"':'')+'>🗑</button>'
+    +'</div></div>';
+  }).join('');
+  return rows
+  +'<button class="btn btn-gst" onclick="addWheelSegment()" style="width:100%;justify-content:center;margin-bottom:20px"'+(segs.length>=15?' disabled':'')+'>+ Ajouter un segment'+(segs.length>=15?' (max 15)':'')+'</button>'
+  +'<button class="btn btn-grad" onclick="saveWheelSegments()" style="width:100%;justify-content:center;padding:13px">💾 Enregistrer la configuration</button>';
+}
+function moveWheelSegment(i,dir){
+  const segs=window.wheelEditSegments;
+  const j=i+dir;
+  if(j<0||j>=segs.length)return;
+  [segs[i],segs[j]]=[segs[j],segs[i]];
+  document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+  refreshWheelPreview();
+}
+function refreshWheelPreview(){
+  const svg=document.getElementById('wheel-preview-svg');
+  if(svg)svg.innerHTML=buildWheelSegments(window.wheelEditSegments)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text>';
+}
+function updateWheelField(i,field,value){
+  if(field==='reward'||field==='weight')value=parseFloat(value)||0;
+  window.wheelEditSegments[i][field]=value;
+  if(field==='type'){document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();}
+  refreshWheelPreview();
+}
+function addWheelSegment(){
+  if(window.wheelEditSegments.length>=15){toast('Maximum 15 segments','e');return;}
+  window.wheelEditSegments.push({label:'Nouveau lot',reward:0,weight:10,type:'money'});
+  document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+  refreshWheelPreview();
+}
+function removeWheelSegment(i){
+  if(window.wheelEditSegments.length<=2){toast('Il faut au moins 2 segments','e');return;}
+  window.wheelEditSegments.splice(i,1);
+  document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+  refreshWheelPreview();
+}
+async function saveWheelSegments(){
+  const segs=window.wheelEditSegments;
+  for(const s of segs){
+    if(!s.label||!String(s.label).trim()){toast('Chaque segment doit avoir un nom','e');return;}
+    if(isNaN(s.reward)||s.reward<0){toast('Montant invalide','e');return;}
+    if(isNaN(s.weight)||s.weight<=0){toast('Probabilité invalide (doit être > 0)','e');return;}
+  }
+  try{
+    await api('PATCH','/api/admin/wheel-segments',{segments:segs});
+    toast('Roue mise à jour ✓','s');
+    goPage('admin-wheel');
+  }catch(e){toast(e.message,'e');}
+}
+function updateWdCalc(){
+  const out=document.getElementById('wd-net-calc');
+  if(!out)return;
+  if(selCrypto==='CADEAU'||selCrypto==='CRYPTO'){out.textContent='';return;}
+  const amt=parseFloat(document.getElementById('wd-amt')?.value);
+  if(!amt||amt<=0){out.textContent='';return;}
+  const min=selCrypto==='PAYPAL'?50:25;
+  if(amt<min){out.innerHTML='<span style="color:var(--red)">Minimum $'+min+(selCrypto==='PAYPAL'?' pour PayPal':'')+'</span>';return;}
+  const net=(amt*0.95).toFixed(2);
+  out.innerHTML='Tu recevras <b style="color:var(--green)">$'+net+'</b> après 5% de frais';
+}
+async function doWd(){
+  if(!selCrypto){toast('Choisissez un moyen de paiement','e');return;}
+  if(selCrypto==='CRYPTO'){toast('Choisis une cryptomonnaie (Bitcoin, Solana, Litecoin ou Ethereum)','e');return;}
+  if(selCrypto==='CADEAU'){
+    const provider=document.getElementById('gc-provider').value;
+    if(!provider){toast('Choisis une carte cadeau','e');return;}
+    if(!selGiftAmount){toast('Choisis un montant','e');return;}
+    if(selGiftAmount>(ME.balance||0)){toast('Solde insuffisant','e');return;}
+    try{
+      await api('POST','/api/withdrawals',{amount:selGiftAmount,crypto:'CADEAU',gift_provider:provider});
+      toast('Demande envoyée !','s');selCrypto=null;selGiftAmount=null;goPage('aff-pay');
+    }catch(e){toast(e.message,'e');}
+    return;
+  }
+  const amt=parseFloat(document.getElementById('wd-amt').value);const addr=document.getElementById('wd-addr').value.trim();
+  if(!amt||amt<25){toast('Minimum $25','e');return;}if(selCrypto==='PAYPAL'&&amt<50){toast('PayPal : minimum $50','e');return;}if(!addr){toast(selCrypto==='TAPTAP'?'Entrez votre numéro de téléphone':'Entrez votre adresse','e');return;}
+  if(amt>(ME.balance||0)){toast('Solde insuffisant','e');return;}
+  try{
+    let finalAddr=addr;
+    if(selCrypto==='VIREMENT'||selCrypto==='TAPTAP'){
+      const name=document.getElementById('wd-name')?.value.trim();
+      if(selCrypto==='TAPTAP'&&!name){toast('Nom et prénom requis pour TapTap Send','e');return;}
+      if(name)finalAddr=addr+' | '+name;
+    }
+    await api('POST','/api/withdrawals',{amount:amt,crypto:selCrypto,address:finalAddr});toast('Demande envoyée !','s');selCrypto=null;goPage('aff-pay');}catch(e){toast(e.message,'e');}
+}
+async function apprC(id){try{await api('PATCH','/api/conversions/'+id+'/approve');toast('Approuvée ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}}
+function openRejectConv(id,amount,userName,wasApproved){
+  document.getElementById('m-title').textContent='Rejeter cette conversion';
+  document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px">'
+    +(wasApproved?'<div class="warning-box" style="margin-bottom:16px"><div style="font-size:16px;flex-shrink:0">⚠️</div><p style="font-size:12px;color:var(--yellow);line-height:1.7">Cette conversion est <b>déjà approuvée</b>. La rejeter retirera <b>$'+amount+'</b> du solde de <b>'+userName+'</b> (utile en cas de fraude détectée après coup). Si son solde est insuffisant, il sera ramené à $0 sans passer en négatif.</p></div>':'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">Rejeter la conversion de <b>$'+amount+'</b> de <b>'+userName+'</b>.</div>')
+    +'<div class="fi"><label>Raison du rejet</label><textarea id="rejc-reason" rows="3" placeholder="Ex: fraude détectée, double conversion, lien invalide..." style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;resize:vertical"></textarea></div>'
+    +'<div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doRejectConv('+id+')" style="flex:1;justify-content:center">✕ Rejeter</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doRejectConv(id){
+  const reason=document.getElementById('rejc-reason').value.trim();
+  if(!reason){toast('Indique une raison','e');return;}
+  try{await api('PATCH','/api/conversions/'+id+'/reject',{reason});closeMo();toast('Conversion rejetée','e');goPage(curPage);}catch(e){toast(e.message,'e');}
+}
+async function rejtC(id){try{await api('PATCH','/api/conversions/'+id+'/reject');toast('Rejetée','e');goPage(curPage);}catch(e){toast(e.message,'e');}}
+async function apprW(id){try{await api('PATCH','/api/withdrawals/'+id+'/approve');toast('Payé ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}}
+function openRejtW(id){document.getElementById('m-title').textContent='Rejeter le retrait';document.getElementById('m-body').innerHTML='<div class="fi"><label>Raison</label><input type="text" id="rjt-reason" placeholder="ex: adresse invalide..."></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doRejtW('+id+')" style="flex:1">Confirmer</button></div>';document.getElementById('mo').classList.add('open');}
+async function doRejtW(id){const reason=document.getElementById('rjt-reason').value.trim();if(!reason){toast('Indiquez une raison','e');return;}try{await api('PATCH','/api/withdrawals/'+id+'/reject',{reason});closeMo();toast('Retrait rejeté','e');goPage(curPage);}catch(e){toast(e.message,'e');}}
+async function toggleLnk(id,active){try{await api('PATCH','/api/links/'+id,{active});toast(active?'Lien réactivé':'Lien désactivé',active?'s':'e');goPage(curPage);}catch(e){toast(e.message,'e');}}
+function confirmDeleteLnk(id){document.getElementById('m-title').textContent='Supprimer ce lien';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer ce lien ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteLnk(\''+id+'\')" style="flex:1">Supprimer</button></div></div>';document.getElementById('mo').classList.add('open');}
+async function deleteLnk(id){try{await api('DELETE','/api/links/'+id);closeMo();toast('Lien supprimé','s');goPage(curPage);}catch(e){toast(e.message,'e');}}
+function confirmDeleteConv(id,amount,userName){document.getElementById('m-title').textContent='Supprimer la conversion';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:8px">Supprimer la conversion de</div><div style="font-weight:900;font-size:22px;margin-bottom:4px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+userName+'</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Montant : <b style="color:var(--yellow)">$'+amount+'</b></div><div style="font-size:12px;color:var(--red);background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Si approuvée, $'+amount+' seront retirés du solde.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteConv('+id+')" style="flex:1">Supprimer</button></div></div>';document.getElementById('mo').classList.add('open');}
+async function deleteConv(id){try{await api('DELETE','/api/conversions/'+id);closeMo();toast('Conversion supprimée','s');goPage('admin-conv');}catch(e){toast(e.message,'e');}}
+function confirmDeleteOffer(id,name){document.getElementById('m-title').textContent='Supprimer l\'offre';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Supprimer l\'offre</div><div style="font-weight:900;font-size:18px;margin-bottom:18px">'+name+'</div><div style="font-size:12px;color:var(--red);background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Tous les liens associés seront supprimés.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteOffer('+id+')" style="flex:1">Confirmer</button></div></div>';document.getElementById('mo').classList.add('open');}
+async function deleteOffer(id){try{await api('DELETE','/api/offers/'+id);closeMo();toast('Offre supprimée','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}}
+function confirmResetPassword(userId,userName){
+  const safeName=userName.replace(/'/g,"\\'");
+  document.getElementById('m-title').textContent='Réinitialiser le mot de passe';
+  document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px"><div style="font-size:13px;color:var(--muted);margin-bottom:16px">Définis le nouveau mot de passe de <b>'+userName+'</b>. Il sera déconnecté immédiatement et devra en choisir un autre dès sa prochaine connexion.</div><div class="fg"><label>Nouveau mot de passe</label><input type="text" id="rp-newpass" placeholder="Au moins 6 caractères"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doResetPassword(\''+userId+'\',\''+safeName+'\')" style="flex:1;justify-content:center">Réinitialiser</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doResetPassword(userId,userName){
+  const newPassword=document.getElementById('rp-newpass').value;
+  if(!newPassword||newPassword.length<6){toast('Le mot de passe doit faire au moins 6 caractères','e');return;}
+  try{
+    const r=await api('POST','/api/users/'+userId+'/reset-password',{newPassword});
+    document.getElementById('m-title').textContent='✅ Mot de passe réinitialisé';
+    document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px">'+(r.sentViaDiscord?'<div style="font-size:12px;color:var(--green);margin-bottom:14px">✅ '+userName+' a aussi reçu le mot de passe en DM Discord.</div>':'<div style="font-size:12px;color:var(--yellow);margin-bottom:14px">⚠️ DM Discord non envoyé (ID Discord manquant/invalide) — transmets-le lui-même.</div>')+'<div style="font-size:12px;color:var(--muted);margin-bottom:18px">Il a été déconnecté et devra définir un nouveau mot de passe personnel dès sa prochaine connexion.</div><button class="btn btn-grad" onclick="closeMo()" style="width:100%;justify-content:center">Fermer</button></div>';
+  }catch(e){toast(e.message,'e');}
+}
+function confirmDeleteAff(btn){
+  const id=btn.dataset.id,name=btn.dataset.name,email=btn.dataset.email;
+  document.getElementById('m-title').textContent='Supprimer le compte';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-size:13px;color:var(--muted);margin-bottom:8px">Voulez-vous vraiment supprimer</div><div style="font-weight:900;font-size:22px;margin-bottom:4px;background:var(--grad);-webkit-background-clip:text;-webkit-text-fill-color:transparent">'+name+'</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">'+email+'</div><div style="font-size:12px;color:var(--red);background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Action irréversible.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" id="del-aff-btn" disabled style="flex:1;opacity:.5">Supprimer (5)</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+  let count=5;const affId=id;
+  const interval=setInterval(()=>{count--;const b=document.getElementById('del-aff-btn');if(!b){clearInterval(interval);return;}if(count<=0){clearInterval(interval);b.disabled=false;b.style.opacity='1';b.textContent='Supprimer';b.onclick=()=>deleteAff(affId);}else{b.textContent='Supprimer ('+count+')';}},1000);
+}
+async function deleteAff(id){try{await api('DELETE','/api/users/'+id);closeMo();toast('Compte supprimé','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}}
+async function toggleRef(userId,active,affId){try{await api('PATCH','/api/admin/referral/'+userId+'/toggle',{active});toast(active?'Réactivé ✅':'Arrêté 🚫',active?'s':'e');goPage('admin-ref-'+affId);}catch(e){toast(e.message,'e');}}
+async function linkReferral(){
+  const referrer_id=document.getElementById('link-referrer').value;
+  const referee_id=document.getElementById('link-referee').value;
+  if(!referrer_id||!referee_id){toast('Choisis les deux comptes','e');return;}
+  if(referrer_id===referee_id){toast('Choisis deux comptes différents','e');return;}
+  try{await api('POST','/api/admin/referrals/link',{referrer_id,referee_id});toast('Parrainage lié ✓','s');goPage('admin-ref');}catch(e){toast(e.message,'e');}
+}
+async function saveRefRate(affId){
+  const val=document.getElementById('ref-rate-input').value.trim();
+  try{await api('PATCH','/api/admin/referral/'+affId+'/rate',{rate:val===''?null:parseFloat(val)});toast('Taux mis à jour ✓','s');goPage('admin-ref-'+affId);}catch(e){toast(e.message,'e');}
+}
+function editFilleulRate(filleulId,currentRate,affId){
+  document.getElementById('m-title').textContent='Taux personnalisé pour ce filleul';
+  document.getElementById('m-body').innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:14px">Laisse vide pour utiliser le taux du parrain (par défaut).</div><div style="display:flex;gap:10px;align-items:center;margin-bottom:18px"><input type="number" id="filleul-rate-input" min="0" max="100" step="0.5" placeholder="défaut" value="'+(currentRate!=null?currentRate:'')+'" style="width:100px;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px;color:var(--text);font-family:inherit"><span style="color:var(--muted)">%</span></div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveFilleulRate(\''+filleulId+'\',\''+affId+'\')" style="flex:1;justify-content:center">Enregistrer</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function saveFilleulRate(filleulId,affId){
+  const val=document.getElementById('filleul-rate-input').value.trim();
+  try{await api('PATCH','/api/admin/referral/filleul/'+filleulId+'/rate',{rate:val===''?null:parseFloat(val)});closeMo();toast('Taux du filleul mis à jour ✓','s');goPage('admin-ref-'+affId);}catch(e){toast(e.message,'e');}
+}
+function confirmDeleteRef(filleulId,filleulName,affId){
+  document.getElementById('m-title').textContent='Supprimer ce parrainage';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer définitivement le lien de parrainage de <b>'+filleulName+'</b> ? Il redeviendra un affilié sans parrain. L\'historique des commissions déjà versées est conservé.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteRef(\''+filleulId+'\',\''+affId+'\')" style="flex:1">Supprimer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function deleteRef(filleulId,affId){
+  try{await api('DELETE','/api/admin/referral/'+filleulId);closeMo();toast('Parrainage supprimé','s');goPage('admin-ref-'+affId);}catch(e){toast(e.message,'e');}
+}
+function confirmDeleteWd(id){document.getElementById('m-title').textContent='Supprimer ce retrait';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer cet historique ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteWd('+id+')" style="flex:1">Supprimer</button></div></div>';document.getElementById('mo').classList.add('open');}
+async function deleteWd(id){try{await api('DELETE','/api/withdrawals/'+id);closeMo();toast('Retrait supprimé','s');goPage('admin-wd');}catch(e){toast(e.message,'e');}}
+function openEditOffer(id,name,desc,url,comm,cat,img){
+  document.getElementById('m-title').textContent='Modifier l\'offre';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="eo-name" value="'+name+'"></div><div class="fi"><label>Description</label><input type="text" id="eo-desc" value="'+desc+'"></div><div class="fi"><label>URL partenaire</label><input type="text" id="eo-url" value="'+url+'"></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:20px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-edit\').click()"><input type="file" id="img-file-edit" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'edit\')"><div id="img-prev-edit" style="'+(img?'':'display:none;')+'margin-bottom:10px"><img id="img-prev-img-edit" src="'+(img||'')+'" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-edit" style="'+(img?'display:none':'')+'"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Changer l\'image</div></div></div></div><div class="fi"><label>Commission ($)</label><input type="number" id="eo-comm" value="'+comm+'"></div><div class="fi"><label>Catégorie</label><select id="eo-cat"><option value="casino" '+(cat==='casino'?'selected':'')+'>🎰 Casino</option><option value="dating" '+(cat==='dating'?'selected':'')+'>💕 Dating</option><option value="influenceuse" '+(cat==='influenceuse'?'selected':'')+'>👑 Influenceuse</option><option value="ia" '+(cat==='ia'?'selected':'')+'>🤖 IA</option><option value="autre" '+(cat==='autre'||!cat?'selected':'')+'>📦 Autre</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditOffer('+id+',\''+img+'\')" style="flex:1;justify-content:center">Sauvegarder →</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doEditOffer(id,existingImg){
+  const name=document.getElementById('eo-name').value.trim();const url=document.getElementById('eo-url').value.trim();
+  if(!name||!url){toast('Nom et URL requis','e');return;}
+  try{let imgUrl=existingImg||null;const f=document.getElementById('img-file-edit').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+  await api('PATCH','/api/offers/'+id,{name,description:document.getElementById('eo-desc').value.trim(),url,commission:parseFloat(document.getElementById('eo-comm').value)||10,category:document.getElementById('eo-cat').value,image_url:imgUrl});closeMo();toast('Offre modifiée ✓','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}
+}
+function openAddOffer(){
+  document.getElementById('m-title').textContent='Nouvelle offre';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Nom</label><input type="text" id="on" placeholder="Ex: VIP Leak"></div><div class="fi"><label>Description</label><input type="text" id="od" placeholder="Description..."></div><div class="fi"><label>URL partenaire</label><input type="text" id="ou" placeholder="https://...?ml_sub1="></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-add\').click()"><input type="file" id="img-file-add" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'add\')"><div id="img-prev-add" style="display:none;margin-bottom:10px"><img id="img-prev-img-add" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-add"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Importer une image</div></div></div></div><div class="fi"><label>Commission ($)</label><input type="number" id="oc" value="10"></div><div class="fi"><label>Catégorie</label><select id="ocat"><option value="casino">🎰 Casino</option><option value="dating">💕 Dating</option><option value="influenceuse">👑 Influenceuse</option><option value="ia">🤖 IA</option><option value="autre" selected>📦 Autre</option></select></div><button class="btn btn-grad" onclick="doAddOffer()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doAddOffer(){
+  const name=document.getElementById('on').value.trim();const url=document.getElementById('ou').value.trim();
+  if(!name||!url){toast('Nom et URL requis','e');return;}
+  try{let imgUrl=null;const f=document.getElementById('img-file-add').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+  await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value,image_url:imgUrl});closeMo();toast('Offre créée !','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}
+}
+
+// ── ADMIN : MOYENS D'OBTENIR DES JETONS ──
+async function saveTokensPerSale(){
+  const val=parseInt(document.getElementById('tokens-per-sale-input').value);
+  if(!Number.isFinite(val)||val<0){toast('Valeur invalide','e');return;}
+  try{await api('PATCH','/api/admin/settings/tokens-per-sale',{tokens_per_sale:val});toast('Jetons par vente mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+// Paliers de jetons par retrait
+function updateWdTier(i,field,value){
+  window.withdrawalTiersEdit[i][field]=parseFloat(value)||0;
+}
+function addWdTier(){
+  const last=window.withdrawalTiersEdit[window.withdrawalTiersEdit.length-1];
+  window.withdrawalTiersEdit.push({min:last?last.max:0,max:(last?last.max:0)+50,tokens:5});
+  goPage('admin-shop-settings');
+}
+function removeWdTier(i){
+  if(window.withdrawalTiersEdit.length<=1)return;
+  window.withdrawalTiersEdit.splice(i,1);
+  goPage('admin-shop-settings');
+}
+async function saveWdTiers(){
+  for(const t of window.withdrawalTiersEdit){
+    if(t.max<=t.min){toast('Chaque palier doit avoir un max > min','e');return;}
+  }
+  try{await api('PATCH','/api/admin/withdrawal-tiers',{tiers:window.withdrawalTiersEdit});toast('Paliers de retrait mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+// Jetons par cadeau envoyé
+async function saveGiftTokens(){
+  const val=parseInt(document.getElementById('gift-tokens-input').value);
+  if(!Number.isFinite(val)||val<0){toast('Valeur invalide','e');return;}
+  try{await api('PATCH','/api/admin/settings/gift-tokens',{gift_tokens:val});toast('Jetons par cadeau mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+// Bonus de parrainage (palier)
+async function saveReferralMilestone(){
+  const count=parseInt(document.getElementById('ref-milestone-count-input').value);
+  const tokens=parseInt(document.getElementById('ref-milestone-tokens-input').value);
+  if(!Number.isFinite(count)||count<=0){toast('Nombre de filleuls invalide','e');return;}
+  if(!Number.isFinite(tokens)||tokens<0){toast('Jetons invalides','e');return;}
+  try{await api('PATCH','/api/admin/settings/referral-milestone',{count,tokens});toast('Bonus de parrainage mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+function confirmTokensBackfill(){
+  document.getElementById('m-title').textContent='⏪ Rattrapage rétroactif';
+  document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px"><div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Ça va créditer les jetons manquants à tous les affiliés ayant des ventes approuvées qui n\'ont encore reçu aucun jeton (au tarif actuellement configuré). Les ventes déjà traitées ne seront pas recréditées.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="runTokensBackfill()" style="flex:1;justify-content:center">Lancer le rattrapage</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function runTokensBackfill(){
+  try{
+    const r=await api('POST','/api/admin/tokens/backfill',{});
+    closeMo();
+    if(r.usersCredited>0)toast('✅ '+r.usersCredited+' affilié(s) crédité(s) sur '+r.conversionsUpdated+' vente(s)','s');
+    else toast('Rien à rattraper, tout est déjà à jour ✓','i');
+  }catch(e){toast(e.message,'e');}
+}
+function openGrantTokens(presetUserId,presetUserName){
+  Promise.all([api('GET','/api/users')]).then(([users])=>{
+    const uOpts=users.map(u=>'<option value="'+u.id+'" '+(presetUserId&&String(u.id)===String(presetUserId)?'selected':'')+'>'+esc(u.name)+'</option>').join('');
+    document.getElementById('m-title').textContent='🪙 Attribuer des jetons';
+    document.getElementById('m-body').innerHTML='<div class="fi"><label>Affilié</label><select id="gt-user">'+(presetUserId?'':'<option value="">-- Choisir --</option>')+uOpts+'</select></div><div class="fi"><label>Montant (négatif pour retirer)</label><input type="number" id="gt-amount" placeholder="Ex: 20 ou -10" value="10"></div><div class="fi"><label>Raison (optionnel, visible par l\'affilié)</label><input type="text" id="gt-reason" placeholder="Ex: Parrainage de..."></div><button class="btn btn-grad" onclick="doGrantTokens()" style="width:100%;justify-content:center;margin-top:6px">Confirmer →</button>';
+    document.getElementById('mo').classList.add('open');
+  }).catch(e=>toast(e.message,'e'));
+}
+async function doGrantTokens(){
+  const user_id=document.getElementById('gt-user').value;
+  const amount=parseInt(document.getElementById('gt-amount').value);
+  if(!user_id){toast('Choisis un affilié','e');return;}
+  if(!amount){toast('Montant invalide','e');return;}
+  try{
+    await api('POST','/api/admin/tokens/grant',{user_id,amount,reason:document.getElementById('gt-reason').value.trim()});
+    closeMo();toast((amount>0?'+':'')+amount+' 🪙 attribué(s) ✓','s');
+  }catch(e){toast(e.message,'e');}
+}
+async function saveTokenMethods(successMsg){
+  try{await api('PATCH','/api/admin/token-methods',{methods:window.tokenMethodsEdit});toast(successMsg||'Enregistré ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+function toggleTokenMethod(i){window.tokenMethodsEdit[i].active=window.tokenMethodsEdit[i].active===false?true:false;saveTokenMethods(window.tokenMethodsEdit[i].active?'Activé ✅':'Désactivé 🚫');}
+function removeTokenMethod(i){
+  document.getElementById('m-title').textContent='Supprimer ce moyen';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer <b>'+esc(window.tokenMethodsEdit[i].title)+'</b> ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="window.tokenMethodsEdit.splice('+i+',1);closeMo();saveTokenMethods(\'Supprimé\')" style="flex:1">Confirmer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+function openAddTokenMethod(){
+  document.getElementById('m-title').textContent='Nouveau moyen d\'obtenir des jetons';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Emoji / Icône</label><input type="text" id="tm-icon" placeholder="🪙" value="🪙"></div><div class="fi"><label>Titre</label><input type="text" id="tm-title" placeholder="Ex: Parrainer un ami"></div><div class="fi"><label>Description</label><input type="text" id="tm-desc" placeholder="Explique comment gagner ces jetons..."></div><div class="fi"><label>Jetons gagnés</label><input type="number" id="tm-tokens" min="0" value="10"></div><button class="btn btn-grad" onclick="doAddTokenMethod()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
+  document.getElementById('mo').classList.add('open');
+}
+function doAddTokenMethod(){
+  const title=document.getElementById('tm-title').value.trim();
+  if(!title){toast('Titre requis','e');return;}
+  window.tokenMethodsEdit.push({id:'m'+Date.now(),icon:document.getElementById('tm-icon').value.trim()||'🪙',title,description:document.getElementById('tm-desc').value.trim(),tokens:parseInt(document.getElementById('tm-tokens').value)||0,active:true});
+  closeMo();saveTokenMethods('Moyen ajouté !');
+}
+function openEditTokenMethod(i){
+  const m=window.tokenMethodsEdit[i];
+  document.getElementById('m-title').textContent='Modifier ce moyen';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Emoji / Icône</label><input type="text" id="tm-icon" value="'+esc(m.icon)+'"></div><div class="fi"><label>Titre</label><input type="text" id="tm-title" value="'+esc(m.title)+'"></div><div class="fi"><label>Description</label><input type="text" id="tm-desc" value="'+esc(m.description)+'"></div><div class="fi"><label>Jetons gagnés</label><input type="number" id="tm-tokens" min="0" value="'+(m.tokens||0)+'"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditTokenMethod('+i+')" style="flex:1;justify-content:center">Sauvegarder →</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+function doEditTokenMethod(i){
+  const title=document.getElementById('tm-title').value.trim();
+  if(!title){toast('Titre requis','e');return;}
+  const m=window.tokenMethodsEdit[i];
+  m.icon=document.getElementById('tm-icon').value.trim()||'🪙';m.title=title;m.description=document.getElementById('tm-desc').value.trim();m.tokens=parseInt(document.getElementById('tm-tokens').value)||0;
+  closeMo();saveTokenMethods('Moyen modifié ✓');
+}
+
+// ── ADMIN : OFFRES DE LA BOUTIQUE À JETONS ──
+function openAddShopItem(){
+  document.getElementById('m-title').textContent='Nouvelle offre boutique';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" placeholder="Ex: Bon cadeau Amazon 10€"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" placeholder="Description de l\'offre..."></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-si-add\').click()"><input type="file" id="img-file-si-add" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'si-add\')"><div id="img-prev-si-add" style="display:none;margin-bottom:10px"><img id="img-prev-img-si-add" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-si-add"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Importer une image</div></div></div></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="50"></div><button class="btn btn-grad" onclick="doAddShopItem()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doAddShopItem(){
+  const title=document.getElementById('si-title').value.trim();
+  const price=parseInt(document.getElementById('si-price').value);
+  if(!title){toast('Titre requis','e');return;}
+  if(!price||price<=0){toast('Prix en jetons invalide','e');return;}
+  try{let imgUrl=null;const f=document.getElementById('img-file-si-add').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+  await api('POST','/api/admin/shop/items',{title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,image_url:imgUrl});closeMo();toast('Offre créée !','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+function openEditShopItem(id){
+  const it=(window.SHOP_ITEMS_CACHE||[]).find(x=>x.id===id);if(!it)return;
+  document.getElementById('m-title').textContent='Modifier l\'offre';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" value="'+esc(it.title)+'"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" value="'+esc(it.description||'')+'"></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:20px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-si-edit\').click()"><input type="file" id="img-file-si-edit" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'si-edit\')"><div id="img-prev-si-edit" style="'+(it.image_url?'':'display:none;')+'margin-bottom:10px"><img id="img-prev-img-si-edit" src="'+(it.image_url||'')+'" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-si-edit" style="'+(it.image_url?'display:none':'')+'"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Changer l\'image</div></div></div></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="'+it.price_tokens+'"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditShopItem('+id+',\''+(it.image_url||'')+'\')" style="flex:1;justify-content:center">Sauvegarder →</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doEditShopItem(id,existingImg){
+  const title=document.getElementById('si-title').value.trim();
+  const price=parseInt(document.getElementById('si-price').value);
+  if(!title){toast('Titre requis','e');return;}
+  if(!price||price<=0){toast('Prix en jetons invalide','e');return;}
+  try{let imgUrl=existingImg||null;const f=document.getElementById('img-file-si-edit').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+  await api('PATCH','/api/admin/shop/items/'+id,{title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,image_url:imgUrl});closeMo();toast('Offre modifiée ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+async function toggleShopItem(id,active){try{await api('PATCH','/api/admin/shop/items/'+id,{active});toast(active?'Offre activée ✅':'Offre désactivée 🚫',active?'s':'i');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}}
+function confirmDeleteShopItem(id,title){
+  document.getElementById('m-title').textContent='Supprimer l\'offre';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-weight:900;font-size:18px;margin-bottom:18px">'+title+'</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteShopItem('+id+')" style="flex:1">Confirmer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function deleteShopItem(id){try{await api('DELETE','/api/admin/shop/items/'+id);closeMo();toast('Offre supprimée','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}}
+
+// ── AFFILIÉ : ACHAT BOUTIQUE ──
+function confirmPurchaseShopItem(id,title,price){
+  document.getElementById('m-title').textContent='Confirmer l\'échange';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🛍️</div><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Échanger</div><div style="font-weight:900;font-size:18px;margin-bottom:8px">'+esc(title)+'</div><div style="margin-bottom:18px"><span class="badge by2" style="font-size:14px">🪙 '+price+' jetons</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:20px">Les jetons seront débités immédiatement, l\'offre est à toi tout de suite.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doPurchaseShopItem('+id+')" style="flex:1;justify-content:center">Confirmer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doPurchaseShopItem(id){
+  try{
+    await api('POST','/api/shop/purchase/'+id,{});
+    closeMo();toast('Échangé ! C\'est à toi 🎉','s');
+    goPage('aff-shop');
+  }catch(e){toast(e.message,'e');}
+}
+function openAddConv(){
+  Promise.all([api('GET','/api/users'),api('GET','/api/offers')]).then(([users,offers])=>{
+
+    document.getElementById('m-title').textContent='Ajouter une conversion';
+    const uOpts=users.map(u=>'<option value="'+u.id+'">'+u.name+'</option>').join('');
+    const oOpts=offers.filter(o=>o.active!==false).map(o=>'<option value="'+o.id+'">'+o.name+' ($'+o.commission+')</option>').join('');
+    document.getElementById('m-body').innerHTML='<div class="fi"><label>Affilié</label><select id="mc-user"><option value="">-- Choisir --</option>'+uOpts+'</select></div><div class="fi"><label>Offre</label><select id="mc-offer"><option value="">-- Choisir --</option>'+oOpts+'</select></div><div class="fi"><label>Montant ($)</label><input type="number" id="mc-amount" placeholder="Ex: 20" min="0" step="0.01"></div><div class="fi"><label>Statut</label><select id="mc-status"><option value="pending">⏳ En attente</option><option value="approved">✅ Approuvée directement</option></select></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doAddConv()" style="flex:1;justify-content:center">➕ Ajouter</button></div>';
+    document.getElementById('mo').classList.add('open');
+  }).catch(e=>toast(e.message,'e'));
+}
+async function doSendGift(){
+  const receiver_id=document.getElementById('gift-to').value;
+  const amount=parseFloat(document.getElementById('gift-amt').value);
+  const message=document.getElementById('gift-msg').value.trim();
+  if(!receiver_id){toast('Choisis un destinataire','e');return;}
+  if(!amount||amount<=0){toast('Montant invalide','e');return;}
+  if(amount>(ME.balance||0)){toast('Solde insuffisant','e');return;}
+  const btn=document.querySelector('.btn-grad[onclick="doSendGift()"]');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='⏳ Envoi en cours...';}
+  try{
+    await api('POST','/api/gifts',{receiver_id,amount,message});
+    ME.balance=(ME.balance||0)-amount;localStorage.setItem('affihub_user',JSON.stringify(ME));
+    toast('Cadeau envoyé 🎁','s');goPage('aff-gifts');
+  }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='🎁 Envoyer le cadeau';}}
+}
+async function doAddConv(){
+  const user_id=document.getElementById('mc-user').value;const offer_id=document.getElementById('mc-offer').value;const amount=parseFloat(document.getElementById('mc-amount').value);const status=document.getElementById('mc-status').value;
+  if(!user_id){toast('Choisissez un affilié','e');return;}if(!offer_id){toast('Choisissez une offre','e');return;}if(!amount||amount<=0){toast('Montant invalide','e');return;}
+  const btn=document.querySelector('#m-body .btn-grad');
+  if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='⏳ Ajout en cours...';}
+  try{await api('POST','/api/conversions/manual',{user_id,offer_id,amount,status});closeMo();toast('Conversion ajoutée ✓','s');goPage('admin-conv');}
+  catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='➕ Ajouter';}}
+}
+function doSortTop(by){
+  ['gains','conv','clicks','date'].forEach(k=>{const el=document.getElementById('sort-'+k);if(el)el.className='btn btn-'+(k===by?'grad':'gst')+' btn-sm';});
+  const ranking=window._topRanking||[];
+  const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
+  const sorted=[...ranking].sort((a,b)=>by==='gains'?b.totalGains-a.totalGains:by==='conv'?b.totalConversions-a.totalConversions:by==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
+  const tbody=document.getElementById('top-tbody');
+  if(tbody)tbody.innerHTML=sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12)+'<b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
+}
+async function toggleRanking(show){try{await api('PATCH','/api/me/ranking',{show});ME.show_ranking=show;localStorage.setItem('affihub_user',JSON.stringify(ME));toast(show?'Visible ✅':'Masqué 🚫',show?'s':'i');goPage('aff-settings');}catch(e){toast(e.message,'e');}}
+let AFF_CONVS_CACHE=[];
+function filterConv(btn,f){
+  document.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');
+  const list=f==='all'?AFF_CONVS_CACHE:AFF_CONVS_CACHE.filter(c=>c.status===f);
+  const rows=list.map(c=>'<tr><td style="color:var(--muted)">'+fmt(c.created_at)+'</td><td>'+(c.offers?.name||'?')+'</td><td><code style="font-size:11px;color:var(--muted)">'+c.link_id+'</code></td><td style="color:var(--yellow)">$'+c.amount+'</td><td>'+sbadge(c.status)+'</td></tr>').join('');
+  document.getElementById('ctable').innerHTML='<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎯 Offre</th><th>🔗 Lien</th><th>💰 Montant</th><th>📌 Statut</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted)">Aucune conversion</td></tr>')+'</tbody></table></div>';
+}
+async function toggleCategorySetting(category,enable){
+  try{await api('PATCH','/api/settings/category',{category,enabled:enable});toast(enable?'Activé ✅':'Désactivé 🔒',enable?'s':'i');goPage('admin-settings');}catch(e){toast(e.message,'e');}
+}
+async function savePostback(){
+  const url=document.getElementById('pb-url').value.trim();
+  try{await api('PATCH','/api/me/postback',{postback_url:url});ME.postback_url=url;localStorage.setItem('affihub_user',JSON.stringify(ME));toast('Postback enregistré ✓','s');}catch(e){toast(e.message,'e');}
+}
+async function saveDiscordId(){
+  const discordId=document.getElementById('discord-id-input').value.trim();
+  if(discordId && !/^\d{15,25}$/.test(discordId)){toast('ID Discord invalide (uniquement des chiffres)','e');return;}
+  try{await api('PATCH','/api/me/discord-id',{discord_id:discordId});ME.discord_id=discordId;localStorage.setItem('affihub_user',JSON.stringify(ME));toast('ID Discord enregistré ✓','s');}catch(e){toast(e.message,'e');}
+}
+async function saveAdminDiscordId(userId){
+  const discordId=document.getElementById('did-'+userId).value.trim();
+  if(discordId && !/^\d{15,25}$/.test(discordId)){toast('ID Discord invalide (uniquement des chiffres)','e');return;}
+  try{await api('PATCH','/api/admin/users/'+userId+'/discord-id',{discord_id:discordId});toast('ID Discord enregistré ✓','s');goPage('admin-discordid');}catch(e){toast(e.message,'e');}
+}
+async function removeAdminDiscordId(userId){
+  try{await api('PATCH','/api/admin/users/'+userId+'/discord-id',{discord_id:null});toast('ID Discord supprimé','s');goPage('admin-discordid');}catch(e){toast(e.message,'e');}
+}
+async function changePass(){
+  const cur=document.getElementById('cp-cur').value;const nw=document.getElementById('cp-new').value;const conf=document.getElementById('cp-conf').value;
+  if(!cur||!nw||!conf){toast('Remplissez tous les champs','e');return;}if(nw!==conf){toast('Mots de passe différents','e');return;}if(nw.length<6){toast('Minimum 6 caractères','e');return;}
+  try{await api('POST','/api/change-password',{current_password:cur,new_password:nw});toast('Mot de passe modifié ✓','s');document.getElementById('cp-cur').value='';document.getElementById('cp-new').value='';document.getElementById('cp-conf').value='';}catch(e){toast(e.message,'e');}
+}
+function previewImg(input,key){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('img-prev-'+key).style.display='block';document.getElementById('img-prev-img-'+key).src=e.target.result;document.getElementById('img-ph-'+key).style.display='none';};reader.readAsDataURL(file);}
+function previewLogo(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('logo-prev').style.display='block';document.getElementById('logo-prev-img').src=e.target.result;document.getElementById('logo-ph').style.display='none';};reader.readAsDataURL(file);}
+function previewAvatar(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('avatar-prev').style.display='block';document.getElementById('avatar-prev-img').src=e.target.result;document.getElementById('avatar-ph').style.display='none';};reader.readAsDataURL(file);}
+async function saveAvatar(){
+  const f=document.getElementById('avatar-file').files[0];if(!f){toast('Choisis une photo','e');return;}
+  try{
+    toast('Upload...','i');
+    const url=await uploadImg(f,'avatars');
+    await api('PATCH','/api/me/avatar',{avatar_url:url});
+    ME.avatar_url=url;localStorage.setItem('affihub_user',JSON.stringify(ME));
+    updateSidebarAvatar();
+    toast('Photo de profil mise à jour ✓','s');
+    goPage('aff-settings');
+  }catch(e){toast(e.message,'e');}
+}
+async function removeAvatar(){
+  try{await api('PATCH','/api/me/avatar',{avatar_url:null});ME.avatar_url=null;localStorage.setItem('affihub_user',JSON.stringify(ME));updateSidebarAvatar();toast('Photo retirée','s');goPage('aff-settings');}catch(e){toast(e.message,'e');}
+}
+function updateSidebarAvatar(){
+  const el=document.getElementById('u-avatar');if(!el)return;
+  el.outerHTML=avatarHtml(ME.name,ME.avatar_url,34,13,'').replace('class="avatar"','class="avatar" id="u-avatar"');
+}
+function previewReplyImg(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('reply-img-prev').style.display='block';document.getElementById('reply-img-prev-img').src=e.target.result;document.getElementById('reply-img-ph').style.display='none';};reader.readAsDataURL(file);}
+async function saveLogo(){
+  const f=document.getElementById('logo-file').files[0];if(!f){toast('Choisissez une image','e');return;}
+  try{toast('Upload...','i');const r=await fetch(SURL+'/storage/v1/object/settings/logo.png',{method:'POST',headers:{'Authorization':'Bearer '+SKEY,'Content-Type':f.type,'x-upsert':'true'},body:f});if(!r.ok)throw new Error('Upload échoué');const logoUrl=SURL+'/storage/v1/object/public/settings/logo.png';localStorage.setItem('affihub_logo',logoUrl);updateLogo(logoUrl);toast('Logo mis à jour ✓','s');goPage('admin-settings');}catch(e){toast(e.message,'e');}
+}
+function toggleCat(id){const div=document.getElementById(id);const key=id.replace('aff-cat-','').replace('adm-cat-','');const chev=document.getElementById('chev-'+id);if(!div)return;if(div.style.display==='none'){div.style.display='block';if(chev)chev.style.transform='rotate(90deg)';}else{div.style.display='none';if(chev)chev.style.transform='rotate(0deg)';}}
+function filterAffOffers(q){
+  q=q.trim().toLowerCase();
+  document.querySelectorAll('.aff-cat-locked').forEach(el=>{el.style.display=q?'none':'block';});
+  document.querySelectorAll('.aff-cat-section').forEach(section=>{
+    const cards=section.querySelectorAll('.aff-offer-card');
+    let anyVisible=false;
+    cards.forEach(card=>{
+      const match=!q||card.dataset.name.includes(q);
+      card.style.display=match?'':'none';
+      if(match)anyVisible=true;
+    });
+    section.style.display=anyVisible?'block':'none';
+    const catKey=section.dataset.cat;
+    const content=document.getElementById('aff-cat-'+catKey);
+    const chev=document.getElementById('chev-aff-cat-'+catKey);
+    if(content){
+      content.style.display=q?'block':'none';
+      if(chev)chev.style.transform=q?'rotate(90deg)':'rotate(0deg)';
+    }
+  });
+}
+function toggleAffLinks(id,card){const div=document.getElementById(id);const userId=id.replace('aff-links-','');const chevron=card.querySelector('.chevron-'+userId);if(!div)return;if(div.style.display==='none'){div.style.display='block';if(chevron)chevron.style.transform='rotate(90deg)';}else{div.style.display='none';if(chevron)chevron.style.transform='rotate(0deg)';}}
+function openCreateTicket(){
+  document.getElementById('m-title').textContent='Nouveau ticket';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Raison</label><select id="tk-reason"><option value="">-- Choisir --</option><option value="question">❓ Question</option><option value="bug">🐛 Bug</option><option value="payement">💸 Paiement</option><option value="compte">👤 Compte</option><option value="offre">🎯 Offre</option><option value="mes-liens">🔗 Mes liens</option><option value="suggestion">💡 Suggestion</option></select></div><div class="fi"><label>Message</label><textarea id="tk-content" placeholder="Décrivez votre problème..." style="resize:vertical;min-height:100px"></textarea></div><div class="fi"><label>Image (optionnel)</label><div style="border:2px dashed #333;border-radius:10px;padding:16px;text-align:center;cursor:pointer" onclick="document.getElementById(\'tk-img-file\').click()"><input type="file" id="tk-img-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewTkImg(this)"><div id="tk-img-prev" style="display:none;margin-bottom:8px"><img id="tk-img-prev-img" style="max-height:120px;border-radius:8px"></div><div id="tk-img-ph"><span style="font-size:20px">📎</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Ajouter une image</div></div></div></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="submitTicket()" style="flex:1;justify-content:center">📨 Envoyer</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+function previewTkImg(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('tk-img-prev').style.display='block';document.getElementById('tk-img-prev-img').src=e.target.result;document.getElementById('tk-img-ph').style.display='none';};reader.readAsDataURL(file);}
+async function submitTicket(){
+  const reason=document.getElementById('tk-reason').value;const content=document.getElementById('tk-content').value.trim();
+  if(!reason){toast('Choisissez une raison','e');return;}if(!content){toast('Décrivez votre problème','e');return;}
+  try{let imgUrl=null;const f=document.getElementById('tk-img-file').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'tickets');}
+  await api('POST','/api/tickets',{reason,content,image_url:imgUrl});closeMo();toast('Ticket créé ✓','s');goPage('aff-tickets');}catch(e){toast(e.message,'e');}
+}
+async function sendReply(ticketId){
+  const content=document.getElementById('reply-msg')?.value.trim()||'';const file=document.getElementById('reply-img-file')?.files[0];
+  if(!content&&!file){toast('Message ou image requis','e');return;}
+  try{let imgUrl=null;if(file){toast('Upload...','i');imgUrl=await uploadImg(file,'tickets');}
+  await api('POST','/api/tickets/'+ticketId+'/reply',{content,image_url:imgUrl});toast('Réponse envoyée ✓','s');goPage(curPage);}catch(e){toast(e.message,'e');}
+}
+async function closeMyTicket(id){document.getElementById('m-title').textContent='Fermer le ticket';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🔴</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Fermer ce ticket ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doCloseMyTicket('+id+')" style="flex:1">Fermer</button></div></div>';document.getElementById('mo').classList.add('open');}
+async function doCloseMyTicket(id){try{await api('PATCH','/api/tickets/'+id+'/status',{status:'closed'});closeMo();toast('Ticket fermé','s');goPage('aff-tickets');}catch(e){toast(e.message,'e');}}
+function escAttr(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+let discordCatFilter='all';
+function filterDiscordCat(cat){discordCatFilter=cat;goPage('aff-discord');}
+function copyDiscordLink(btn){
+  const link=btn.dataset.link;
+  navigator.clipboard.writeText(link).then(()=>toast('Lien copié ✓','s')).catch(()=>toast('Erreur copie','e'));
+}
+function openDiscordLink(btn){window.open(btn.dataset.link,'_blank');}
+let DISCORD_SERVERS_CACHE=[];
+async function submitDiscordServer(){
+  const name=document.getElementById('ds-name').value.trim();
+  const link=document.getElementById('ds-link').value.trim();
+  const editId=document.getElementById('ds-edit-id').value;
+  const cats=['casino','ia','dating','influenceuse'].filter(k=>document.getElementById('dcat-'+k).checked);
+  if(!name){toast('Nom requis','e');return;}
+  if(!link){toast('Lien requis','e');return;}
+  if(!cats.length){toast('Choisis au moins une catégorie','e');return;}
+  try{
+    if(editId){await api('PATCH','/api/discord-servers/'+editId,{name,categories:cats,link});toast('Serveur modifié ✓','s');}
+    else{await api('POST','/api/discord-servers',{name,categories:cats,link});toast('Serveur créé ✓','s');}
+    goPage('admin-discord');
+  }catch(e){toast(e.message,'e');}
+}
+function editDiscordServer(id){
+  const s=DISCORD_SERVERS_CACHE.find(x=>x.id===id);
+  if(!s)return;
+  document.getElementById('ds-name').value=s.name;
+  document.getElementById('ds-link').value=s.link;
+  document.getElementById('ds-edit-id').value=id;
+  ['casino','ia','dating','influenceuse'].forEach(k=>{document.getElementById('dcat-'+k).checked=(s.categories||'').split(',').includes(k);});
+  document.getElementById('discord-form-title').textContent='✏️ Modifier le serveur';
+  document.getElementById('ds-submit-btn').textContent='Enregistrer';
+  document.getElementById('ds-cancel-btn').style.display='inline-block';
+  window.scrollTo(0,0);
+}
+async function deleteDiscordServer(id){
+  if(!confirm('Supprimer ce serveur ?'))return;
+  try{await api('DELETE','/api/discord-servers/'+id);toast('Supprimé','s');goPage('admin-discord');}catch(e){toast(e.message,'e');}
+}
+function confirmDeleteTicket(id){document.getElementById('m-title').textContent='Supprimer le ticket';document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer ce ticket ?</div><div style="font-size:12px;color:var(--red);background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.2);border-radius:10px;padding:12px;margin-bottom:22px">⚠️ Action irréversible.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteTicket('+id+')" style="flex:1">Supprimer</button></div></div>';document.getElementById('mo').classList.add('open');}
+async function deleteTicket(id){try{await api('DELETE','/api/tickets/'+id);closeMo();toast('Ticket supprimé','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
+async function closeTicket(id,status){try{await api('PATCH','/api/tickets/'+id+'/status',{status});toast(status==='resolved'?'Ticket résolu ✅':'Ticket fermé 🔴','s');goPage('admin-tickets');}catch(e){toast(e.message,'e');}}
 
 // ── CUSTOM LINK REQUESTS ──
-app.get('/api/custom-requests', auth, async (req, res) => {
-  let query = supabase.from('custom_link_requests').select('*, users(name,email), offers(name), links(custom_slug,clicks)').order('created_at', { ascending: false });
-  if (req.user.role !== 'admin') query = query.eq('user_id', req.user.id);
-  const { data } = await query;
-  res.json(data || []);
-});
-
-app.post('/api/custom-requests', auth, async (req, res) => {
-  const { offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text } = req.body;
-  if (!server_name || !slogan || !tag1 || !tag2 || !tag3 || !salons) {
-    return res.status(400).json({ error: 'Tous les champs texte sont obligatoires' });
+async function openCustomRequest(offerId,offerName){
+  // Route to correct questionnaire based on offer ID
+  if(offerId===55){openStarOFRequest(offerId,offerName);return;}
+  const requests=await api('GET','/api/custom-requests');
+  const existing=requests.find(r=>r.offer_id===offerId&&r.status==='pending');const v=existing||{};
+  document.getElementById('m-title').textContent='🎨 Personnaliser — '+offerName;
+  document.getElementById('m-body').innerHTML=`
+    <div style="max-height:65vh;overflow-y:auto;padding-right:4px">
+      <div class="fi"><label>🎮 Nom du serveur Discord</label><input type="text" id="cr-name" placeholder="Ex: MonServeur" value="${v.server_name||''}"></div>
+      <div class="fi"><label>✨ Slogan</label><input type="text" id="cr-slogan" placeholder="Ex: Le meilleur serveur !" value="${v.slogan||''}"></div>
+      <div style="margin-bottom:15px"><label style="display:block;font-size:10px;font-weight:700;color:rgba(245,200,66,.8);margin-bottom:6px;text-transform:uppercase;letter-spacing:.8px">🏷️ 3 Étiquettes</label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+          <input type="text" id="cr-tag1" placeholder="Ex: Contenu inédit" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px;color:var(--text);font-family:inherit;font-size:12px;outline:none" value="${v.tag1||''}">
+          <input type="text" id="cr-tag2" placeholder="Ex: Communauté active" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px;color:var(--text);font-family:inherit;font-size:12px;outline:none" value="${v.tag2||''}">
+          <input type="text" id="cr-tag3" placeholder="Ex: Exclusif" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px;color:var(--text);font-family:inherit;font-size:12px;outline:none" value="${v.tag3||''}">
+        </div>
+      </div>
+      <div class="fi"><label>🖼️ Logo du serveur</label>
+        <div style="border:2px dashed #333;border-radius:10px;padding:14px;text-align:center;cursor:pointer" onclick="document.getElementById('cr-logo-file').click()">
+          <input type="file" id="cr-logo-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewCRFile(this,'cr-logo-prev')">
+          <div id="cr-logo-prev">${v.logo_url?'<img src="'+v.logo_url+'" style="max-height:80px;border-radius:8px">':'<span style="font-size:24px">📁</span><div style="font-size:12px;color:var(--muted);margin-top:4px">Importer le logo</div>'}</div>
+        </div>
+      </div>
+      <div class="fi"><label>📢 Salons à mettre en avant</label><input type="text" id="cr-salons" placeholder="Ex: #général, #annonces, #vip" value="${v.salons||''}"></div>
+      <div class="fi"><label>📝 Texte sur les photos</label><input type="text" id="cr-phototext" placeholder="Ex: Rejoins le serveur !" value="${v.photo_text||''}"></div>
+      <div class="fi">
+        <label style="display:flex;align-items:center;justify-content:space-between">
+          <span>📸 6 Photos</span>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0;font-weight:500">
+            <input type="checkbox" id="cr-blur" ${v.photos_blurred?'checked':''} style="width:14px;height:14px;accent-color:var(--yellow)"> Flouter les photos
+          </label>
+        </label>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px">
+          ${[1,2,3,4,5,6].map(i=>'<div style="border:2px dashed #333;border-radius:10px;padding:10px;text-align:center;cursor:pointer" onclick="document.getElementById(\'cr-photo'+i+'\').click()"><input type="file" id="cr-photo'+i+'" accept="image/*,.heic,.heif" style="display:none" onchange="previewCRFile(this,\'cr-photo'+i+'-prev\')"><div id="cr-photo'+i+'-prev">'+(v['photo'+i+'_url']?'<img src="'+v['photo'+i+'_url']+'" style="width:100%;height:60px;object-fit:cover;border-radius:6px">':'<div style="font-size:20px">📷</div><div style="font-size:10px;color:var(--muted)">Photo '+i+'</div>')+'</div></div>').join('')}
+        </div>
+      </div>
+      ${existing&&existing.custom_link?'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:12px;margin-bottom:16px"><div style="font-size:10px;color:var(--green);text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px">✅ Votre lien personnalisé</div><code style="font-size:12px;color:var(--green)">'+existing.custom_link+'</code></div>':''}
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>
+        <button class="btn btn-grad" onclick="submitCustomRequest(${offerId})" style="flex:1;justify-content:center">📨 Envoyer</button>
+      </div>
+    </div>`;
+  document.getElementById('mo').classList.add('open');
+}
+function previewCRFile(input,previewId){
+  const file=input.files[0];if(!file)return;
+  if(/\.heic$|\.heif$/i.test(file.name)||file.type==='image/heic'||file.type==='image/heif'){
+    toast('⚠️ Photo au format HEIC (iPhone) — elle ne s\'affichera pas correctement. Va dans Réglages > Appareil photo > Formats > choisis "Le plus compatible", puis reprends la photo.','e');
+    input.value='';
+    return;
   }
-  if (Number(offer_id) === 54) {
-    if (!logo_url || !photo_text) return res.status(400).json({ error: 'Logo et texte des photos obligatoires' });
-    if (!photo1_url || !photo2_url || !photo3_url || !photo4_url || !photo5_url || !photo6_url) {
-      return res.status(400).json({ error: 'Les 6 photos sont obligatoires' });
+  const reader=new FileReader();reader.onload=e=>{const prev=document.getElementById(previewId);if(prev)prev.innerHTML='<img src="'+e.target.result+'" style="width:100%;max-height:80px;object-fit:cover;border-radius:6px">';};reader.readAsDataURL(file);
+}
+async function openStarOFRequest(offerId,offerName){
+  const requests=await api('GET','/api/custom-requests');
+  const existing=requests.find(r=>r.offer_id===offerId&&r.status==='pending');const v=existing||{};
+  let photosHtml='';
+  for(let i=1;i<=5;i++){
+    const prevImg=v['photo'+i+'_url']?'<img src="'+v['photo'+i+'_url']+'" style="width:100%;height:50px;object-fit:cover;border-radius:6px">':'<div style="font-size:18px">📷</div><div style="font-size:9px;color:var(--muted)">Photo '+i+'</div>';
+    const fid='sf-photo'+i;
+    photosHtml+='<div style="border:2px dashed #333;border-radius:10px;padding:8px;text-align:center;cursor:pointer;aspect-ratio:1" onclick="document.getElementById(\'' +fid+ '\').click()"><input type="file" id="'+fid+'" accept="image/*,.heic,.heif" style="display:none" onchange="previewCRFile(this,\'' +fid+ '-prev\')"><div id="'+fid+'-prev">'+prevImg+'</div></div>';
+  }
+  const linkSection=existing&&existing.custom_link?'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:12px;margin-bottom:16px"><div style="font-size:10px;color:var(--green);text-transform:uppercase;margin-bottom:4px">✅ Votre lien</div><code style="font-size:12px;color:var(--green)">'+existing.custom_link+'</code></div>':'';
+  document.getElementById('m-title').textContent='📸 Personnaliser — '+offerName;
+  document.getElementById('m-body').innerHTML='<div style="max-height:65vh;overflow-y:auto;padding-right:4px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:15px"><div class="fi" style="margin-bottom:0"><label>👤 Prénom</label><input type="text" id="sf-prenom" placeholder="Ex: Lucie" value="'+(v.server_name||'')+'"></div><div class="fi" style="margin-bottom:0"><label>👤 Nom</label><input type="text" id="sf-nom" placeholder="Ex: Martin" value="'+(v.slogan||'')+'"></div></div>'
+    +'<div class="fi"><label>📝 Bio</label><textarea id="sf-bio" placeholder="Décris-toi en quelques mots..." style="resize:vertical;min-height:80px">'+(v.salons||'')+'</textarea></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:15px"><div class="fi" style="margin-bottom:0"><label>📦 Nb contenus</label><input type="number" id="sf-contenus" placeholder="Ex: 120" min="0" value="'+(v.tag1||'')+'"></div><div class="fi" style="margin-bottom:0"><label>🎥 Nb vidéos</label><input type="number" id="sf-videos" placeholder="Ex: 45" min="0" value="'+(v.tag2||'')+'"></div><div class="fi" style="margin-bottom:0"><label>❤️ Nb likes</label><input type="number" id="sf-likes" placeholder="Ex: 9500" min="0" value="'+(v.tag3||'')+'"></div></div>'
+    +'<div class="fi"><label>📸 5 Photos</label><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:6px">'+photosHtml+'</div></div>'
+    +linkSection
+    +'<div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="submitStarOFRequest('+offerId+')" style="flex:1;justify-content:center">📨 Envoyer</button></div>'
+    +'</div>';
+  document.getElementById('mo').classList.add('open');
+}
+
+async function submitStarOFRequest(offerId){
+  const prenom=document.getElementById('sf-prenom').value.trim();
+  const nom=document.getElementById('sf-nom').value.trim();
+  const bio=document.getElementById('sf-bio').value.trim();
+  const contenus=document.getElementById('sf-contenus').value.trim();
+  const videos=document.getElementById('sf-videos').value.trim();
+  const likes=document.getElementById('sf-likes').value.trim();
+  if(!prenom||!nom||!bio||!contenus||!videos||!likes){toast('Merci de remplir tous les champs texte','e');return;}
+  for(let i=1;i<=5;i++){
+    const hasPhoto=document.getElementById('sf-photo'+i).files[0]||document.getElementById('sf-photo'+i+'-prev').querySelector('img');
+    if(!hasPhoto){toast('Les 5 photos sont obligatoires (photo '+i+' manquante)','e');return;}
+  }
+  const btn=document.querySelector('#m-body .btn-grad');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Upload en cours... Ne quittez pas la page';}
+  toast('📤 Upload des photos en cours, ne quittez pas la page...','i');
+  try{
+    const photoUrls={};let uploaded=0;
+    for(let i=1;i<=5;i++){
+      const f=document.getElementById('sf-photo'+i).files[0];
+      if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}
+      else{const pi=document.getElementById('sf-photo'+i+'-prev').querySelector('img');if(pi)photoUrls['photo'+i+'_url']=pi.src;}
     }
-  } else if (Number(offer_id) === 55) {
-    if (!photo1_url || !photo2_url || !photo3_url || !photo4_url || !photo5_url) {
-      return res.status(400).json({ error: 'Les 5 photos sont obligatoires' });
+    toast('📨 Envoi de la demande...','i');
+    await api('POST','/api/custom-requests',{
+      offer_id:offerId,
+      server_name:prenom,
+      slogan:nom,
+      salons:bio,
+      tag1:contenus,
+      tag2:videos,
+      tag3:likes,
+      photos_blurred:false,
+      ...photoUrls
+    });
+    closeMo();goPage('aff-links');setTimeout(()=>toast('✅ Demande envoyée ! Notre équipe va la traiter rapidement.','s'),300);
+  }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='📨 Envoyer';}}
+}
+
+async function submitCustomRequest(offerId){
+  const name=document.getElementById('cr-name').value.trim();
+  const slogan=document.getElementById('cr-slogan').value.trim();
+  const tag1=document.getElementById('cr-tag1').value.trim();
+  const tag2=document.getElementById('cr-tag2').value.trim();
+  const tag3=document.getElementById('cr-tag3').value.trim();
+  const salons=document.getElementById('cr-salons').value.trim();
+  const phototext=document.getElementById('cr-phototext').value.trim();
+  if(!name||!slogan||!tag1||!tag2||!tag3||!salons||!phototext){toast('Merci de remplir tous les champs texte','e');return;}
+  const hasLogo=document.getElementById('cr-logo-file').files[0]||document.getElementById('cr-logo-prev').querySelector('img');
+  if(!hasLogo){toast('Le logo du serveur est obligatoire','e');return;}
+  for(let i=1;i<=6;i++){
+    const hasPhoto=document.getElementById('cr-photo'+i).files[0]||document.getElementById('cr-photo'+i+'-prev').querySelector('img');
+    if(!hasPhoto){toast('Les 6 photos sont obligatoires (photo '+i+' manquante)','e');return;}
+  }
+  // Show upload progress
+  const btn=document.querySelector('#m-body .btn-grad');
+  if(btn){btn.disabled=true;btn.textContent='⏳ Upload en cours... Ne quittez pas la page';}
+  toast('📤 Upload des photos en cours, ne quittez pas la page...','i');
+  try{
+    let logoUrl=null;const lf=document.getElementById('cr-logo-file').files[0];
+    if(lf){toast('📤 Upload logo...','i');logoUrl=await uploadImg(lf,'tickets');}
+    else{const li=document.getElementById('cr-logo-prev').querySelector('img');if(li)logoUrl=li.src;}
+    const photoUrls={};let uploaded=0;
+    for(let i=1;i<=6;i++){
+      const f=document.getElementById('cr-photo'+i).files[0];
+      if(f){uploaded++;toast('📤 Upload photo '+uploaded+'... Ne quittez pas la page','i');photoUrls['photo'+i+'_url']=await uploadImg(f,'tickets');}
+      else{const pi=document.getElementById('cr-photo'+i+'-prev').querySelector('img');if(pi)photoUrls['photo'+i+'_url']=pi.src;}
     }
-  }
-  const { data: offer } = await supabase.from('offers').select('name').eq('id', offer_id).single();
-  // Ne fusionne qu'avec une demande encore EN ATTENTE (pas déjà approuvée), pour permettre plusieurs liens perso au fil du temps
-  const { data: existing } = await supabase.from('custom_link_requests').select('id').eq('user_id', req.user.id).eq('offer_id', offer_id).eq('status', 'pending').single();
-  if (existing) {
-    const { data, error } = await supabase.from('custom_link_requests').update({ server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text, status: 'pending', updated_at: new Date() }).eq('id', existing.id).select().single();
-    if (error) return res.status(500).json({ error: error.message });
-    log(req.user.id, 'demande-lien-perso-mise-à-jour', req.user.name + ' a mis à jour sa demande pour "' + (offer?.name || '?') + '"', req);
-    await sendDiscordChannelMsg('1541198868019159051', '🎨 Demande de lien perso (mise à jour)', 0xa855f7, [
-      { name: '👤 Affilié', value: req.user.name, inline: true },
-      { name: '🎯 Offre', value: offer?.name || '?', inline: true },
-      { name: '🖥️ Serveur', value: server_name || '—', inline: true }
-    ], '<@1504481208266915861>');
-    return res.json(data);
-  }
-  const { data, error } = await supabase.from('custom_link_requests').insert({ user_id: req.user.id, offer_id, server_name, slogan, tag1, tag2, tag3, logo_url, salons, photo1_url, photo2_url, photo3_url, photo4_url, photo5_url, photo6_url, photos_blurred, photo_text }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'demande-lien-perso-créée', req.user.name + ' a créé une demande de lien perso pour "' + (offer?.name || '?') + '"', req);
-  await sendDiscordChannelMsg('1541198868019159051', '🎨 Nouvelle demande de lien perso !', 0xa855f7, [
-    { name: '👤 Affilié', value: req.user.name, inline: true },
-    { name: '🎯 Offre', value: offer?.name || '?', inline: true },
-    { name: '🖥️ Serveur', value: server_name || '—', inline: true }
-  ], '<@1504481208266915861>');
-  res.json(data);
-});
-
-app.patch('/api/custom-requests/:id/link', auth, adminOnly, async (req, res) => {
-  const { custom_link } = req.body;
-  if (!custom_link || !custom_link.trim()) return res.status(400).json({ error: 'Lien de destination requis' });
-  const { data: reqRow } = await supabase.from('custom_link_requests').select('user_id,offer_id').eq('id', req.params.id).single();
-  if (!reqRow) return res.status(404).json({ error: 'Demande introuvable' });
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  let linkId = ''; for (let i = 0; i < 6; i++) linkId += chars[Math.floor(Math.random() * chars.length)];
-  const { error: linkErr } = await supabase.from('links').insert({ id: linkId, user_id: reqRow.user_id, offer_id: reqRow.offer_id, custom_url: custom_link.trim(), clicks: 0, active: true });
-  if (linkErr) return res.status(500).json({ error: linkErr.message });
-  const trackedUrl = req.protocol + '://' + req.get('host') + '/go/' + linkId;
-  const { data, error } = await supabase.from('custom_link_requests').update({ custom_link: trackedUrl, link_id: linkId, status: 'approved', updated_at: new Date() }).eq('id', req.params.id).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  const { data: offer } = await supabase.from('offers').select('name').eq('id', reqRow.offer_id).single();
-  await supabase.from('notifications').insert({ user_id: reqRow.user_id, type: 'custom_link', message: '🎨 Ton lien personnalisé pour "' + (offer?.name || 'une offre') + '" a été envoyé, va le récupérer dans Mes liens !', read: false });
-  log(req.user.id, 'lien-perso-envoyé', 'Lien personnalisé envoyé pour l\'offre "' + (offer?.name || '?') + '"', req);
-  res.json(data);
-});
-
-app.delete('/api/custom-requests/:id', auth, adminOnly, async (req, res) => {
-  const { data: r } = await supabase.from('custom_link_requests').select('server_name,users(name)').eq('id', req.params.id).single();
-  await supabase.from('custom_link_requests').delete().eq('id', req.params.id);
-  log(req.user.id, 'lien-perso-demande-supprimée', 'Demande de lien perso "' + (r?.server_name || '?') + '" de ' + (r?.users?.name || '?') + ' supprimée', req);
-  res.json({ success: true });
-});
-
-// ── GLOBAL SETTINGS ──
-app.get('/api/settings/all', auth, async (req, res) => {
-  const { data } = await supabase.from('settings').select('*');
-  const obj = {};
-  (data || []).forEach(s => { obj[s.key] = s.value; });
-  res.json({
-    aff_links_enabled: obj.aff_links_enabled !== 'false',
-    cat_casino_enabled: obj.cat_casino_enabled !== 'false',
-    cat_dating_enabled: obj.cat_dating_enabled !== 'false',
-    cat_ia_enabled: obj.cat_ia_enabled !== 'false',
-    cat_autre_enabled: obj.cat_autre_enabled !== 'false',
-    cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true',
-    maintenance_mode: obj.maintenance_mode === 'true',
-    welcome_message: obj.welcome_message || '',
-    tokens_per_sale: obj.tokens_per_sale !== undefined ? (parseInt(obj.tokens_per_sale) || 0) : 5,
-    gift_tokens: obj.gift_tokens !== undefined ? (parseInt(obj.gift_tokens) || 0) : 5,
-    referral_milestone_count: obj.referral_milestone_count !== undefined ? (parseInt(obj.referral_milestone_count) || 5) : 5,
-    referral_milestone_tokens: obj.referral_milestone_tokens !== undefined ? (parseInt(obj.referral_milestone_tokens) || 0) : 10
+    toast('📨 Envoi de la demande...','i');
+    await api('POST','/api/custom-requests',{offer_id:offerId,server_name:name,slogan,tag1,tag2,tag3,logo_url:logoUrl,salons,photo_text:phototext,photos_blurred:document.getElementById('cr-blur').checked,...photoUrls});
+    closeMo();goPage('aff-links');setTimeout(()=>toast('✅ Demande envoyée ! Notre équipe va la traiter rapidement.','s'),300);
+  }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='📨 Envoyer';}}
+}
+function toggleCustomDetail(id){
+  const el=document.getElementById('custom-detail-'+id);
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+function filterCustomTreated(q){
+  q=q.trim().toLowerCase();
+  document.querySelectorAll('.custom-compact').forEach(el=>{
+    el.style.display=(!q||el.dataset.search.includes(q))?'block':'none';
   });
-});
-
-app.patch('/api/settings/maintenance', auth, adminOnly, async (req, res) => {
-  const { enabled } = req.body;
-  await supabase.from('settings').upsert({ key: 'maintenance_mode', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
-  log(req.user.id, 'maintenance-'+(enabled?'activée':'désactivée'), 'Mode maintenance '+(enabled?'activé':'désactivé'), req);
-  res.json({ success: true });
-});
-
-app.patch('/api/settings/welcome', auth, adminOnly, async (req, res) => {
-  const { message } = req.body;
-  await supabase.from('settings').upsert({ key: 'welcome_message', value: message || '' }, { onConflict: 'key' });
-  log(req.user.id, 'message-bienvenue-modifié', 'Message de bienvenue modifié', req);
-  res.json({ success: true });
-});
-
-app.patch('/api/settings/aff-links', auth, adminOnly, async (req, res) => {
-  const { enabled } = req.body;
-  await supabase.from('settings').upsert({ key: 'aff_links_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
-  log(req.user.id, 'reglage-mes-liens', 'Page "Mes liens" ' + (enabled ? 'activée' : 'désactivée'), req);
-  res.json({ success: true });
-});
-
-app.patch('/api/settings/category', auth, adminOnly, async (req, res) => {
-  const { category, enabled } = req.body;
-  const valid = ['casino', 'dating', 'ia', 'autre', 'influenceuse'];
-  if (!valid.includes(category)) return res.status(400).json({ error: 'Catégorie invalide' });
-  await supabase.from('settings').upsert({ key: 'cat_' + category + '_enabled', value: enabled ? 'true' : 'false' }, { onConflict: 'key' });
-  log(req.user.id, 'reglage-categorie', 'Catégorie "' + category + '" ' + (enabled ? 'activée' : 'désactivée'), req);
-  res.json({ success: true });
-});
+}
+async function sendCustomLink(id){const link=document.getElementById('clink-'+id)?.value.trim();if(!link){toast('Entre le lien','e');return;}try{await api('PATCH','/api/custom-requests/'+id+'/link',{custom_link:link});toast('Lien envoyé ✓','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
+async function deleteCustomReq(id){try{await api('DELETE','/api/custom-requests/'+id);toast('Supprimé','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
 
 
-// ── ANNOUNCEMENTS ──
-app.get('/api/announcements', auth, async (req, res) => {
-  if (req.user.role === 'admin') {
-    const { data } = await supabase.from('announcements').select('*, users!created_by(name)').order('created_at', { ascending: false });
-    return res.json(data || []);
-  }
-  const { data: read } = await supabase.from('announcements_read').select('announcement_id').eq('user_id', req.user.id);
-  const readIds = (read || []).map(r => r.announcement_id);
-  const { data: announcements } = await supabase.from('announcements').select('*').or('type.eq.global,target_user_id.eq.'+req.user.id).order('created_at', { ascending: false });
-  const unread = (announcements || []).filter(a => !readIds.includes(a.id));
-  res.json(unread);
-});
-app.post('/api/announcements', auth, adminOnly, async (req, res) => {
-  const { title, message, type, target_user_id } = req.body;
-  if (!title || !message) return res.status(400).json({ error: 'Titre et message requis' });
-  const { data, error } = await supabase.from('announcements').insert({ title, message, type: type || 'global', target_user_id: target_user_id || null, created_by: req.user.id }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'annonce-créée', 'Annonce "'+title+'" ('+(type||'global')+') créée', req);
-  res.json(data);
-});
-app.post('/api/announcements/:id/read', auth, async (req, res) => {
-  await supabase.from('announcements_read').upsert({ announcement_id: parseInt(req.params.id), user_id: req.user.id }, { onConflict: 'announcement_id,user_id' });
-  log(req.user.id, 'annonce-lue', 'Annonce #' + req.params.id + ' marquée comme lue', req);
-  res.json({ success: true });
-});
-app.delete('/api/announcements/:id', auth, adminOnly, async (req, res) => {
-  const { data: ann } = await supabase.from('announcements').select('title').eq('id', req.params.id).single();
-  await supabase.from('announcements_read').delete().eq('announcement_id', req.params.id);
-  await supabase.from('announcements').delete().eq('id', req.params.id);
-  log(req.user.id, 'annonce-supprimée', 'Annonce "'+(ann?.title||'#'+req.params.id)+'" supprimée', req);
-  res.json({ success: true });
-});
+// ── OFFER VISIBILITY ──
+async function openOfferVisibility(offerId, offerName) {
+  const [users, visIds] = await Promise.all([
+    api('GET', '/api/users'),
+    api('GET', '/api/offers/' + offerId + '/visibility')
+  ]);
+  const affiliates = users.filter(u => u.role !== 'admin');
+  const noneSelected = visIds.length === 0;
+  document.getElementById('m-title').textContent = '\U0001f441 Visibilit\u00e9 \u2014 ' + offerName;
+  const checkboxes = affiliates.map(u =>
+    '<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:10px;cursor:pointer;margin-bottom:6px">'
+    + '<input type="checkbox" class="vis-cb" data-uid="' + u.id + '" ' + (noneSelected || visIds.includes(u.id) ? 'checked' : '') + ' style="width:16px;height:16px;accent-color:var(--yellow)">'
+    + '<div style="flex:1"><div style="font-size:13px;font-weight:700">' + u.name + '</div><div style="font-size:11px;color:var(--muted)">' + u.email + '</div></div>'
+    + '</label>'
+  ).join('');
+  document.getElementById('m-body').innerHTML =
+    '<div style="margin-bottom:12px;font-size:12px;color:var(--muted)">Aucune s\u00e9lection = visible par <b style="color:var(--text)">tous</b>. S\u00e9lection = visible <b style="color:var(--yellow)">uniquement par eux</b>.</div>'
+    + '<div style="display:flex;gap:8px;margin-bottom:12px">'
+    + '<button class="btn btn-grad btn-sm" onclick="selectAllVis(true)">✅ Tout sélectionner</button>'
+    + '<button class="btn btn-gst btn-sm" onclick="selectAllVis(false)">❌ Tout désélectionner</button>'
+    + '</div>'
+    + '<div style="max-height:52vh;overflow-y:auto;margin-bottom:16px">' + (affiliates.length === 0 ? '<div class="empty"><p>Aucun affilié</p></div>' : checkboxes) + '</div>'
+    + '<div style="display:flex;gap:10px">'
+    + '<button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button>'
+    + '<button class="btn btn-grad" onclick="saveOfferVisibility(' + offerId + ')" style="flex:1;justify-content:center">💾 Sauvegarder</button>'
+    + '</div>';
+  document.getElementById('mo').classList.add('open');
+}
+function selectAllVis(check) {
+  document.querySelectorAll('.vis-cb').forEach(cb => cb.checked = check);
+}
+async function saveOfferVisibility(offerId) {
+  const all = [...document.querySelectorAll('.vis-cb')];
+  const allChecked = all.length > 0 && all.every(cb => cb.checked);
+  const noneChecked = all.every(cb => !cb.checked);
+  const user_ids = (allChecked || noneChecked) ? [] : all.filter(cb => cb.checked).map(cb => cb.dataset.uid);
+  try {
+    await api('PUT', '/api/offers/' + offerId + '/visibility', { user_ids });
+    closeMo();
+    const msg = user_ids.length === 0 ? 'Visible par tous ✅' : 'Visible par ' + user_ids.length + ' affilié(s) ✅';
+    toast(msg, 's');
+  } catch(e) { toast(e.message, 'e'); }
+}
 
-// ── LOGS ──
-app.get('/api/logs', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('activity_logs').select('*, users(name,email,role)').order('created_at', { ascending: false }).limit(500);
-  res.json(data || []);
-});
-app.delete('/api/logs/:id', auth, adminOnly, async (req, res) => {
-  await supabase.from('activity_logs').delete().eq('id', req.params.id);
-  log(req.user.id, 'log-supprimé', 'Entrée de log #' + req.params.id + ' supprimée', req);
-  res.json({ success: true });
-});
-app.delete('/api/logs', auth, adminOnly, async (req, res) => {
-  await supabase.from('activity_logs').delete().neq('id', 0);
-  log(req.user.id, 'logs-purgés', 'Historique des logs entièrement vidé', req);
-  res.json({ success: true });
-});
-
-// ── DISCORD SERVERS (bibliothèque de liens gérée par l'admin) ──
-app.get('/api/discord-servers', auth, async (req, res) => {
-  const { data } = await supabase.from('discord_servers').select('*').order('created_at', { ascending: false });
-  res.json(data || []);
-});
-app.post('/api/discord-servers', auth, adminOnly, async (req, res) => {
-  const { name, categories, link } = req.body;
-  if (!name || !name.trim()) return res.status(400).json({ error: 'Nom requis' });
-  if (!link || !link.trim()) return res.status(400).json({ error: 'Lien requis' });
-  if (!categories || !categories.length) return res.status(400).json({ error: 'Choisis au moins une catégorie' });
-  const cats = Array.isArray(categories) ? categories.join(',') : categories;
-  const { data, error } = await supabase.from('discord_servers').insert({ name: name.trim(), categories: cats, link: link.trim() }).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'discord-serveur-créé', 'Serveur Discord "' + name.trim() + '" créé', req);
-  res.json(data);
-});
-app.patch('/api/discord-servers/:id', auth, adminOnly, async (req, res) => {
-  const { name, categories, link } = req.body;
-  const update = {};
-  if (name !== undefined) update.name = name.trim();
-  if (link !== undefined) update.link = link.trim();
-  if (categories !== undefined) update.categories = Array.isArray(categories) ? categories.join(',') : categories;
-  const { data, error } = await supabase.from('discord_servers').update(update).eq('id', req.params.id).select().single();
-  if (error) return res.status(500).json({ error: error.message });
-  log(req.user.id, 'discord-serveur-modifié', 'Serveur Discord "' + (data?.name || '?') + '" modifié', req);
-  res.json(data);
-});
-app.delete('/api/discord-servers/:id', auth, adminOnly, async (req, res) => {
-  const { data: s } = await supabase.from('discord_servers').select('name').eq('id', req.params.id).single();
-  await supabase.from('discord_servers').delete().eq('id', req.params.id);
-  log(req.user.id, 'discord-serveur-supprimé', 'Serveur Discord "' + (s?.name || '?') + '" supprimé', req);
-  res.json({ success: true });
-});
+// ── UTILS ──
+function closeMo(){document.getElementById('mo').classList.remove('open');}
+document.getElementById('mo').addEventListener('click',function(e){if(e.target===this)closeMo();});
+var toastTimer;
+function toast(msg,type){const el=document.getElementById('toast');const ic={s:'✅',e:'❌',i:'💡'};el.innerHTML=(ic[type]||'💡')+' '+msg;el.className='show t'+(type||'i');el.classList.add(type==='s'?'ts':type==='e'?'te':'ti');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.className='';},3200);}
 
 // ── NOTIFICATIONS ──
-app.get('/api/notifications', auth, async (req, res) => {
-  const { data } = await supabase.from('notifications').select('*').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(20);
-  res.json(data || []);
+async function loadNotifs(){
+  if(!ME||ME.role==='admin')return;
+  try{
+    const notifs=await api('GET','/api/notifications');
+    const unread=notifs.filter(n=>!n.read).length;
+    const count=document.getElementById('notif-count');
+    if(count){if(unread>0){count.textContent=unread;count.style.display='block';}else{count.style.display='none';}}
+    const list=document.getElementById('notif-list');
+    if(list){
+      if(notifs.length===0){list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Aucune notification</div>';return;}
+      const icons={'withdrawal_paid':'💸','withdrawal_rejected':'❌','commission':'💰','custom_link':'🎨','collection_complete':'🎴'};
+      list.innerHTML=notifs.map(n=>'<div style="padding:12px 16px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-start;gap:10px;background:'+(n.read?'transparent':'rgba(245,200,66,.04)')+';cursor:pointer" onclick="deleteNotif('+n.id+',this)"><div style="font-size:18px;flex-shrink:0">'+(icons[n.type]||'📌')+'</div><div style="flex:1"><div style="font-size:12px;line-height:1.5">'+(n.message||'')+'</div><div style="font-size:10px;color:var(--muted);margin-top:3px">'+fmt(n.created_at)+'</div></div>'+(n.read?'':'<div style="width:6px;height:6px;border-radius:50%;background:var(--yellow);flex-shrink:0;margin-top:4px"></div>')+'</div>').join('');
+    }
+  }catch(e){}
+}
+function toggleNotifPanel(){
+  const panel=document.getElementById('notif-panel');
+  if(!panel)return;
+  const open=panel.style.display==='none';
+  panel.style.display=open?'block':'none';
+  if(open)loadNotifs();
+}
+document.addEventListener('click',function(e){
+  const panel=document.getElementById('notif-panel');
+  const btn=document.getElementById('notif-bell-btn');
+  if(panel&&btn&&!panel.contains(e.target)&&!btn.contains(e.target)){panel.style.display='none';}
 });
-app.patch('/api/notifications/read', auth, async (req, res) => {
-  await supabase.from('notifications').update({ read: true }).eq('user_id', req.user.id);
-  log(req.user.id, 'notifications-lues', 'Toutes les notifications marquées comme lues', req);
-  res.json({ success: true });
-});
-app.delete('/api/notifications/:id', auth, async (req, res) => {
-  await supabase.from('notifications').delete().eq('id', req.params.id).eq('user_id', req.user.id);
-  log(req.user.id, 'notification-supprimée', 'Notification #' + req.params.id + ' supprimée', req);
-  res.json({ success: true });
-});
+async function markNotifsRead(){
+  try{await api('PATCH','/api/notifications/read');loadNotifs();}catch(e){}
+}
+async function deleteNotif(id,el){
+  try{await api('DELETE','/api/notifications/'+id);if(el)el.remove();loadNotifs();}catch(e){}
+}
 
 // ── NOTES AFFILIÉS ──
-app.patch('/api/users/:id/note', auth, adminOnly, async (req, res) => {
-  const { note } = req.body;
-  const { data: u } = await supabase.from('users').select('name').eq('id', req.params.id).single();
-  await supabase.from('users').update({ admin_note: note }).eq('id', req.params.id);
-  log(req.user.id, 'note-admin-modifiée', 'Note admin ' + (note ? 'mise à jour' : 'supprimée') + ' pour ' + (u?.name || '#' + req.params.id), req);
-  res.json({ success: true });
-});
-
-// ── EXPORT CSV ──
-function toCSV(rows, headers) {
-  // Anti CSV-injection : si une cellule commence par = + - @ (déclencheur de formule dans
-  // Excel/Google Sheets), on préfixe d'une apostrophe pour forcer l'affichage en texte brut.
-  const sanitize = v => {
-    let s = String(v ?? '');
-    if (/^[=+\-@]/.test(s)) s = "'" + s;
-    return s;
-  };
-  const escape = v => '"' + sanitize(v).replace(/"/g, '""') + '"';
-  const DELIM = ';'; // Excel en français attend un point-virgule comme séparateur par défaut
-  const lines = [headers.map(escape).join(DELIM)];
-  rows.forEach(row => lines.push(headers.map(h => escape(row[h])).join(DELIM)));
-  // Le BOM UTF-8 (\uFEFF) en tête est indispensable pour qu'Excel affiche correctement
-  // les accents (é, à, ç...) au lieu de les afficher en caractères bizarres (Ã©, etc.)
-  return '\uFEFF' + lines.join('\r\n');
+function exportCSV(type){
+  fetch('/api/export/'+type,{headers:{'Authorization':'Bearer '+TOKEN}})
+    .then(r=>r.blob())
+    .then(blob=>{const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=type+'.csv';a.click();URL.revokeObjectURL(url);});
 }
-app.get('/api/export/affiliates', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('users').select('name,email,balance,referral_code,created_at,admin_note').neq('role', 'admin');
-  const csv = toCSV(data, ['name','email','balance','referral_code','created_at','admin_note']);
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="affilies.csv"');
-  res.send(csv);
-});
-app.get('/api/export/conversions', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('conversions').select('*, users(name,email), offers(name)').order('created_at', { ascending: false });
-  const rows = (data || []).map(c => ({ date: c.created_at?.split('T')[0], affilié: c.users?.name, email: c.users?.email, offre: c.offers?.name, montant: c.amount, statut: c.status, lien: c.link_id }));
-  const csv = toCSV(rows, ['date','affilié','email','offre','montant','statut','lien']);
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="conversions.csv"');
-  res.send(csv);
-});
-app.get('/api/export/withdrawals', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('withdrawals').select('*, users(name,email)').order('created_at', { ascending: false });
-  const rows = (data || []).map(w => ({ date: w.created_at?.split('T')[0], affilié: w.users?.name, email: w.users?.email, montant: w.amount, moyen: w.crypto, adresse: w.address, statut: w.status, raison: w.reason }));
-  const csv = toCSV(rows, ['date','affilié','email','montant','moyen','adresse','statut','raison']);
-  res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-  res.setHeader('Content-Disposition', 'attachment; filename="retraits.csv"');
-  res.send(csv);
-});
-
-// Liste minimale des autres affiliés (id + nom uniquement), utilisée pour choisir
-// un destinataire de cadeau. Pas de données sensibles (email, solde, etc.) exposées.
-app.get('/api/affiliates-list', auth, async (req, res) => {
-  const { data } = await supabase.from('users').select('id,name').eq('role', 'affiliate').neq('id', req.user.id).order('name');
-  res.json(data || []);
-});
-
-// ── CADEAUX ENTRE AFFILIÉS ──
-// Anti-doublon (même principe que pour les conversions manuelles) : évite qu'un double-clic
-// ou un double envoi réseau envoie deux fois le même cadeau.
-app.post('/api/gifts', auth, async (req, res) => {
-  const { receiver_id, amount, message } = req.body;
-  const amt = parseFloat(amount);
-  if (!receiver_id) return res.status(400).json({ error: 'Choisis un destinataire' });
-  if (!amt || amt <= 0) return res.status(400).json({ error: 'Montant invalide' });
-  if (receiver_id === req.user.id) return res.status(400).json({ error: 'Tu ne peux pas t\'envoyer un cadeau à toi-même' });
-  if (message && message.length > 200) return res.status(400).json({ error: 'Message trop long (200 caractères max)' });
-
-  const { data: sender } = await supabase.from('users').select('name,balance').eq('id', req.user.id).single();
-  if (!sender) return res.status(404).json({ error: 'Compte introuvable' });
-  if (sender.balance < amt) return res.status(400).json({ error: 'Solde insuffisant' });
-
-  const { data: receiver } = await supabase.from('users').select('name,balance,discord_id,role').eq('id', receiver_id).single();
-  if (!receiver || receiver.role !== 'affiliate') return res.status(404).json({ error: 'Destinataire introuvable' });
-
-  const tenSecondsAgo = new Date(Date.now() - 10 * 1000).toISOString();
-  const { data: recentDuplicate } = await supabase.from('gifts').select('id').eq('sender_id', req.user.id).eq('receiver_id', receiver_id).eq('amount', amt).gte('created_at', tenSecondsAgo).limit(1).maybeSingle();
-  if (recentDuplicate) return res.status(409).json({ error: 'Cadeau identique déjà envoyé il y a quelques secondes (doublon évité)' });
-
-  await supabase.from('users').update({ balance: sender.balance - amt }).eq('id', req.user.id);
-  await supabase.from('users').update({ balance: receiver.balance + amt }).eq('id', receiver_id);
-  const { data: gift } = await supabase.from('gifts').insert({ sender_id: req.user.id, receiver_id, amount: amt, message: message || null }).select().single();
-
-  log(req.user.id, 'cadeau-envoyé', sender.name + ' a envoyé $' + amt + ' à ' + receiver.name, req);
-  // Jetons pour l'envoi d'un cadeau
-  const giftTokensAmount = await getGiftTokens();
-  if (giftTokensAmount > 0) {
-    const { data: senderFresh } = await supabase.from('users').select('tokens').eq('id', req.user.id).single();
-    await supabase.from('users').update({ tokens: (senderFresh?.tokens || 0) + giftTokensAmount }).eq('id', req.user.id);
+function openNoteAff(userId,userName,currentNote){
+  document.getElementById('m-title').textContent='📝 Note — '+userName;
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Note privée (visible uniquement par vous)</label><textarea id="note-txt" placeholder="Ex: VIP, à surveiller, bon affilié..." style="resize:vertical;min-height:100px">'+currentNote+'</textarea></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="saveNote(\''+userId+'\')" style="flex:1;justify-content:center">💾 Sauvegarder</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+const CARD_CAT_META={casino:{icon:'🎰',label:'Casino',color:'#F5C842',rarity:'Légendaire'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF',rarity:'Rare'},dating:{icon:'💕',label:'Dating',color:'#F0427A',rarity:'Rare'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7',rarity:'Épique'},autre:{icon:'🎨',label:'Autre',color:'#00D68F',rarity:'Commune'}};
+async function openCollectionAdmin(userId, userName){
+  const coll=await api('GET','/api/admin/collection/'+userId);
+  const cards=coll.map(o=>{
+    const m=CARD_CAT_META[o.category]||CARD_CAT_META.autre;
+    if(o.unlocked){
+      return '<div style="border-radius:12px;background:linear-gradient(160deg,'+m.color+'22,#0d0d0d 60%);border:1px solid '+m.color+';padding:10px;text-align:center"><div style="font-size:11px;font-weight:800">'+o.name+'</div><div style="font-size:9px;color:'+m.color+'">'+m.icon+' '+m.rarity+'</div><div style="font-size:9px;color:var(--muted);margin-top:4px">'+(o.manual?'🔓 débloqué manuellement':'🏅 '+o.sales_count+' vente(s)')+'</div>'+(o.manual?'<button class="btn btn-gst btn-sm" style="margin-top:6px;font-size:10px" onclick="revokeCard(\''+userId+'\','+o.id+',\''+userName.replace(/'/g,"\\'")+'\')">Retirer</button>':'')+'</div>';
+    }
+    return '<div style="border-radius:12px;background:#0d0d0d;border:1px dashed #2a2a2a;padding:10px;text-align:center"><div style="font-size:20px;opacity:.3">🔒</div><div style="font-size:10px;color:var(--muted);margin-top:4px">'+o.name+'</div><button class="btn btn-grad btn-sm" style="margin-top:6px;font-size:10px" onclick="grantCard(\''+userId+'\','+o.id+',\''+userName.replace(/'/g,"\\'")+'\')">🔓 Débloquer</button></div>';
+  }).join('');
+  document.getElementById('m-title').textContent='🎴 Collection — '+userName;
+  document.getElementById('m-body').innerHTML='<div style="max-height:60vh;overflow-y:auto;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px">'+cards+'</div><button class="btn btn-gst" onclick="closeMo()" style="width:100%;justify-content:center">Fermer</button>';
+  document.getElementById('mo').classList.add('open');
+}
+async function grantCard(userId,offerId,userName){
+  try{await api('POST','/api/admin/grant-card',{user_id:userId,offer_id:offerId});toast('Carte débloquée ✓','s');openCollectionAdmin(userId,userName);}catch(e){toast(e.message,'e');}
+}
+async function revokeCard(userId,offerId,userName){
+  try{await api('DELETE','/api/admin/grant-card/'+userId+'/'+offerId);toast('Déblocage retiré','s');openCollectionAdmin(userId,userName);}catch(e){toast(e.message,'e');}
+}
+async function openPermissions(userId, userName){
+  const users=await api('GET','/api/users');
+  const u=users.find(x=>x.id===userId);
+  let currentPerms=[];
+  if(u?.admin_permissions&&u.admin_permissions!=='all'){
+    try{currentPerms=JSON.parse(u.admin_permissions);}catch(e){currentPerms=[];}
+  } else {
+    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-shop-settings','admin-logs','admin-discordid','admin-settings'];
   }
-  await supabase.from('notifications').insert({ user_id: receiver_id, type: 'gift_received', message: '🎁 ' + sender.name + ' t\'a envoyé $' + amt + (message ? ' : "' + message + '"' : '') + ' !', read: false });
-  if (receiver.discord_id) {
-    await sendDiscordDM(receiver.discord_id, '🎁 Tu as reçu un cadeau !', 0xF0427A, [
-      { name: '👤 De la part de', value: sender.name, inline: true },
-      { name: '💰 Montant', value: '$' + amt, inline: true },
-      ...(message ? [{ name: '💬 Message', value: message, inline: false }] : [])
-    ]);
+  const pages=[
+    {page:'admin-dash',label:'📊 Dashboard'},
+    {page:'admin-aff',label:'👥 Affiliés'},
+    {page:'admin-conv',label:'🔁 Conversions'},
+    {page:'admin-wd',label:'💸 Retraits'},
+    {page:'admin-ref',label:'🤝 Parrainages'},
+    {page:'admin-tickets',label:'🎫 Tickets'},
+    {page:'admin-discord',label:'💬 Serveurs Discord'},
+    {page:'admin-custom',label:'🎨 Liens personnalisés'},
+    {page:'aff-top',label:'🏆 TOP Affiliés'},
+    {page:'admin-offers',label:'🎯 Offres'},
+    {page:'admin-links',label:'🔗 Liens'},
+    {page:'admin-wheel',label:'🎡 Roue de la chance'},
+    {page:'admin-shop-settings',label:'🛍️ Boutique'},
+    {page:'admin-logs',label:'📋 Logs d\'activité'},
+    {page:'admin-discordid',label:'🆔 ID Discord'},
+    {page:'admin-settings',label:'⚙️ Paramètres'},
+  ];
+  const checkboxes=pages.map(p=>'<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--bg3);border-radius:10px;cursor:pointer;margin-bottom:6px"><input type="checkbox" id="perm-'+p.page+'" '+(currentPerms.includes(p.page)?'checked':'')+' style="width:16px;height:16px;accent-color:var(--yellow)"><span style="font-size:13px">'+p.label+'</span></label>').join('');
+  document.getElementById('m-title').textContent='🔐 Permissions — '+userName;
+  document.getElementById('m-body').innerHTML='<div style="max-height:60vh;overflow-y:auto;margin-bottom:16px">'+checkboxes+'</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="savePermissions(\''+userId+'\')" style="flex:1;justify-content:center">💾 Sauvegarder</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function savePermissions(userId){
+  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-shop-settings','admin-logs','admin-discordid','admin-settings'];
+  const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
+  try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
+}
+async function saveNote(userId){
+  const note=document.getElementById('note-txt').value.trim();
+  try{await api('PATCH','/api/users/'+userId+'/note',{note});closeMo();toast('Note sauvegardée ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
+}
+
+// ── OFFRES TOGGLE ──
+async function toggleOffer(id,active){
+  try{await api('PATCH','/api/offers/'+id,{active});toast(active?'Offre activée ✅':'Offre désactivée 🚫',active?'s':'i');goPage('admin-offers');}catch(e){toast(e.message,'e');}
+}
+
+// ── LOGS ──
+let ADMIN_LOGS_CACHE=[];
+function renderLogsTable(logs){
+  if(logs.length===0)return '<div class="empty"><p>Aucun résultat pour ce filtre</p></div>';
+  const actionIcon={'login':'🔐','inscription':'🆕','logout':'👋'};
+  const fmtLocal=d=>{if(!d)return '—';const dt=new Date(new Date(d).getTime()+2*60*60*1000);return dt.toLocaleDateString('fr-FR')+' '+dt.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});};
+  const rows=logs.map(l=>'<tr><td style="color:var(--muted);white-space:nowrap;font-size:12px">'+fmtLocal(l.created_at)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:26px;height:26px;font-size:11px">'+(l.users?.name||'?')[0]+'</div><div><div style="font-size:12px;font-weight:700">'+(l.users?.name||'?')+'</div><div style="font-size:10px;color:var(--muted)">'+(l.users?.role==='admin'?'👑 Admin':'⚡ Affilié')+'</div></div></div></td><td><span class="badge bb2">'+(actionIcon[l.action]||'📌')+' '+l.action+'</span></td><td style="font-size:11px;color:var(--muted)">'+(l.details||'—')+'</td><td style="font-size:11px;color:var(--muted);font-family:monospace">'+(l.ip||'—')+'</td><td><button class="btn btn-red btn-sm" onclick="deleteLog('+l.id+')">🗑</button></td></tr>').join('');
+  return '<div class="tw"><table><thead><tr><th>📅 Date/Heure</th><th>👤 Utilisateur</th><th>⚡ Action</th><th>📝 Détails</th><th>🌐 IP</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+}
+function filterLogs(){
+  const action=document.getElementById('log-filter-action').value;
+  const adminId=document.getElementById('log-filter-admin').value;
+  let list=ADMIN_LOGS_CACHE;
+  if(action)list=list.filter(l=>l.action===action);
+  if(adminId)list=list.filter(l=>l.user_id===adminId);
+  document.getElementById('logs-table-wrap').innerHTML=renderLogsTable(list);
+}
+async function deleteLog(id){
+  try{await api('DELETE','/api/logs/'+id);goPage('admin-logs');}catch(e){toast(e.message,'e');}
+}
+async function clearAllLogs(){
+  document.getElementById('m-title').textContent='Effacer tous les logs';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Effacer tous les logs ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="doClrLogs()" style="flex:1">Tout effacer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doClrLogs(){
+  try{await api('DELETE','/api/logs');closeMo();toast('Logs effacés','s');goPage('admin-logs');}catch(e){toast(e.message,'e');}
+}
+
+// ── MAINTENANCE & WELCOME ──
+async function toggleMaintenance(enable){
+  try{await api('PATCH','/api/settings/maintenance',{enabled:enable});toast(enable?'🔧 Maintenance activée':'✅ Site remis en ligne',enable?'i':'s');goPage('admin-settings');}catch(e){toast(e.message,'e');}
+}
+async function saveWelcomeMsg(){
+  const msg=document.getElementById('welcome-msg')?.value.trim();
+  try{await api('PATCH','/api/settings/welcome',{message:msg});toast('Message sauvegardé ✓','s');}catch(e){toast(e.message,'e');}
+}
+
+// ── INIT ──
+if(TOKEN&&ME){if(ME.must_change_password){showForcePasswordScreen();}else{startApp();}}else{showLanding();}
+const urlParams=new URLSearchParams(window.location.search);const refCode=urlParams.get('ref');
+if(refCode){switchTab('register');setTimeout(()=>{const el=document.getElementById('r-ref');if(el){el.value=refCode;el.style.borderColor='var(--yellow)';}},100);}
+
+function toggleFaq(el){
+  const isOpen=el.classList.contains('open');
+  document.querySelectorAll('.faq-item').forEach(i=>i.classList.remove('open'));
+  if(!isOpen)el.classList.add('open');
+}
+function showCGU(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('cgu-page').style.display='block';
+  document.getElementById('cgu-date').textContent='19 août 2026';
+  window.scrollTo(0,0);
+}
+function hideCGU(){
+  document.getElementById('cgu-page').style.display='none';
+  document.getElementById('landing').style.display='block';
+}
+function showLanding(){
+  const hasRef=new URLSearchParams(window.location.search).get('ref');
+  if(hasRef){showAuthRegister();return;}
+  document.getElementById('landing').style.display='block';
+  document.getElementById('auth-screen').style.display='none';
+  document.getElementById('cgu-page').style.display='none';
+  history.pushState({page:'landing'},'','');
+  setTimeout(()=>updateLogoLanding(),200);
+}
+function updateLogoLanding(){
+  const img=document.getElementById('land-logo-img');const emoji=document.getElementById('land-logo-emoji');
+  if(img&&LOGO_URL){img.src=LOGO_URL+'?t='+Date.now();img.style.display='block';if(emoji)emoji.style.display='none';}
+}
+function showAuth(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  history.pushState({page:'auth'},'','');
+}
+function showAuthRegister(){
+  document.getElementById('landing').style.display='none';
+  document.getElementById('auth-screen').style.display='flex';
+  switchTab('register');
+  history.pushState({page:'auth'},'','');
+}
+window.addEventListener('popstate',function(e){
+  if(!TOKEN&&!ME){
+    document.getElementById('landing').style.display='block';
+    document.getElementById('auth-screen').style.display='none';
+    document.getElementById('app').style.display='none';
   }
-  res.json(gift);
 });
 
-// Historique des cadeaux (envoyés + reçus) de l'utilisateur connecté
-app.get('/api/gifts', auth, async (req, res) => {
-  const { data: sent } = await supabase.from('gifts').select('*, receiver:receiver_id(name)').eq('sender_id', req.user.id).order('created_at', { ascending: false });
-  const { data: received } = await supabase.from('gifts').select('*, sender:sender_id(name)').eq('receiver_id', req.user.id).order('created_at', { ascending: false });
-  res.json({ sent: sent || [], received: received || [] });
-});
+// Ripple effect
+document.addEventListener('click',function(e){const btn=e.target.closest('.btn-grad');if(!btn)return;const r=document.createElement('span');r.className='ripple';const rect=btn.getBoundingClientRect();const size=Math.max(rect.width,rect.height)*2;r.style.cssText='width:'+size+'px;height:'+size+'px;left:'+(e.clientX-rect.left-size/2)+'px;top:'+(e.clientY-rect.top-size/2)+'px';btn.appendChild(r);setTimeout(()=>r.remove(),600);});
 
+// PWA Service Worker
+if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js').catch(()=>{});}
 
-app.use((req, res) => {
-  if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route introuvable' });
-  res.redirect('/');
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`AffiHub running on port ${PORT}`));
+// Particles
+(function(){const canvas=document.getElementById('particles-canvas');if(!canvas)return;const ctx=canvas.getContext('2d');let particles=[];function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}resize();window.addEventListener('resize',resize);function cp(){return{x:Math.random()*canvas.width,y:canvas.height+10,size:Math.random()*2.5+.5,speedY:Math.random()*1.2+.4,speedX:(Math.random()-.5)*.6,opacity:Math.random()*.4+.1,color:Math.random()>.5?'245,200,66':'240,66,122'};}for(let i=0;i<35;i++){const p=cp();p.y=Math.random()*canvas.height;particles.push(p);}function animate(){ctx.clearRect(0,0,canvas.width,canvas.height);if(particles.length<50&&Math.random()<.04)particles.push(cp());particles=particles.filter(p=>{p.y-=p.speedY;p.x+=p.speedX;ctx.save();ctx.globalAlpha=p.opacity;ctx.fillStyle='rgba('+p.color+',1)';ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();ctx.restore();return p.y>-20;});requestAnimationFrame(animate);}animate();})();
+</script>
+</body>
+</html>
