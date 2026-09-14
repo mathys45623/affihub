@@ -1343,12 +1343,13 @@ app.get('/api/me/streak', auth, async (req, res) => {
 // en base (table settings, clé 'wheel_segments'). Ces valeurs par défaut ne servent que
 // tant que l'admin n'a jamais rien personnalisé.
 const DEFAULT_WHEEL_SEGMENTS = [
-  { reward: 0, weight: 20, label: 'Perdu' },
-  { reward: 1, weight: 30, label: '$1' },
-  { reward: 2, weight: 20, label: '$2' },
-  { reward: 5, weight: 15, label: '$5' },
-  { reward: 10, weight: 10, label: '$10' },
-  { reward: 25, weight: 5, label: '$25 JACKPOT' }
+  { reward: 0, weight: 20, label: 'Perdu', type: 'money' },
+  { reward: 1, weight: 30, label: '$1', type: 'money' },
+  { reward: 2, weight: 20, label: '$2', type: 'money' },
+  { reward: 5, weight: 15, label: '$5', type: 'money' },
+  { reward: 10, weight: 10, label: '$10', type: 'money' },
+  { reward: 20, weight: 8, label: '20 🪙', type: 'tokens' },
+  { reward: 25, weight: 5, label: '$25 JACKPOT', type: 'money' }
 ];
 async function getWheelSegments() {
   try {
@@ -1356,7 +1357,9 @@ async function getWheelSegments() {
     if (!data?.value) return DEFAULT_WHEEL_SEGMENTS;
     const parsed = JSON.parse(data.value);
     if (!Array.isArray(parsed) || parsed.length < 2) return DEFAULT_WHEEL_SEGMENTS;
-    return parsed;
+    // Rétrocompatibilité : les anciens segments enregistrés avant l'ajout du système
+    // de jetons n'ont pas de champ "type" — on les considère comme des gains en $.
+    return parsed.map(s => ({ ...s, type: s.type === 'tokens' ? 'tokens' : 'money' }));
   } catch (e) { return DEFAULT_WHEEL_SEGMENTS; }
 }
 function getMondayOf(date) {
@@ -1380,7 +1383,7 @@ app.get('/api/me/wheel', auth, async (req, res) => {
   const monday = getMondayOf(new Date());
   const weekKey = monday.toISOString().slice(0, 10);
   const [{ data: user }, { count: salesThisWeek }, segments] = await Promise.all([
-    supabase.from('users').select('last_wheel_week,last_wheel_reward').eq('id', req.user.id).single(),
+    supabase.from('users').select('last_wheel_week,last_wheel_reward,last_wheel_reward_type').eq('id', req.user.id).single(),
     supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString()),
     getWheelSegments()
   ]);
@@ -1389,25 +1392,31 @@ app.get('/api/me/wheel', auth, async (req, res) => {
     eligible: (salesThisWeek || 0) >= 1,
     alreadySpun: user?.last_wheel_week === weekKey,
     lastReward: user?.last_wheel_week === weekKey ? user.last_wheel_reward : null,
+    lastRewardType: user?.last_wheel_week === weekKey ? (user.last_wheel_reward_type || 'money') : null,
     nextResetAt: nextMonday.toISOString(),
-    segments: segments.map(s => ({ label: s.label, reward: s.reward })) // le poids reste caché aux affiliés
+    segments: segments.map(s => ({ label: s.label, reward: s.reward, type: s.type })) // le poids reste caché aux affiliés
   });
 });
 app.post('/api/me/wheel/spin', auth, async (req, res) => {
   const monday = getMondayOf(new Date());
   const weekKey = monday.toISOString().slice(0, 10);
-  const { data: user } = await supabase.from('users').select('balance,last_wheel_week').eq('id', req.user.id).single();
+  const { data: user } = await supabase.from('users').select('balance,tokens,last_wheel_week').eq('id', req.user.id).single();
   if (user?.last_wheel_week === weekKey) return res.status(409).json({ error: 'Tu as déjà tourné la roue cette semaine' });
   const { count: salesThisWeek } = await supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString());
   if (!salesThisWeek) return res.status(403).json({ error: 'Fais au moins une vente cette semaine pour débloquer la roue' });
 
   const segments = await getWheelSegments();
   const segmentIndex = pickWeightedSegment(segments);
-  const reward = segments[segmentIndex].reward;
-  await supabase.from('users').update({ balance: user.balance + reward, last_wheel_week: weekKey, last_wheel_reward: reward }).eq('id', req.user.id);
-  await supabase.from('wheel_spins').insert({ user_id: req.user.id, reward, label: segments[segmentIndex].label });
-  log(req.user.id, 'roue-tournée', req.user.name + ' a tourné la roue et gagné $' + reward, req);
-  res.json({ segmentIndex, reward });
+  const seg = segments[segmentIndex];
+  const reward = seg.reward;
+  const isTokens = seg.type === 'tokens';
+  const updates = { last_wheel_week: weekKey, last_wheel_reward: reward, last_wheel_reward_type: seg.type };
+  if (isTokens) updates.tokens = (user.tokens || 0) + reward;
+  else updates.balance = user.balance + reward;
+  await supabase.from('users').update(updates).eq('id', req.user.id);
+  await supabase.from('wheel_spins').insert({ user_id: req.user.id, reward, label: seg.label, reward_type: seg.type });
+  log(req.user.id, 'roue-tournée', req.user.name + ' a tourné la roue et gagné ' + (isTokens ? reward + ' 🪙 jetons' : '$' + reward), req);
+  res.json({ segmentIndex, reward, type: seg.type });
 });
 
 // Panel admin : consulter/modifier les segments de la roue
@@ -1424,7 +1433,7 @@ app.patch('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
     if (typeof s.reward !== 'number' || s.reward < 0) return res.status(400).json({ error: 'Montant invalide (doit être ≥ 0)' });
     if (typeof s.weight !== 'number' || s.weight <= 0) return res.status(400).json({ error: 'Probabilité invalide (doit être > 0)' });
   }
-  const cleaned = segments.map(s => ({ label: s.label.trim(), reward: s.reward, weight: s.weight }));
+  const cleaned = segments.map(s => ({ label: s.label.trim(), reward: s.reward, weight: s.weight, type: s.type === 'tokens' ? 'tokens' : 'money' }));
   await supabase.from('settings').upsert({ key: 'wheel_segments', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
   log(req.user.id, 'roue-configurée', 'Segments de la roue de la chance mis à jour (' + cleaned.length + ' segments)', req);
   res.json({ success: true });
@@ -1432,7 +1441,7 @@ app.patch('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
 
 // Historique des tirages de l'affilié connecté
 app.get('/api/me/wheel-history', auth, async (req, res) => {
-  const { data } = await supabase.from('wheel_spins').select('reward,label,created_at').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(30);
+  const { data } = await supabase.from('wheel_spins').select('reward,label,created_at,reward_type').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(30);
   res.json(data || []);
 });
 
@@ -1452,7 +1461,7 @@ app.patch('/api/me/avatar', auth, async (req, res) => {
 const DEFAULT_TOKEN_METHODS = [
   { id: 'm1', icon: '🔁', title: 'Réaliser une vente', description: 'Chaque conversion approuvée te rapporte des jetons en plus de ta commission.', tokens: 5, active: true },
   { id: 'm2', icon: '🔥', title: 'Garder ta série active', description: 'Vends chaque jour pour faire grimper ta série et gagner des jetons bonus.', tokens: 10, active: true },
-  { id: 'm3', icon: '🎡', title: 'Tourner la roue de la chance', description: 'Certains lots de la roue hebdomadaire peuvent te rapporter des jetons.', tokens: 0, active: true }
+  { id: 'm3', icon: '🎡', title: 'Tourner la roue de la chance', description: 'Un tour gratuit chaque semaine (si tu as fait une vente) — certains lots rapportent directement des jetons.', tokens: 0, active: true }
 ];
 async function getTokenMethods() {
   try {
