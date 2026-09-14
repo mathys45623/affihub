@@ -1210,13 +1210,15 @@ app.patch('/api/me/ranking', auth, async (req, res) => {
 });
 
 // ── BADGES ──
-// Calculés à la volée à partir des données existantes (pas de table dédiée nécessaire).
+// Calculés à la volée à partir des données existantes (pas de table dédiée nécessaire),
+// donc automatiquement à jour pour les affiliés qui ont déjà fait ces actions par le passé.
 app.get('/api/me/badges', auth, async (req, res) => {
   const { data: convs } = await supabase.from('conversions').select('amount,created_at').eq('user_id', req.user.id).eq('status', 'approved');
   const { count: referralCount } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', req.user.id);
-  const { data: me } = await supabase.from('users').select('created_at').eq('id', req.user.id).single();
-  const { data: allAffiliates } = await supabase.from('users').select('id,created_at').eq('role', 'affiliate').order('created_at', { ascending: true });
-  const rank = (allAffiliates || []).findIndex(a => a.id === req.user.id) + 1;
+  const { count: bigGiftCount } = await supabase.from('gifts').select('id', { count: 'exact', head: true }).eq('sender_id', req.user.id).gte('amount', 5);
+  const { count: paidWithdrawals } = await supabase.from('withdrawals').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'paid');
+  const { count: linksCount } = await supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id);
+  const { count: customLinksCount } = await supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).not('custom_slug', 'is', null);
 
   const salesCount = (convs || []).length;
   const totalGains = (convs || []).reduce((s, c) => s + c.amount, 0);
@@ -1238,7 +1240,12 @@ app.get('/api/me/badges', auth, async (req, res) => {
     { id: 'gains_1000', icon: '🤑', label: '$1000 cumulés', desc: 'Atteins $1000 de gains au total', unlocked: totalGains >= 1000, progress: Math.min(totalGains, 1000), target: 1000 },
     { id: 'super_parrain', icon: '🏆', label: 'Super Parrain', desc: 'Parraine 5 affiliés', unlocked: (referralCount || 0) >= 5, progress: Math.min(referralCount || 0, 5), target: 5 },
     { id: 'streak_7', icon: '🔥', label: 'Série de 7 jours', desc: '7 jours d\'affilée avec au moins une vente', unlocked: bestStreak >= 7, progress: Math.min(bestStreak, 7), target: 7 },
-    { id: 'early_bird', icon: '🐦', label: 'Early Bird', desc: 'Fais partie des 20 premiers affiliés inscrits', unlocked: rank > 0 && rank <= 20, progress: rank > 0 && rank <= 20 ? 1 : 0, target: 1 }
+    { id: 'gift_5', icon: '🎁', label: 'Généreux', desc: 'Envoie $5 ou plus à un autre affilié', unlocked: (bigGiftCount || 0) >= 1, progress: Math.min(bigGiftCount || 0, 1), target: 1 },
+    { id: 'withdrawal_1', icon: '💵', label: 'Premier retrait', desc: 'Fais ton premier retrait', unlocked: (paidWithdrawals || 0) >= 1, progress: Math.min(paidWithdrawals || 0, 1), target: 1 },
+    { id: 'withdrawal_5', icon: '💸', label: '5 retraits', desc: 'Fais 5 retraits', unlocked: (paidWithdrawals || 0) >= 5, progress: Math.min(paidWithdrawals || 0, 5), target: 5 },
+    { id: 'withdrawal_10', icon: '🏦', label: '10 retraits', desc: 'Fais 10 retraits', unlocked: (paidWithdrawals || 0) >= 10, progress: Math.min(paidWithdrawals || 0, 10), target: 10 },
+    { id: 'first_link', icon: '🔗', label: 'Premier lien', desc: 'Crée ton premier lien', unlocked: (linksCount || 0) >= 1, progress: Math.min(linksCount || 0, 1), target: 1 },
+    { id: 'custom_link', icon: '🎨', label: 'Sur-mesure', desc: 'Personnalise ton premier lien', unlocked: (customLinksCount || 0) >= 1, progress: Math.min(customLinksCount || 0, 1), target: 1 }
   ];
   res.json({ badges, unlockedCount: badges.filter(b => b.unlocked).length, total: badges.length });
 });
