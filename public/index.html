@@ -829,7 +829,8 @@ const WHEEL_PALETTE=[
   {from:'#FF8A80',to:'#D32F2F',text:'#fff'}
 ];
 const WHEEL_LOSE_COLOR={from:'#3a3a3a',to:'#1a1a1a',text:'#888'};
-function colorForWheelSegment(seg,i){ return seg.reward===0 ? WHEEL_LOSE_COLOR : WHEEL_PALETTE[i%WHEEL_PALETTE.length]; }
+const WHEEL_TOKEN_COLOR={from:'#FFE08A',to:'#C99400',text:'#000'};
+function colorForWheelSegment(seg,i){ return seg.reward===0 ? WHEEL_LOSE_COLOR : seg.type==='tokens' ? WHEEL_TOKEN_COLOR : WHEEL_PALETTE[i%WHEEL_PALETTE.length]; }
 function buildWheelSegments(segments){
   const n=segments.length,segAngle=360/n,cx=100,cy=100,r=95;
   const pt=(angleDeg,radius)=>{const a=(angleDeg-90)*Math.PI/180;return [cx+radius*Math.cos(a),cy+radius*Math.sin(a)];};
@@ -883,6 +884,7 @@ async function spinWheel(){
   if(btn){if(btn.disabled)return;btn.disabled=true;btn.textContent='⏳ Ça tourne...';btn.classList.remove('wheel-spin-btn');}
   try{
     const r=await api('POST','/api/me/wheel/spin');
+    const isTokens=r.type==='tokens';
     const segAngle=360/CURRENT_WHEEL_SEGMENTS.length;
     const targetCenter=r.segmentIndex*segAngle+segAngle/2;
     const finalRotation=5*360+(360-targetCenter);
@@ -890,13 +892,17 @@ async function spinWheel(){
     if(svg)svg.style.transform='rotate('+finalRotation+'deg)';
     setTimeout(()=>{
       const resultEl=document.getElementById('wheel-result');
+      const rewardLabel=isTokens?r.reward+' 🪙 jeton'+(r.reward>1?'s':''):'$'+r.reward;
       if(resultEl){
         resultEl.className='wheel-result-pop';
-        if(r.reward>0){resultEl.innerHTML='<span style="color:var(--yellow);font-size:20px">🎉 Tu as gagné $'+r.reward+' !</span>';spawnConfetti();}
+        if(r.reward>0){resultEl.innerHTML='<span style="color:var(--yellow);font-size:20px">🎉 Tu as gagné '+rewardLabel+' !</span>';spawnConfetti();}
         else{resultEl.innerHTML='<span style="color:var(--muted)">😢 Pas de chance cette fois — retente la semaine prochaine !</span>';}
       }
-      if(r.reward>0){ME.balance=(ME.balance||0)+r.reward;localStorage.setItem('affihub_user',JSON.stringify(ME));}
-      toast(r.reward>0?'🎁 Roue gagnée : $'+r.reward:'Roue tournée','s');
+      if(r.reward>0){
+        if(isTokens)ME.tokens=(ME.tokens||0)+r.reward;else ME.balance=(ME.balance||0)+r.reward;
+        localStorage.setItem('affihub_user',JSON.stringify(ME));
+      }
+      toast(r.reward>0?'🎁 Roue gagnée : '+rewardLabel:'Roue tournée','s');
       setTimeout(()=>goPage('aff-wheel'),1600);
     },4600);
   }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='🎡 Tourner la roue';btn.classList.add('wheel-spin-btn');}}
@@ -1255,10 +1261,11 @@ async function renderPage(page){
     const resetDate=new Date(w.nextResetAt);
     const resetStr=resetDate.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
     CURRENT_WHEEL_SEGMENTS=w.segments||[];
-    const histRows=history.map(h=>'<tr><td style="color:var(--muted)">'+fmt(h.created_at)+'</td><td>'+esc(h.label||'—')+'</td><td style="font-weight:800;text-align:right;color:'+(h.reward>0?'var(--green)':'var(--muted)')+'">'+(h.reward>0?'+$'+h.reward:'—')+'</td></tr>').join('');
+    const histRows=history.map(h=>{const isTok=h.reward_type==='tokens';const label=h.reward>0?(isTok?'+'+h.reward+' 🪙':'+$'+h.reward):'—';return '<tr><td style="color:var(--muted)">'+fmt(h.created_at)+'</td><td>'+esc(h.label||'—')+'</td><td style="font-weight:800;text-align:right;color:'+(h.reward>0?'var(--green)':'var(--muted)')+'">'+label+'</td></tr>';}).join('');
+    const lastRewardLabel=w.lastRewardType==='tokens'?w.lastReward+' 🪙 jeton'+(w.lastReward>1?'s':''):'$'+w.lastReward;
     return '<div class="card wheel-stage" style="text-align:center;padding:36px 20px;border-color:rgba(245,200,66,.25);margin-bottom:20px">'
     +'<div class="card-title" style="justify-content:center;margin-bottom:6px;font-size:19px">🎡 Roue de la chance</div>'
-    +'<p style="font-size:12px;color:var(--muted);margin-bottom:30px">Un tour gratuit chaque semaine si tu as fait au moins une vente.</p>'
+    +'<p style="font-size:12px;color:var(--muted);margin-bottom:30px">Un tour gratuit chaque semaine si tu as fait au moins une vente. Certains lots rapportent des $, d\'autres des 🪙 jetons (utilisables dans la Boutique).</p>'
     +'<div style="position:relative;width:280px;max-width:82vw;margin:0 auto 26px">'
     +'<div class="wheel-pointer" style="position:absolute;top:-8px;left:50%;z-index:3;width:0;height:0;border-left:13px solid transparent;border-right:13px solid transparent;border-top:22px solid var(--yellow);filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))"></div>'
     +'<svg viewBox="0 0 200 200" style="width:100%;display:block;position:absolute;top:0;left:0;pointer-events:none">'+buildWheelBulbs()+'</svg>'
@@ -1266,7 +1273,7 @@ async function renderPage(page){
     +'</div>'
     +'<div id="wheel-result" style="min-height:30px;margin-bottom:18px"></div>'
     +(w.alreadySpun
-      ?'<div><span class="badge bg2" style="font-size:13px;padding:8px 16px">✅ Déjà tourné cette semaine — gagné $'+w.lastReward+'</span><div style="font-size:11px;color:var(--muted);margin-top:10px">Rendez-vous <b>'+resetStr+'</b> pour un nouveau tour</div></div>'
+      ?'<div><span class="badge bg2" style="font-size:13px;padding:8px 16px">✅ Déjà tourné cette semaine — gagné '+lastRewardLabel+'</span><div style="font-size:11px;color:var(--muted);margin-top:10px">Rendez-vous <b>'+resetStr+'</b> pour un nouveau tour</div></div>'
       :w.eligible
         ?'<button class="btn btn-grad wheel-spin-btn" id="wheel-spin-btn" onclick="spinWheel()" style="padding:13px 34px;font-size:14px;justify-content:center;border-radius:50px">🎡 Tourner la roue</button>'
         :'<div><span class="badge by2" style="font-size:13px;padding:8px 16px">🔒 Fais au moins une vente cette semaine pour débloquer</span></div>')
@@ -1807,10 +1814,12 @@ function renderWheelEditorRows(){
   const totalWeight=segs.reduce((s,x)=>s+(parseFloat(x.weight)||0),0);
   const rows=segs.map((s,i)=>{
     const pct=totalWeight>0?((parseFloat(s.weight)||0)/totalWeight*100).toFixed(1):'0.0';
-    return '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:grid;grid-template-columns:auto 1fr 100px 100px 70px auto;gap:10px;align-items:end">'
+    const type=s.type==='tokens'?'tokens':'money';
+    return '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:grid;grid-template-columns:auto 1fr 110px 100px 100px 70px auto;gap:10px;align-items:end">'
     +'<div style="display:flex;flex-direction:column;gap:3px"><button class="btn btn-gst btn-sm" onclick="moveWheelSegment('+i+',-1)" title="Monter"'+(i===0?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▲</button><button class="btn btn-gst btn-sm" onclick="moveWheelSegment('+i+',1)" title="Descendre"'+(i===segs.length-1?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▼</button></div>'
     +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Nom affiché</label><input type="text" value="'+esc(s.label)+'" onchange="updateWheelField('+i+',\'label\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
-    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Montant ($)</label><input type="number" min="0" step="0.5" value="'+s.reward+'" onchange="updateWheelField('+i+',\'reward\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Type de gain</label><select onchange="updateWheelField('+i+',\'type\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 6px;color:var(--text);font-family:inherit;font-size:12px"><option value="money" '+(type==='money'?'selected':'')+'>💰 Dollars</option><option value="tokens" '+(type==='tokens'?'selected':'')+'>🪙 Jetons</option></select></div>'
+    +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Montant ('+(type==='tokens'?'🪙':'$')+')</label><input type="number" min="0" step="'+(type==='tokens'?'1':'0.5')+'" value="'+s.reward+'" onchange="updateWheelField('+i+',\'reward\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
     +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Probabilité</label><input type="number" min="0.1" step="1" value="'+s.weight+'" onchange="updateWheelField('+i+',\'weight\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
     +'<div style="text-align:center"><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Chance</label><span class="badge bp2" style="font-size:12px">'+pct+'%</span></div>'
     +'<button class="btn btn-red btn-sm" onclick="removeWheelSegment('+i+')" title="Supprimer"'+(segs.length<=2?' disabled style="opacity:.3;cursor:not-allowed"':'')+'>🗑</button>'
@@ -1835,11 +1844,12 @@ function refreshWheelPreview(){
 function updateWheelField(i,field,value){
   if(field==='reward'||field==='weight')value=parseFloat(value)||0;
   window.wheelEditSegments[i][field]=value;
+  if(field==='type'){document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();}
   refreshWheelPreview();
 }
 function addWheelSegment(){
   if(window.wheelEditSegments.length>=15){toast('Maximum 15 segments','e');return;}
-  window.wheelEditSegments.push({label:'Nouveau lot',reward:0,weight:10});
+  window.wheelEditSegments.push({label:'Nouveau lot',reward:0,weight:10,type:'money'});
   document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
   refreshWheelPreview();
 }
