@@ -1517,9 +1517,14 @@ async function renderPage(page){
   }
 
   if(page==='admin-shop-settings'){
-    const [methods,items,settings]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items'),api('GET','/api/settings/all')]);
+    const [methods,items,settings,withdrawalTiers]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items'),api('GET','/api/settings/all'),api('GET','/api/admin/withdrawal-tiers')]);
     window.tokenMethodsEdit=methods.map(m=>({...m}));
+    window.withdrawalTiersEdit=withdrawalTiers.map(t=>({...t}));
     const tokensPerSale=settings.tokens_per_sale!=null?settings.tokens_per_sale:5;
+    const giftTokens=settings.gift_tokens!=null?settings.gift_tokens:5;
+    const refMilestoneCount=settings.referral_milestone_count!=null?settings.referral_milestone_count:5;
+    const refMilestoneTokens=settings.referral_milestone_tokens!=null?settings.referral_milestone_tokens:10;
+    const tierRows=window.withdrawalTiersEdit.map((t,i)=>'<div style="display:grid;grid-template-columns:1fr 1fr 100px auto;gap:8px;align-items:end;margin-bottom:8px"><div class="fi" style="margin-bottom:0"><label>Min ($)</label><input type="number" min="0" value="'+t.min+'" onchange="updateWdTier('+i+',\'min\',this.value)"></div><div class="fi" style="margin-bottom:0"><label>Max ($)</label><input type="number" min="0" value="'+t.max+'" onchange="updateWdTier('+i+',\'max\',this.value)"></div><div class="fi" style="margin-bottom:0"><label>🪙 Jetons</label><input type="number" min="0" value="'+t.tokens+'" onchange="updateWdTier('+i+',\'tokens\',this.value)"></div><button class="btn btn-red btn-sm" onclick="removeWdTier('+i+')" '+(window.withdrawalTiersEdit.length<=1?'disabled style="opacity:.3"':'')+'>🗑</button></div>').join('');
     const methodRows=window.tokenMethodsEdit.map((m,i)=>'<div class="card" style="margin-bottom:10px;padding:14px 16px;'+(m.active===false?'opacity:.5':'')+'"><div style="display:flex;align-items:center;gap:14px"><div style="font-size:24px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div><div style="text-align:center;flex-shrink:0"><span class="badge by2">🪙 '+(m.tokens||0)+'</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn '+(m.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleTokenMethod('+i+')">'+(m.active===false?'✅':'🚫')+'</button><button class="btn btn-gst btn-sm" onclick="openEditTokenMethod('+i+')">✏️</button><button class="btn btn-red btn-sm" onclick="removeTokenMethod('+i+')">🗑</button></div></div></div>').join('');
     const itemCards=items.map(it=>'<div class="card" style="padding:0;overflow:hidden;'+(it.active===false?'opacity:.5':'')+'">'
       +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:120px;object-fit:cover;display:block">':'<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px">🎁</div>')
@@ -1532,8 +1537,13 @@ async function renderPage(page){
     return '<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🪙 Jetons par vente</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Nombre de jetons crédités <b>automatiquement</b> à chaque vente approuvée (en plus de la commission en $). Ça se déclenche pour toute nouvelle vente approuvée.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / vente</label><input type="number" id="tokens-per-sale-input" min="0" value="'+tokensPerSale+'"></div><button class="btn btn-grad" onclick="saveTokensPerSale()">💾 Enregistrer</button></div>'
       +'<div class="hdiv"></div>'
       +'<div style="font-size:13px;font-weight:800;margin-bottom:8px">⏪ Rattrapage rétroactif</div><p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Les affiliés qui ont déjà des ventes approuvées <b>avant la mise en place du système de jetons</b> n\'en ont pas reçu automatiquement. Clique ici pour créditer, en une fois, les jetons manquants sur toutes ces ventes passées (au tarif actuel ci-dessus). Cette action est sûre à relancer : les ventes déjà traitées ne seront jamais recréditées deux fois.</p><button class="btn btn-gst" onclick="confirmTokensBackfill()" style="width:100%;justify-content:center">⏪ Attribuer les jetons manquants sur les ventes passées</button></div>'
-      +'<div class="settings-section"><div class="settings-section-title">🎁 Attribuer des jetons manuellement</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Pour tous les autres moyens listés ci-dessous qui ne sont pas automatiques (parrainage, événement, bonus ponctuel...) : crédite (ou retire, avec un montant négatif) des jetons toi-même à un affilié précis.</p><button class="btn btn-grad" onclick="openGrantTokens()" style="width:100%;justify-content:center">🪙 Attribuer des jetons à un affilié</button></div>'
-      +'<div class="settings-section"><div class="settings-section-title">🪙 Moyens d\'obtenir des jetons</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Cette liste est affichée aux affiliés dans leur page Boutique, pour leur expliquer comment gagner des jetons. C\'est informatif à titre d\'affichage.</p>'
+      +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">💸 Jetons par retrait</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Jetons crédités <b>automatiquement</b> selon le montant retiré, dès que le retrait est marqué "payé" (pas juste demandé). Ajoute, modifie ou supprime des paliers.</p>'
+      +'<div id="wd-tiers-body">'+tierRows+'</div>'
+      +'<div style="display:flex;gap:10px;margin-top:8px"><button class="btn btn-gst" onclick="addWdTier()" style="flex:1;justify-content:center">+ Ajouter un palier</button><button class="btn btn-grad" onclick="saveWdTiers()" style="flex:1;justify-content:center">💾 Enregistrer les paliers</button></div></div>'
+      +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🎁 Jetons par cadeau envoyé</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Jetons crédités <b>automatiquement</b> à l\'expéditeur, à chaque fois qu\'il envoie un cadeau (quel que soit le montant du cadeau) à un autre affilié.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / cadeau</label><input type="number" id="gift-tokens-input" min="0" value="'+giftTokens+'"></div><button class="btn btn-grad" onclick="saveGiftTokens()">💾 Enregistrer</button></div></div>'
+      +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🤝 Bonus de parrainage</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Bonus de jetons <b>unique</b> (une seule fois) quand un affilié atteint le nombre de filleuls parrainés indiqué.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1"><label>Nombre de filleuls</label><input type="number" id="ref-milestone-count-input" min="1" value="'+refMilestoneCount+'"></div><div class="fi" style="margin-bottom:0;flex:1"><label>🪙 Jetons bonus</label><input type="number" id="ref-milestone-tokens-input" min="0" value="'+refMilestoneTokens+'"></div><button class="btn btn-grad" onclick="saveReferralMilestone()">💾 Enregistrer</button></div></div>'
+      +'<div class="settings-section"><div class="settings-section-title">🎁 Attribuer des jetons manuellement</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Pour tout ce qui n\'est pas couvert automatiquement ci-dessus (événement spécial, bonus ponctuel...) : crédite (ou retire, avec un montant négatif) des jetons toi-même à un affilié précis.</p><button class="btn btn-grad" onclick="openGrantTokens()" style="width:100%;justify-content:center">🪙 Attribuer des jetons à un affilié</button></div>'
+      +'<div class="settings-section"><div class="settings-section-title">🪙 Moyens d\'obtenir des jetons</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Cette liste est affichée aux affiliés dans leur page Boutique, pour leur expliquer comment gagner des jetons.</p>'
       +methodRows
       +'<button class="btn btn-gst" onclick="openAddTokenMethod()" style="width:100%;justify-content:center;margin-top:6px">+ Ajouter un moyen</button></div>'
       +'<div class="card-header" style="margin-bottom:16px"><div class="card-title">🛍️ Offres de la boutique</div><button class="btn btn-grad btn-sm" onclick="openAddShopItem()">+ Ajouter une offre</button></div>'
@@ -2029,6 +2039,40 @@ async function saveTokensPerSale(){
   const val=parseInt(document.getElementById('tokens-per-sale-input').value);
   if(!Number.isFinite(val)||val<0){toast('Valeur invalide','e');return;}
   try{await api('PATCH','/api/admin/settings/tokens-per-sale',{tokens_per_sale:val});toast('Jetons par vente mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+// Paliers de jetons par retrait
+function updateWdTier(i,field,value){
+  window.withdrawalTiersEdit[i][field]=parseFloat(value)||0;
+}
+function addWdTier(){
+  const last=window.withdrawalTiersEdit[window.withdrawalTiersEdit.length-1];
+  window.withdrawalTiersEdit.push({min:last?last.max:0,max:(last?last.max:0)+50,tokens:5});
+  goPage('admin-shop-settings');
+}
+function removeWdTier(i){
+  if(window.withdrawalTiersEdit.length<=1)return;
+  window.withdrawalTiersEdit.splice(i,1);
+  goPage('admin-shop-settings');
+}
+async function saveWdTiers(){
+  for(const t of window.withdrawalTiersEdit){
+    if(t.max<=t.min){toast('Chaque palier doit avoir un max > min','e');return;}
+  }
+  try{await api('PATCH','/api/admin/withdrawal-tiers',{tiers:window.withdrawalTiersEdit});toast('Paliers de retrait mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+// Jetons par cadeau envoyé
+async function saveGiftTokens(){
+  const val=parseInt(document.getElementById('gift-tokens-input').value);
+  if(!Number.isFinite(val)||val<0){toast('Valeur invalide','e');return;}
+  try{await api('PATCH','/api/admin/settings/gift-tokens',{gift_tokens:val});toast('Jetons par cadeau mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+// Bonus de parrainage (palier)
+async function saveReferralMilestone(){
+  const count=parseInt(document.getElementById('ref-milestone-count-input').value);
+  const tokens=parseInt(document.getElementById('ref-milestone-tokens-input').value);
+  if(!Number.isFinite(count)||count<=0){toast('Nombre de filleuls invalide','e');return;}
+  if(!Number.isFinite(tokens)||tokens<0){toast('Jetons invalides','e');return;}
+  try{await api('PATCH','/api/admin/settings/referral-milestone',{count,tokens});toast('Bonus de parrainage mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
 }
 function confirmTokensBackfill(){
   document.getElementById('m-title').textContent='⏪ Rattrapage rétroactif';
