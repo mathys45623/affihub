@@ -1221,12 +1221,14 @@ app.get('/api/referrals', auth, async (req, res) => {
 app.get('/api/ranking', auth, async (req, res) => {
   const { data: users } = await supabase.from('users').select('id,name,created_at').eq('role','affiliate').eq('show_ranking',true);
   const result = await Promise.all((users||[]).map(async u => {
-    const { data: convs } = await supabase.from('conversions').select('amount,status').eq('user_id',u.id);
-    const { data: links } = await supabase.from('links').select('clicks').eq('user_id',u.id);
-    const { count: referralCount } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', u.id);
-    const approved = (convs||[]).filter(c=>c.status==='approved');
-    const totalClicks = (links||[]).reduce((s,l)=>s+l.clicks,0);
-    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0), totalClicks, referralCount: referralCount || 0 };
+    const [convsRes, linksRes, referralRes] = await Promise.all([
+      supabase.from('conversions').select('amount,status').eq('user_id',u.id),
+      supabase.from('links').select('clicks').eq('user_id',u.id),
+      supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', u.id)
+    ]);
+    const approved = (convsRes.data||[]).filter(c=>c.status==='approved');
+    const totalClicks = (linksRes.data||[]).reduce((s,l)=>s+l.clicks,0);
+    return { ...u, totalConversions: approved.length, totalGains: approved.reduce((s,c)=>s+c.amount,0), totalClicks, referralCount: referralRes.count || 0 };
   }));
   res.json(result);
 });
@@ -1242,12 +1244,20 @@ app.patch('/api/me/ranking', auth, async (req, res) => {
 // Calculés à la volée à partir des données existantes (pas de table dédiée nécessaire),
 // donc automatiquement à jour pour les affiliés qui ont déjà fait ces actions par le passé.
 app.get('/api/me/badges', auth, async (req, res) => {
-  const { data: convs } = await supabase.from('conversions').select('amount,created_at').eq('user_id', req.user.id).eq('status', 'approved');
-  const { count: referralCount } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', req.user.id);
-  const { count: bigGiftCount } = await supabase.from('gifts').select('id', { count: 'exact', head: true }).eq('sender_id', req.user.id).gte('amount', 5);
-  const { count: paidWithdrawals } = await supabase.from('withdrawals').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'paid');
-  const { count: linksCount } = await supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id);
-  const { count: customLinksCount } = await supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).not('custom_slug', 'is', null);
+  const [convsRes, referralRes, giftRes, wdRes, linksRes, customLinksRes] = await Promise.all([
+    supabase.from('conversions').select('amount,created_at').eq('user_id', req.user.id).eq('status', 'approved'),
+    supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', req.user.id),
+    supabase.from('gifts').select('id', { count: 'exact', head: true }).eq('sender_id', req.user.id).gte('amount', 5),
+    supabase.from('withdrawals').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'paid'),
+    supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id),
+    supabase.from('links').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).not('custom_slug', 'is', null)
+  ]);
+  const convs = convsRes.data;
+  const referralCount = referralRes.count;
+  const bigGiftCount = giftRes.count;
+  const paidWithdrawals = wdRes.count;
+  const linksCount = linksRes.count;
+  const customLinksCount = customLinksRes.count;
 
   const salesCount = (convs || []).length;
   const totalGains = (convs || []).reduce((s, c) => s + c.amount, 0);
