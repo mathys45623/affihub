@@ -391,6 +391,7 @@ app.post('/api/register', async (req, res) => {
       if (referral_same_ip) fields.push({ name: '⚠️ Alerte', value: 'Même IP que le parrain — double compte possible !', inline: false });
       await notifyDiscord2(DISCORD_REFERRAL, referral_same_ip ? '⚠️ Nouveau parrainage — DOUBLE COMPTE DÉTECTÉ' : '🤝 Nouveau parrainage !', referral_same_ip ? 0xff4757 : 0xa855f7, fields);
     }
+    checkReferralMilestone(referred_by).catch(()=>{});
   }
   // Get welcome message
   const { data: wmsg } = await supabase.from('settings').select('value').eq('key', 'welcome_message').single();
@@ -1025,6 +1026,7 @@ app.patch('/api/withdrawals/:id/approve', auth, adminOnly, async (req, res) => {
   if (!wd) return res.status(404).json({ error: 'Introuvable' });
   if (wd.status !== 'pending') return res.status(409).json({ error: 'Ce retrait a déjà été traité (statut actuel : ' + wd.status + ')' });
   await supabase.from('withdrawals').update({ status: 'paid' }).eq('id', req.params.id);
+  await grantWithdrawalTokens(wd.user_id, wd.id, wd.amount);
   // Discord notification
   log(req.user.id, 'retrait-payé', 'Retrait #'+req.params.id+' de $'+wd.amount+' payé à '+(wd.users?.name||'?'), req);
   await supabase.from('notifications').insert({ user_id: wd.user_id, type: 'withdrawal_paid', message: '💸 Ton retrait de $' + wd.amount + ' a été payé !', read: false });
@@ -1059,6 +1061,9 @@ app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
   if (wd.status === 'pending') {
     const { data: user } = await supabase.from('users').select('balance').eq('id', wd.user_id).single();
     if (user) await supabase.from('users').update({ balance: user.balance + wd.amount }).eq('id', wd.user_id);
+  }
+  if (wd.status === 'paid' && wd.tokens_granted) {
+    await revokeWithdrawalTokens(wd.user_id, wd.tokens_granted);
   }
   await supabase.from('withdrawals').delete().eq('id', req.params.id);
   log(req.user.id, 'retrait-supprimé', 'Retrait de $' + wd.amount + ' supprimé', req);
@@ -1219,6 +1224,7 @@ app.post('/api/admin/referrals/link', auth, adminOnly, async (req, res) => {
   if (!referrer || !referee) return res.status(404).json({ error: 'Affilié introuvable' });
   await supabase.from('users').update({ referred_by: referrer_id, referral_active: true }).eq('id', referee_id);
   log(req.user.id, 'parrainage-lié-manuellement', referrer.name + ' devient le parrain de ' + referee.name, req);
+  checkReferralMilestone(referrer_id).catch(()=>{});
   res.json({ success: true });
 });
 
@@ -1466,8 +1472,10 @@ app.patch('/api/me/avatar', auth, async (req, res) => {
 // Stockés dans la table settings (comme les segments de la roue), sous forme de tableau JSON.
 const DEFAULT_TOKEN_METHODS = [
   { id: 'm1', icon: '🔁', title: 'Réaliser une vente', description: 'Chaque conversion approuvée te rapporte des jetons en plus de ta commission.', tokens: 5, active: true },
-  { id: 'm2', icon: '🔥', title: 'Garder ta série active', description: 'Vends chaque jour pour faire grimper ta série et gagner des jetons bonus.', tokens: 10, active: true },
-  { id: 'm3', icon: '🎡', title: 'Tourner la roue de la chance', description: 'Un tour gratuit chaque semaine (si tu as fait une vente) — certains lots rapportent directement des jetons.', tokens: 0, active: true }
+  { id: 'm2', icon: '💸', title: 'Faire un retrait', description: 'Jetons offerts selon le montant retiré, une fois le retrait payé : $25-$50 → 5 🪙 · $50-$100 → 10 🪙 · $100-$500 → 20 🪙 · $500 et plus → 25 🪙.', tokens: 0, active: true },
+  { id: 'm3', icon: '🎁', title: 'Faire un cadeau à un affilié', description: 'Envoie un cadeau à un autre affilié et gagne des jetons à chaque envoi.', tokens: 5, active: true },
+  { id: 'm4', icon: '🤝', title: 'Parrainer 5 personnes', description: 'Atteins 5 filleuls parrainés et reçois un gros bonus de jetons, une seule fois.', tokens: 10, active: true },
+  { id: 'm5', icon: '🎡', title: 'Tourner la roue de la chance', description: 'Un tour gratuit chaque semaine (si tu as fait une vente) — certains lots rapportent directement des jetons.', tokens: 0, active: true }
 ];
 async function getTokenMethods() {
   try {
@@ -1583,6 +1591,124 @@ app.post('/api/admin/tokens/grant', auth, adminOnly, async (req, res) => {
   }
   res.json({ success: true, tokens: newTokens });
 });
+
+// ── JETONS — RETRAITS PAR PALIER ──
+// Réglable par l'admin : une liste de paliers {min, max, tokens}. On applique le premier
+// palier où min <= montant <= max. Accordé quand le retrait passe au statut "payé"
+// (pas juste demandé), pour éviter d'accorder des jetons sur un retrait jamais honoré.
+const DEFAULT_WITHDRAWAL_TIERS = [
+  { min: 25, max: 50, tokens: 5 },
+  { min: 50, max: 100, tokens: 10 },
+  { min: 100, max: 500, tokens: 20 },
+  { min: 500, max: 999999999, tokens: 25 }
+];
+async function getWithdrawalTokenTiers() {
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'withdrawal_token_tiers').single();
+    if (!data?.value) return DEFAULT_WITHDRAWAL_TIERS;
+    const parsed = JSON.parse(data.value);
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_WITHDRAWAL_TIERS;
+    return parsed;
+  } catch (e) { return DEFAULT_WITHDRAWAL_TIERS; }
+}
+app.get('/api/admin/withdrawal-tiers', auth, adminOnly, async (req, res) => {
+  res.json(await getWithdrawalTokenTiers());
+});
+app.patch('/api/admin/withdrawal-tiers', auth, adminOnly, async (req, res) => {
+  const { tiers } = req.body;
+  if (!Array.isArray(tiers) || tiers.length === 0) return res.status(400).json({ error: 'Liste invalide' });
+  for (const t of tiers) {
+    if (typeof t.min !== 'number' || typeof t.max !== 'number' || t.min < 0 || t.max <= t.min) return res.status(400).json({ error: 'Chaque palier doit avoir un min < max valides' });
+    if (typeof t.tokens !== 'number' || t.tokens < 0) return res.status(400).json({ error: 'Jetons invalides (doit être ≥ 0)' });
+  }
+  const cleaned = tiers.map(t => ({ min: t.min, max: t.max, tokens: t.tokens })).sort((a, b) => a.min - b.min);
+  await supabase.from('settings').upsert({ key: 'withdrawal_token_tiers', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
+  log(req.user.id, 'jetons-paliers-retrait-modifiés', 'Paliers de jetons par retrait mis à jour (' + cleaned.length + ')', req);
+  res.json(cleaned);
+});
+function tokensForWithdrawalAmount(amount, tiers) {
+  const tier = tiers.find(t => amount >= t.min && amount <= t.max);
+  return tier ? tier.tokens : 0;
+}
+async function grantWithdrawalTokens(userId, withdrawalId, amount) {
+  try {
+    const tiers = await getWithdrawalTokenTiers();
+    const tokensAmount = tokensForWithdrawalAmount(amount, tiers);
+    if (tokensAmount <= 0) return;
+    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
+    await supabase.from('users').update({ tokens: (user?.tokens || 0) + tokensAmount }).eq('id', userId);
+    await supabase.from('withdrawals').update({ tokens_granted: tokensAmount }).eq('id', withdrawalId);
+  } catch (e) { console.error('grantWithdrawalTokens error:', e.message); }
+}
+async function revokeWithdrawalTokens(userId, tokensGranted) {
+  try {
+    if (!tokensGranted) return;
+    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
+    await supabase.from('users').update({ tokens: Math.max(0, (user?.tokens || 0) - tokensGranted) }).eq('id', userId);
+  } catch (e) { console.error('revokeWithdrawalTokens error:', e.message); }
+}
+
+// ── JETONS — CADEAU ENTRE AFFILIÉS ──
+async function getGiftTokens() {
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'gift_tokens').single();
+    const n = parseInt(data?.value);
+    return Number.isFinite(n) && n >= 0 ? n : 5;
+  } catch (e) { return 5; }
+}
+app.patch('/api/admin/settings/gift-tokens', auth, adminOnly, async (req, res) => {
+  const n = parseInt(req.body.gift_tokens);
+  if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'Valeur invalide' });
+  await supabase.from('settings').upsert({ key: 'gift_tokens', value: String(n) }, { onConflict: 'key' });
+  log(req.user.id, 'jetons-cadeau-modifié', 'Jetons par cadeau envoyé réglés sur ' + n, req);
+  res.json({ success: true, gift_tokens: n });
+});
+
+// ── JETONS — PALIER DE PARRAINAGE ──
+// Bonus unique (pas répétable) quand un affilié atteint le nombre de filleuls requis.
+async function getReferralMilestoneSettings() {
+  try {
+    const { data } = await supabase.from('settings').select('key,value').in('key', ['referral_milestone_count', 'referral_milestone_tokens']);
+    const obj = {};
+    (data || []).forEach(s => { obj[s.key] = s.value; });
+    const count = parseInt(obj.referral_milestone_count);
+    const tokens = parseInt(obj.referral_milestone_tokens);
+    return {
+      count: Number.isFinite(count) && count > 0 ? count : 5,
+      tokens: Number.isFinite(tokens) && tokens >= 0 ? tokens : 10
+    };
+  } catch (e) { return { count: 5, tokens: 10 }; }
+}
+app.patch('/api/admin/settings/referral-milestone', auth, adminOnly, async (req, res) => {
+  const count = parseInt(req.body.count);
+  const tokens = parseInt(req.body.tokens);
+  if (!Number.isFinite(count) || count <= 0) return res.status(400).json({ error: 'Nombre de filleuls invalide' });
+  if (!Number.isFinite(tokens) || tokens < 0) return res.status(400).json({ error: 'Jetons invalides' });
+  await supabase.from('settings').upsert([
+    { key: 'referral_milestone_count', value: String(count) },
+    { key: 'referral_milestone_tokens', value: String(tokens) }
+  ], { onConflict: 'key' });
+  log(req.user.id, 'jetons-palier-parrainage-modifié', 'Palier de parrainage réglé sur ' + count + ' filleuls → ' + tokens + ' jetons', req);
+  res.json({ success: true, count, tokens });
+});
+// Vérifie si un parrain vient d'atteindre le palier de filleuls, et le crédite une seule fois.
+async function checkReferralMilestone(referrerId) {
+  try {
+    const { count: total } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', referrerId);
+    const { count, tokens } = await getReferralMilestoneSettings();
+    if ((total || 0) < count || tokens <= 0) return;
+    const { data: referrer } = await supabase.from('users').select('name,tokens,referral_milestone_claimed,discord_id').eq('id', referrerId).single();
+    if (!referrer || referrer.referral_milestone_claimed) return;
+    await supabase.from('users').update({ tokens: (referrer.tokens || 0) + tokens, referral_milestone_claimed: true }).eq('id', referrerId);
+    await supabase.from('notifications').insert({ user_id: referrerId, type: 'referral_milestone', message: '🤝 Bravo, tu as parrainé ' + count + ' affiliés ! +' + tokens + ' 🪙 jetons bonus.', read: false });
+    if (referrer.discord_id) {
+      await sendDiscordDM(referrer.discord_id, '🤝 Palier de parrainage atteint !', 0xa855f7, [
+        { name: '👥 Filleuls', value: String(count), inline: true },
+        { name: '🪙 Bonus', value: '+' + tokens + ' jetons', inline: true }
+      ]);
+    }
+  } catch (e) { console.error('checkReferralMilestone error:', e.message); }
+}
 
 // ── BOUTIQUE À JETONS ──
 // Nécessite les tables "shop_items" et "shop_orders" + la colonne "tokens" sur "users"
@@ -1832,7 +1958,10 @@ app.get('/api/settings/all', auth, async (req, res) => {
     cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true',
     maintenance_mode: obj.maintenance_mode === 'true',
     welcome_message: obj.welcome_message || '',
-    tokens_per_sale: obj.tokens_per_sale !== undefined ? (parseInt(obj.tokens_per_sale) || 0) : 5
+    tokens_per_sale: obj.tokens_per_sale !== undefined ? (parseInt(obj.tokens_per_sale) || 0) : 5,
+    gift_tokens: obj.gift_tokens !== undefined ? (parseInt(obj.gift_tokens) || 0) : 5,
+    referral_milestone_count: obj.referral_milestone_count !== undefined ? (parseInt(obj.referral_milestone_count) || 5) : 5,
+    referral_milestone_tokens: obj.referral_milestone_tokens !== undefined ? (parseInt(obj.referral_milestone_tokens) || 0) : 10
   });
 });
 
@@ -2050,6 +2179,12 @@ app.post('/api/gifts', auth, async (req, res) => {
   const { data: gift } = await supabase.from('gifts').insert({ sender_id: req.user.id, receiver_id, amount: amt, message: message || null }).select().single();
 
   log(req.user.id, 'cadeau-envoyé', sender.name + ' a envoyé $' + amt + ' à ' + receiver.name, req);
+  // Jetons pour l'envoi d'un cadeau
+  const giftTokensAmount = await getGiftTokens();
+  if (giftTokensAmount > 0) {
+    const { data: senderFresh } = await supabase.from('users').select('tokens').eq('id', req.user.id).single();
+    await supabase.from('users').update({ tokens: (senderFresh?.tokens || 0) + giftTokensAmount }).eq('id', req.user.id);
+  }
   await supabase.from('notifications').insert({ user_id: receiver_id, type: 'gift_received', message: '🎁 ' + sender.name + ' t\'a envoyé $' + amt + (message ? ' : "' + message + '"' : '') + ' !', read: false });
   if (receiver.discord_id) {
     await sendDiscordDM(receiver.discord_id, '🎁 Tu as reçu un cadeau !', 0xF0427A, [
