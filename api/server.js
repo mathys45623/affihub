@@ -1339,7 +1339,10 @@ app.get('/api/me/streak', auth, async (req, res) => {
 // ── ROUE DE LA CHANCE ──
 // Disponible une fois par semaine (reset chaque lundi), uniquement si l'affilié a réalisé
 // au moins une vente approuvée depuis le début de la semaine en cours.
-const WHEEL_SEGMENTS = [
+// Les segments (montants + probabilités) sont configurables depuis le panel admin, stockés
+// en base (table settings, clé 'wheel_segments'). Ces valeurs par défaut ne servent que
+// tant que l'admin n'a jamais rien personnalisé.
+const DEFAULT_WHEEL_SEGMENTS = [
   { reward: 0, weight: 20, label: 'Perdu' },
   { reward: 1, weight: 30, label: '$1' },
   { reward: 2, weight: 20, label: '$2' },
@@ -1347,6 +1350,15 @@ const WHEEL_SEGMENTS = [
   { reward: 10, weight: 10, label: '$10' },
   { reward: 25, weight: 5, label: '$25 JACKPOT' }
 ];
+async function getWheelSegments() {
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'wheel_segments').single();
+    if (!data?.value) return DEFAULT_WHEEL_SEGMENTS;
+    const parsed = JSON.parse(data.value);
+    if (!Array.isArray(parsed) || parsed.length < 2) return DEFAULT_WHEEL_SEGMENTS;
+    return parsed;
+  } catch (e) { return DEFAULT_WHEEL_SEGMENTS; }
+}
 function getMondayOf(date) {
   const d = new Date(date);
   const day = d.getDay(); // 0=dimanche, 1=lundi...
@@ -1355,11 +1367,11 @@ function getMondayOf(date) {
   d.setHours(0, 0, 0, 0);
   return d;
 }
-function pickWeightedSegment() {
-  const total = WHEEL_SEGMENTS.reduce((s, seg) => s + seg.weight, 0);
+function pickWeightedSegment(segments) {
+  const total = segments.reduce((s, seg) => s + seg.weight, 0);
   let r = Math.random() * total;
-  for (let i = 0; i < WHEEL_SEGMENTS.length; i++) {
-    r -= WHEEL_SEGMENTS[i].weight;
+  for (let i = 0; i < segments.length; i++) {
+    r -= segments[i].weight;
     if (r <= 0) return i;
   }
   return 0;
@@ -1367,14 +1379,18 @@ function pickWeightedSegment() {
 app.get('/api/me/wheel', auth, async (req, res) => {
   const monday = getMondayOf(new Date());
   const weekKey = monday.toISOString().slice(0, 10);
-  const { data: user } = await supabase.from('users').select('last_wheel_week,last_wheel_reward').eq('id', req.user.id).single();
-  const { count: salesThisWeek } = await supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString());
+  const [{ data: user }, { count: salesThisWeek }, segments] = await Promise.all([
+    supabase.from('users').select('last_wheel_week,last_wheel_reward').eq('id', req.user.id).single(),
+    supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString()),
+    getWheelSegments()
+  ]);
   const nextMonday = new Date(monday); nextMonday.setDate(nextMonday.getDate() + 7);
   res.json({
     eligible: (salesThisWeek || 0) >= 1,
     alreadySpun: user?.last_wheel_week === weekKey,
     lastReward: user?.last_wheel_week === weekKey ? user.last_wheel_reward : null,
-    nextResetAt: nextMonday.toISOString()
+    nextResetAt: nextMonday.toISOString(),
+    segments: segments.map(s => ({ label: s.label, reward: s.reward })) // le poids reste caché aux affiliés
   });
 });
 app.post('/api/me/wheel/spin', auth, async (req, res) => {
@@ -1385,11 +1401,32 @@ app.post('/api/me/wheel/spin', auth, async (req, res) => {
   const { count: salesThisWeek } = await supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString());
   if (!salesThisWeek) return res.status(403).json({ error: 'Fais au moins une vente cette semaine pour débloquer la roue' });
 
-  const segmentIndex = pickWeightedSegment();
-  const reward = WHEEL_SEGMENTS[segmentIndex].reward;
+  const segments = await getWheelSegments();
+  const segmentIndex = pickWeightedSegment(segments);
+  const reward = segments[segmentIndex].reward;
   await supabase.from('users').update({ balance: user.balance + reward, last_wheel_week: weekKey, last_wheel_reward: reward }).eq('id', req.user.id);
   log(req.user.id, 'roue-tournée', req.user.name + ' a tourné la roue et gagné $' + reward, req);
   res.json({ segmentIndex, reward });
+});
+
+// Panel admin : consulter/modifier les segments de la roue
+app.get('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
+  res.json(await getWheelSegments());
+});
+app.patch('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
+  const { segments } = req.body;
+  if (!Array.isArray(segments) || segments.length < 2 || segments.length > 8) {
+    return res.status(400).json({ error: 'Il faut entre 2 et 8 segments' });
+  }
+  for (const s of segments) {
+    if (typeof s.label !== 'string' || !s.label.trim()) return res.status(400).json({ error: 'Chaque segment doit avoir un nom' });
+    if (typeof s.reward !== 'number' || s.reward < 0) return res.status(400).json({ error: 'Montant invalide (doit être ≥ 0)' });
+    if (typeof s.weight !== 'number' || s.weight <= 0) return res.status(400).json({ error: 'Probabilité invalide (doit être > 0)' });
+  }
+  const cleaned = segments.map(s => ({ label: s.label.trim(), reward: s.reward, weight: s.weight }));
+  await supabase.from('settings').upsert({ key: 'wheel_segments', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
+  log(req.user.id, 'roue-configurée', 'Segments de la roue de la chance mis à jour (' + cleaned.length + ' segments)', req);
+  res.json({ success: true });
 });
 
 // ── TICKETS ──
