@@ -1069,9 +1069,11 @@ app.get('/api/users', auth, adminOnly, async (req, res) => {
   }
   const { data } = await query.order('created_at', { ascending: false });
   const withGains = await Promise.all((data || []).map(async u => {
-    const { data: convs } = await supabase.from('conversions').select('amount').eq('user_id', u.id).eq('status', 'approved');
-    const { data: commissions } = await supabase.from('referral_commissions').select('amount').eq('referrer_id', u.id);
-    const totalGains = (convs || []).reduce((s, c) => s + c.amount, 0) + (commissions || []).reduce((s, c) => s + c.amount, 0);
+    const [convsRes, commissionsRes] = await Promise.all([
+      supabase.from('conversions').select('amount').eq('user_id', u.id).eq('status', 'approved'),
+      supabase.from('referral_commissions').select('amount').eq('referrer_id', u.id)
+    ]);
+    const totalGains = (convsRes.data || []).reduce((s, c) => s + c.amount, 0) + (commissionsRes.data || []).reduce((s, c) => s + c.amount, 0);
     return { ...u, totalGains: parseFloat(totalGains.toFixed(2)) };
   }));
   res.json(withGains);
@@ -1150,8 +1152,11 @@ app.get('/api/stats', auth, adminOnly, async (req, res) => {
 app.get('/api/admin/referrals', auth, adminOnly, async (req, res) => {
   const { data: affiliates } = await supabase.from('users').select('id,name,email,balance,created_at,referral_code,referral_rate').eq('role','affiliate');
   const result = await Promise.all((affiliates||[]).map(async aff => {
-    const { data: filleules } = await supabase.from('users').select('id,name,created_at,referral_active,referral_same_ip,referral_rate_override').eq('referred_by', aff.id);
-    const { data: commissions } = await supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', aff.id).order('created_at',{ascending:false});
+    const [filleulesRes, commissionsRes] = await Promise.all([
+      supabase.from('users').select('id,name,created_at,referral_active,referral_same_ip,referral_rate_override').eq('referred_by', aff.id),
+      supabase.from('referral_commissions').select('*, users!referee_id(name), conversions(amount)').eq('referrer_id', aff.id).order('created_at',{ascending:false})
+    ]);
+    const filleules = filleulesRes.data, commissions = commissionsRes.data;
     const totalEarned = (commissions||[]).reduce((s,c)=>s+c.amount,0);
     return { ...aff, filleules: filleules||[], commissions: commissions||[], totalEarned };
   }));
