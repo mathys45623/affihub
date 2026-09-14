@@ -1755,7 +1755,8 @@ function renderWheelEditorRows(){
   const totalWeight=segs.reduce((s,x)=>s+(parseFloat(x.weight)||0),0);
   const rows=segs.map((s,i)=>{
     const pct=totalWeight>0?((parseFloat(s.weight)||0)/totalWeight*100).toFixed(1):'0.0';
-    return '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:grid;grid-template-columns:1fr 100px 100px 70px auto;gap:10px;align-items:end">'
+    return '<div class="card" style="margin-bottom:10px;padding:14px 16px"><div style="display:grid;grid-template-columns:auto 1fr 100px 100px 70px auto;gap:10px;align-items:end">'
+    +'<div style="display:flex;flex-direction:column;gap:3px"><button class="btn btn-gst btn-sm" onclick="moveWheelSegment('+i+',-1)" title="Monter"'+(i===0?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▲</button><button class="btn btn-gst btn-sm" onclick="moveWheelSegment('+i+',1)" title="Descendre"'+(i===segs.length-1?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▼</button></div>'
     +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Nom affiché</label><input type="text" value="'+esc(s.label)+'" onchange="updateWheelField('+i+',\'label\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
     +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Montant ($)</label><input type="number" min="0" step="0.5" value="'+s.reward+'" onchange="updateWheelField('+i+',\'reward\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
     +'<div><label style="font-size:10px;color:var(--muted);display:block;margin-bottom:4px">Probabilité</label><input type="number" min="0.1" step="1" value="'+s.weight+'" onchange="updateWheelField('+i+',\'weight\',this.value)" style="width:100%;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:inherit;font-size:13px"></div>'
@@ -1766,6 +1767,14 @@ function renderWheelEditorRows(){
   return rows
   +'<button class="btn btn-gst" onclick="addWheelSegment()" style="width:100%;justify-content:center;margin-bottom:20px"'+(segs.length>=8?' disabled':'')+'>+ Ajouter un segment'+(segs.length>=8?' (max 8)':'')+'</button>'
   +'<button class="btn btn-grad" onclick="saveWheelSegments()" style="width:100%;justify-content:center;padding:13px">💾 Enregistrer la configuration</button>';
+}
+function moveWheelSegment(i,dir){
+  const segs=window.wheelEditSegments;
+  const j=i+dir;
+  if(j<0||j>=segs.length)return;
+  [segs[i],segs[j]]=[segs[j],segs[i]];
+  document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+  refreshWheelPreview();
 }
 function refreshWheelPreview(){
   const svg=document.getElementById('wheel-preview-svg');
