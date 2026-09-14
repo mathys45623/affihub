@@ -1508,6 +1508,13 @@ app.patch('/api/admin/token-methods', auth, adminOnly, async (req, res) => {
   log(req.user.id, 'jetons-moyens-modifiés', 'Moyens d\'obtenir des jetons mis à jour (' + cleaned.length + ')', req);
   res.json(cleaned);
 });
+// Réinitialise la liste à sa valeur par défaut (utile si elle a été enregistrée
+// avant une mise à jour des textes par défaut côté code).
+app.post('/api/admin/token-methods/reset', auth, adminOnly, async (req, res) => {
+  await supabase.from('settings').delete().eq('key', 'token_earn_methods');
+  log(req.user.id, 'jetons-moyens-réinitialisés', 'Liste des moyens d\'obtenir des jetons réinitialisée aux valeurs par défaut', req);
+  res.json(DEFAULT_TOKEN_METHODS);
+});
 
 // ── JETONS — CRÉDIT RÉEL AUTOMATIQUE PAR VENTE ──
 // Nombre de jetons accordés à chaque conversion approuvée (réglable par l'admin).
