@@ -1209,6 +1209,128 @@ app.patch('/api/me/ranking', auth, async (req, res) => {
   res.json({ success: true });
 });
 
+// ── BADGES ──
+// Calculés à la volée à partir des données existantes (pas de table dédiée nécessaire).
+app.get('/api/me/badges', auth, async (req, res) => {
+  const { data: convs } = await supabase.from('conversions').select('amount,created_at').eq('user_id', req.user.id).eq('status', 'approved');
+  const { count: referralCount } = await supabase.from('users').select('id', { count: 'exact', head: true }).eq('referred_by', req.user.id);
+  const { data: me } = await supabase.from('users').select('created_at').eq('id', req.user.id).single();
+  const { data: allAffiliates } = await supabase.from('users').select('id,created_at').eq('role', 'affiliate').order('created_at', { ascending: true });
+  const rank = (allAffiliates || []).findIndex(a => a.id === req.user.id) + 1;
+
+  const salesCount = (convs || []).length;
+  const totalGains = (convs || []).reduce((s, c) => s + c.amount, 0);
+  // Streak (même logique que /api/me)
+  const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
+  let bestStreak = 0, run = 0;
+  const sortedDays = [...days].sort();
+  for (let i = 0; i < sortedDays.length; i++) {
+    if (i === 0 || (new Date(sortedDays[i]) - new Date(sortedDays[i - 1])) === 86400000) run++;
+    else run = 1;
+    bestStreak = Math.max(bestStreak, run);
+  }
+
+  const badges = [
+    { id: 'first_sale', icon: '🥇', label: 'Première vente', desc: 'Réalise ta première vente', unlocked: salesCount >= 1, progress: Math.min(salesCount, 1), target: 1 },
+    { id: 'sales_10', icon: '💎', label: '10 ventes', desc: 'Réalise 10 ventes', unlocked: salesCount >= 10, progress: Math.min(salesCount, 10), target: 10 },
+    { id: 'sales_50', icon: '👑', label: '50 ventes', desc: 'Réalise 50 ventes', unlocked: salesCount >= 50, progress: Math.min(salesCount, 50), target: 50 },
+    { id: 'gains_500', icon: '💰', label: '$500 cumulés', desc: 'Atteins $500 de gains au total', unlocked: totalGains >= 500, progress: Math.min(totalGains, 500), target: 500 },
+    { id: 'gains_1000', icon: '🤑', label: '$1000 cumulés', desc: 'Atteins $1000 de gains au total', unlocked: totalGains >= 1000, progress: Math.min(totalGains, 1000), target: 1000 },
+    { id: 'super_parrain', icon: '🏆', label: 'Super Parrain', desc: 'Parraine 5 affiliés', unlocked: (referralCount || 0) >= 5, progress: Math.min(referralCount || 0, 5), target: 5 },
+    { id: 'streak_7', icon: '🔥', label: 'Série de 7 jours', desc: '7 jours d\'affilée avec au moins une vente', unlocked: bestStreak >= 7, progress: Math.min(bestStreak, 7), target: 7 },
+    { id: 'early_bird', icon: '🐦', label: 'Early Bird', desc: 'Fais partie des 20 premiers affiliés inscrits', unlocked: rank > 0 && rank <= 20, progress: rank > 0 && rank <= 20 ? 1 : 0, target: 1 }
+  ];
+  res.json({ badges, unlockedCount: badges.filter(b => b.unlocked).length, total: badges.length });
+});
+
+// ── MA SÉRIE (streak) ──
+app.get('/api/me/streak', auth, async (req, res) => {
+  const { data: convs } = await supabase.from('conversions').select('created_at').eq('user_id', req.user.id).eq('status', 'approved');
+  const days = new Set((convs || []).map(c => new Date(c.created_at).toISOString().slice(0, 10)));
+
+  let current = 0;
+  const cursor = new Date();
+  const todayStr = cursor.toISOString().slice(0, 10);
+  if (!days.has(todayStr)) cursor.setDate(cursor.getDate() - 1);
+  while (days.has(cursor.toISOString().slice(0, 10))) { current++; cursor.setDate(cursor.getDate() - 1); }
+
+  let longest = 0, run = 0;
+  const sortedDays = [...days].sort();
+  for (let i = 0; i < sortedDays.length; i++) {
+    if (i === 0 || (new Date(sortedDays[i]) - new Date(sortedDays[i - 1])) === 86400000) run++;
+    else run = 1;
+    longest = Math.max(longest, run);
+  }
+
+  // Les 35 derniers jours, pour un petit calendrier visuel façon "streak"
+  const last35 = [];
+  const d = new Date();
+  for (let i = 34; i >= 0; i--) {
+    const day = new Date(d);
+    day.setDate(d.getDate() - i);
+    const key = day.toISOString().slice(0, 10);
+    last35.push({ date: key, hasSale: days.has(key) });
+  }
+
+  res.json({ current, longest, last35 });
+});
+
+// ── ROUE DE LA CHANCE ──
+// Disponible une fois par semaine (reset chaque lundi), uniquement si l'affilié a réalisé
+// au moins une vente approuvée depuis le début de la semaine en cours.
+const WHEEL_SEGMENTS = [
+  { reward: 0, weight: 20, label: 'Perdu' },
+  { reward: 1, weight: 30, label: '$1' },
+  { reward: 2, weight: 20, label: '$2' },
+  { reward: 5, weight: 15, label: '$5' },
+  { reward: 10, weight: 10, label: '$10' },
+  { reward: 25, weight: 5, label: '$25 JACKPOT' }
+];
+function getMondayOf(date) {
+  const d = new Date(date);
+  const day = d.getDay(); // 0=dimanche, 1=lundi...
+  const diff = (day === 0 ? -6 : 1) - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function pickWeightedSegment() {
+  const total = WHEEL_SEGMENTS.reduce((s, seg) => s + seg.weight, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < WHEEL_SEGMENTS.length; i++) {
+    r -= WHEEL_SEGMENTS[i].weight;
+    if (r <= 0) return i;
+  }
+  return 0;
+}
+app.get('/api/me/wheel', auth, async (req, res) => {
+  const monday = getMondayOf(new Date());
+  const weekKey = monday.toISOString().slice(0, 10);
+  const { data: user } = await supabase.from('users').select('last_wheel_week,last_wheel_reward').eq('id', req.user.id).single();
+  const { count: salesThisWeek } = await supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString());
+  const nextMonday = new Date(monday); nextMonday.setDate(nextMonday.getDate() + 7);
+  res.json({
+    eligible: (salesThisWeek || 0) >= 1,
+    alreadySpun: user?.last_wheel_week === weekKey,
+    lastReward: user?.last_wheel_week === weekKey ? user.last_wheel_reward : null,
+    nextResetAt: nextMonday.toISOString()
+  });
+});
+app.post('/api/me/wheel/spin', auth, async (req, res) => {
+  const monday = getMondayOf(new Date());
+  const weekKey = monday.toISOString().slice(0, 10);
+  const { data: user } = await supabase.from('users').select('balance,last_wheel_week').eq('id', req.user.id).single();
+  if (user?.last_wheel_week === weekKey) return res.status(409).json({ error: 'Tu as déjà tourné la roue cette semaine' });
+  const { count: salesThisWeek } = await supabase.from('conversions').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('status', 'approved').gte('created_at', monday.toISOString());
+  if (!salesThisWeek) return res.status(403).json({ error: 'Fais au moins une vente cette semaine pour débloquer la roue' });
+
+  const segmentIndex = pickWeightedSegment();
+  const reward = WHEEL_SEGMENTS[segmentIndex].reward;
+  await supabase.from('users').update({ balance: user.balance + reward, last_wheel_week: weekKey, last_wheel_reward: reward }).eq('id', req.user.id);
+  log(req.user.id, 'roue-tournée', req.user.name + ' a tourné la roue et gagné $' + reward, req);
+  res.json({ segmentIndex, reward });
+});
+
 // ── TICKETS ──
 app.get('/api/tickets', auth, async (req, res) => {
   let query = supabase.from('tickets').select('*, users(name,email), ticket_messages(id,read_by_admin,read_by_user,user_id)').order('created_at', { ascending: false });
