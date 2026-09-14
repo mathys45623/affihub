@@ -1405,6 +1405,7 @@ app.post('/api/me/wheel/spin', auth, async (req, res) => {
   const segmentIndex = pickWeightedSegment(segments);
   const reward = segments[segmentIndex].reward;
   await supabase.from('users').update({ balance: user.balance + reward, last_wheel_week: weekKey, last_wheel_reward: reward }).eq('id', req.user.id);
+  await supabase.from('wheel_spins').insert({ user_id: req.user.id, reward, label: segments[segmentIndex].label });
   log(req.user.id, 'roue-tournée', req.user.name + ' a tourné la roue et gagné $' + reward, req);
   res.json({ segmentIndex, reward });
 });
@@ -1427,6 +1428,12 @@ app.patch('/api/admin/wheel-segments', auth, adminOnly, async (req, res) => {
   await supabase.from('settings').upsert({ key: 'wheel_segments', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
   log(req.user.id, 'roue-configurée', 'Segments de la roue de la chance mis à jour (' + cleaned.length + ' segments)', req);
   res.json({ success: true });
+});
+
+// Historique des tirages de l'affilié connecté
+app.get('/api/me/wheel-history', auth, async (req, res) => {
+  const { data } = await supabase.from('wheel_spins').select('reward,label,created_at').eq('user_id', req.user.id).order('created_at', { ascending: false }).limit(30);
+  res.json(data || []);
 });
 
 // ── TICKETS ──
