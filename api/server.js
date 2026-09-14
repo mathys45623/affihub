@@ -1237,7 +1237,7 @@ app.get('/api/referrals', auth, async (req, res) => {
 
 // ── RANKING ──
 app.get('/api/ranking', auth, async (req, res) => {
-  const { data: users } = await supabase.from('users').select('id,name,created_at,avatar_url').eq('role','affiliate').eq('show_ranking',true);
+  const { data: users } = await supabase.from('users').select('id,name,created_at,avatar_url,tokens').eq('role','affiliate').eq('show_ranking',true);
   const result = await Promise.all((users||[]).map(async u => {
     const [convsRes, linksRes, referralRes] = await Promise.all([
       supabase.from('conversions').select('amount,status').eq('user_id',u.id),
