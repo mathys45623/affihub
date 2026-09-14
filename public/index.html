@@ -1270,15 +1270,16 @@ async function renderPage(page){
   if(page==='admin-custom'){
     const requests=await api('GET','/api/custom-requests');
     const pending=requests.filter(r=>r.status==='pending');
+    const treated=requests.filter(r=>r.status!=='pending');
     if(requests.length===0)return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎨 Liens personnalisés</div></div><div class="card"><div class="empty"><div class="empty-icon">🎨</div><p>Aucune demande</p></div></div>';
-    const rows=requests.map(r=>{
+    const renderFullCard=(r)=>{
       const photoHtml=[r.photo1_url,r.photo2_url,r.photo3_url,r.photo4_url,r.photo5_url,r.photo6_url].filter(Boolean).map(p=>'<img src="'+p+'" style="width:80px;height:80px;border-radius:8px;object-fit:cover;cursor:pointer;'+(r.photos_blurred?'filter:blur(4px)':'')+'" onclick="window.open(\''+p+'\',\'_blank\')" onerror="this.outerHTML=\'<div style=&quot;width:80px;height:80px;border-radius:8px;background:#1a1a1a;border:1px dashed #444;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;padding:4px&quot;>⚠️ Format non supporté (HEIC ?)</div>\'">').join('');
       const isStarOF=r.offer_id===55;
       const tags=isStarOF?[]:[r.tag1,r.tag2,r.tag3].filter(Boolean).map(t=>'<span class="badge bp2">'+esc(t)+'</span>').join('');
       const linkSection=r.status==='approved'
         ?'<div style="background:rgba(0,214,143,.08);border:1px solid rgba(0,214,143,.2);border-radius:10px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between"><code style="font-size:12px;color:var(--green)">'+esc(r.custom_link)+'</code><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>'
         :'<div style="display:flex;gap:8px;align-items:center"><input type="text" id="clink-'+r.id+'" placeholder="URL de destination (page créée pour cet affilié)..." style="flex:1;background:var(--bg3);border:1px solid #2a2a2a;border-radius:10px;padding:10px 14px;color:var(--text);font-family:inherit;font-size:13px;outline:none"><button class="btn btn-grad" onclick="sendCustomLink('+r.id+')">✅ Envoyer</button><button class="btn btn-red btn-sm" onclick="deleteCustomReq('+r.id+')">🗑</button></div>';
-      return '<div class="card" style="margin-bottom:14px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px">'+(r.logo_url?'<img src="'+r.logo_url+'" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid #2a2a2a;cursor:pointer" onclick="window.open(\''+r.logo_url+'\',\'_blank\')">':'<div style="width:48px;height:48px;border-radius:12px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:20px">🎮</div>')+'<div><div style="font-size:16px;font-weight:800">'+esc(r.server_name||'Sans nom')+'</div><div style="font-size:12px;color:var(--muted)">'+esc(r.users?.name)+' • '+esc(r.offers?.name)+' • '+fmt(r.created_at)+'</div></div></div>'+(r.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
+      return '<div class="card" style="margin-bottom:14px;border-color:'+(r.status==='pending'?'rgba(245,200,66,.3)':'#2a2a2a')+'"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px"><div style="display:flex;align-items:center;gap:12px">'+(r.logo_url?'<img src="'+r.logo_url+'" style="width:48px;height:48px;border-radius:12px;object-fit:cover;border:1px solid #2a2a2a;cursor:pointer" onclick="window.open(\''+r.logo_url+'\',\'_blank\')">':'<div style="width:48px;height:48px;border-radius:12px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:20px">🎮</div>')+'<div><div style="font-size:16px;font-weight:800">'+esc(r.server_name||'Sans nom')+'</div><div style="font-size:12px;color:var(--muted)">'+esc(r.users?.name)+' • '+esc(r.offers?.name)+' • '+fmt(r.created_at)+'</div></div></div>'+(r.status==='approved'?'<span class="badge bg2">✅ Lien envoyé</span>':'<span class="badge by2">⏳ En attente</span>')+'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px">'+(isStarOF?
         '<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Prénom</div><div style="font-size:13px">'+esc(r.server_name||'—')+'</div></div>'
         +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Nom</div><div style="font-size:13px">'+esc(r.slogan||'—')+'</div></div>'
@@ -1294,8 +1295,14 @@ async function renderPage(page){
         +'<div style="background:var(--bg3);border-radius:10px;padding:12px"><div style="font-size:10px;color:var(--yellow);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Photos floutées</div><div style="font-size:13px">'+(r.photos_blurred?'✅ Oui':'❌ Non')+'</div></div>'
         )+'</div>'
       +(photoHtml?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">'+photoHtml+'</div>':'')+linkSection+'</div>';
-    }).join('');
-    return '<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎨 Liens personnalisés</div>'+(pending.length>0?'<span class="badge by2">⏳ '+pending.length+' en attente</span>':'')+'</div>'+rows;
+    };
+    const pendingHtml=pending.map(r=>renderFullCard(r)).join('');
+    const treatedHtml=treated.map(r=>'<div class="card custom-compact" data-search="'+esc((r.users?.name||'')+' '+(r.offers?.name||'')+' '+(r.server_name||'')).toLowerCase()+'" style="margin-bottom:8px;padding:12px 16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:200px">'+(r.logo_url?'<img src="'+r.logo_url+'" style="width:32px;height:32px;border-radius:8px;object-fit:cover">':'<div style="width:32px;height:32px;border-radius:8px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:14px">🎮</div>')+'<div><b style="font-size:13px">'+esc(r.server_name||'Sans nom')+'</b><div style="font-size:11px;color:var(--muted)">'+esc(r.users?.name)+' • '+esc(r.offers?.name)+' • '+fmt(r.created_at)+'</div></div></div><span class="badge bg2" style="font-size:10px">✅ Traité</span><button class="btn btn-gst btn-sm" onclick="toggleCustomDetail('+r.id+')">Détails</button></div><div id="custom-detail-'+r.id+'" style="display:none;margin-top:14px">'+renderFullCard(r)+'</div></div>').join('');
+    return '<div class="card-header" style="margin-bottom:16px"><div class="card-title">🎨 Liens personnalisés</div></div>'
+    +'<div class="stats-grid" style="margin-bottom:20px"><div class="stat-card"><div class="stat-icon">⏳</div><div class="stat-label">En attente</div><div class="stat-val gy">'+pending.length+'</div></div><div class="stat-card"><div class="stat-icon">✅</div><div class="stat-label">Traités</div><div class="stat-val gg">'+treated.length+'</div></div></div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--yellow);margin-bottom:10px">⏳ En attente ('+pending.length+')</div>'
+    +(pending.length===0?'<div class="card" style="margin-bottom:24px"><div class="empty"><p>Aucune demande en attente 🎉</p></div></div>':'<div style="margin-bottom:24px">'+pendingHtml+'</div>')
+    +(treated.length>0?'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="font-size:13px;font-weight:700;color:var(--muted)">✅ Traités ('+treated.length+')</div><input type="text" id="custom-search" placeholder="🔎 Rechercher un affilié ou une offre..." oninput="filterCustomTreated(this.value)" style="background:var(--bg3);border:1px solid #2a2a2a;border-radius:9px;padding:7px 12px;color:var(--text);font-family:inherit;font-size:12px;width:240px"></div><div id="custom-treated-list">'+treatedHtml+'</div>':'');
   }
 
   if(page==='admin-offers'){
@@ -2024,6 +2031,17 @@ async function submitCustomRequest(offerId){
     await api('POST','/api/custom-requests',{offer_id:offerId,server_name:name,slogan,tag1,tag2,tag3,logo_url:logoUrl,salons,photo_text:phototext,photos_blurred:document.getElementById('cr-blur').checked,...photoUrls});
     closeMo();goPage('aff-links');setTimeout(()=>toast('✅ Demande envoyée ! Notre équipe va la traiter rapidement.','s'),300);
   }catch(e){toast(e.message,'e');if(btn){btn.disabled=false;btn.textContent='📨 Envoyer';}}
+}
+function toggleCustomDetail(id){
+  const el=document.getElementById('custom-detail-'+id);
+  if(!el)return;
+  el.style.display=el.style.display==='none'?'block':'none';
+}
+function filterCustomTreated(q){
+  q=q.trim().toLowerCase();
+  document.querySelectorAll('.custom-compact').forEach(el=>{
+    el.style.display=(!q||el.dataset.search.includes(q))?'block':'none';
+  });
 }
 async function sendCustomLink(id){const link=document.getElementById('clink-'+id)?.value.trim();if(!link){toast('Entre le lien','e');return;}try{await api('PATCH','/api/custom-requests/'+id+'/link',{custom_link:link});toast('Lien envoyé ✓','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
 async function deleteCustomReq(id){try{await api('DELETE','/api/custom-requests/'+id);toast('Supprimé','s');goPage('admin-custom');}catch(e){toast(e.message,'e');}}
