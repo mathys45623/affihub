@@ -620,19 +620,20 @@ async function startApp(){
   document.getElementById('u-name').textContent=ME.name;
   document.getElementById('u-email').textContent=ME.email;
   document.getElementById('u-avatar').textContent=ME.name[0].toUpperCase();
+  updateSidebarAvatar();
   setTimeout(()=>updateLogo(LOGO_URL),100);
   const adminNav=[
     {section:'ACCUEIL',items:[{icon:'📊',label:'Dashboard',page:'admin-dash'}]},
     {section:'GESTION',items:[{icon:'👥',label:'Affiliés',page:'admin-aff'},{icon:'🔁',label:'Conversions',page:'admin-conv'},{icon:'💸',label:'Retraits',page:'admin-wd'},{icon:'🤝',label:'Parrainages',page:'admin-ref'},{icon:'🎫',label:'Tickets',page:'admin-tickets'},{icon:'💬',label:'Serveurs Discord',page:'admin-discord'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'🆔',label:'ID Discord',page:'admin-discordid'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
+    {section:'CONFIGURATION',items:[{icon:'🎯',label:'Offres',page:'admin-offers'},{icon:'🔗',label:'Liens',page:'admin-links'},{icon:'🛍️',label:'Boutique',page:'admin-shop-settings'},{icon:'📋',label:'Logs d\'activité',page:'admin-logs'},{icon:'🆔',label:'ID Discord',page:'admin-discordid'},{icon:'⚙️',label:'Paramètres',page:'admin-settings'}]}
   ];
   const affNav=[
     {section:'ACCUEIL',items:[{icon:'🏠',label:'Dashboard',page:'aff-dash'},{icon:'🔗',label:'Mes liens',page:'aff-links'}]},
     {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
     {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'}]},
+        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'},{icon:'🛍️',label:'Boutique',page:'aff-shop'}]},
     {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
         {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
@@ -663,6 +664,7 @@ async function startApp(){
         {icon:'🎯',label:'Offres',page:'admin-offers'},
         {icon:'🔗',label:'Liens',page:'admin-links'},
         {icon:'🎡',label:'Roue de la chance',page:'admin-wheel'},
+        {icon:'🛍️',label:'Boutique',page:'admin-shop-settings'},
         {icon:'📋',label:'Logs d\'activité',page:'admin-logs'},
         {icon:'🆔',label:'ID Discord',page:'admin-discordid'},
         {icon:'⚙️',label:'Paramètres',page:'admin-settings'}
@@ -680,7 +682,7 @@ async function startApp(){
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
         {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
         {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'}]},
-        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'}]},
+        {section:'BONUS',items:[{icon:'🎴',label:'Collection',page:'aff-collection'},{icon:'🏅',label:'Mes badges',page:'aff-badges'},{icon:'🔥',label:'Ma série',page:'aff-streak'},{icon:'🎡',label:'Roue de la chance',page:'aff-wheel'},{icon:'🛍️',label:'Boutique',page:'aff-shop'}]},
         {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
         {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
       ];
@@ -770,10 +772,10 @@ function closeMobileNav(){
 const TITLES={
   'aff-dash':'Dashboard','aff-links':'Mes liens','aff-stats':'Statistiques','aff-conv':'Conversions',
   'aff-pay':'Paiements','aff-ref':'Parrainage','aff-top':'🏆 TOP Affiliés','aff-support':'Mon Manager',
-  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection','aff-gifts':'🎁 Cadeaux','aff-badges':'🏅 Mes badges','aff-streak':'🔥 Ma série','aff-wheel':'🎡 Roue de la chance',
+  'aff-tickets':'🎫 Ticket / Aide','aff-settings':'Paramètres','aff-discord':'💬 Aide Discord','aff-guide':'📖 Guide','aff-collection':'🎴 Collection','aff-gifts':'🎁 Cadeaux','aff-badges':'🏅 Mes badges','aff-streak':'🔥 Ma série','aff-wheel':'🎡 Roue de la chance','aff-shop':'🛍️ Boutique',
   'admin-dash':'Dashboard','admin-aff':'Affiliés','admin-conv':'Conversions','admin-wd':'Retraits',
   'admin-ref':'Parrainages','admin-tickets':'🎫 Tickets','admin-custom':'🎨 Liens personnalisés','admin-discord':'💬 Serveurs Discord',
-  'admin-offers':'Offres','admin-links':'Liens','admin-wheel':'🎡 Roue de la chance','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité','admin-discordid':'🆔 ID Discord'
+  'admin-offers':'Offres','admin-links':'Liens','admin-wheel':'🎡 Roue de la chance','admin-shop-settings':'🛍️ Réglages boutique','admin-settings':'Paramètres du site','admin-logs':'📋 Logs d\'activité','admin-discordid':'🆔 ID Discord'
 };
 
 async function goPage(page){
@@ -806,6 +808,13 @@ function fmt(d){return d?d.split('T')[0]:'—';}
 // dans le DOM, pour empêcher qu'un message/nom contenant du code (ex: <img onerror=...>)
 // ne s'exécute chez qui le consulte (protection XSS stocké).
 function esc(str){if(str===null||str===undefined)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+// Avatar rond : affiche la photo de profil si elle existe, sinon l'initiale du nom (comportement inchangé par défaut)
+function avatarHtml(name,avatarUrl,size,fontSize,extraStyle){
+  size=size||34;fontSize=fontSize||13;
+  const base='width:'+size+'px;height:'+size+'px;border-radius:'+Math.round(size*0.29)+'px;flex-shrink:0;'+(extraStyle||'');
+  if(avatarUrl)return '<div class="avatar" style="'+base+';padding:0;overflow:hidden;background:#1a1a1a"><img src="'+avatarUrl+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent=\''+esc((name||'?')[0].toUpperCase())+'\';this.parentElement.style.background=\'var(--grad)\'"></div>';
+  return '<div class="avatar" style="'+base+';font-size:'+fontSize+'px">'+esc((name||'?')[0].toUpperCase())+'</div>';
+}
 
 // ── Roue de la chance ── (les segments viennent maintenant du serveur, configurables par l'admin)
 let CURRENT_WHEEL_SEGMENTS=[];
@@ -1130,7 +1139,7 @@ async function renderPage(page){
     const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
     const mkRows=sort=>{
       const sorted=[...ranking].sort((a,b)=>sort==='gains'?b.totalGains-a.totalGains:sort==='conv'?b.totalConversions-a.totalConversions:sort==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
-      return sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
+      return sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12)+'<b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
     };
     return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px"><div style="font-size:13px;color:var(--muted)">'+ranking.length+' affilié(s)</div><div style="display:flex;gap:6px"><button class="btn btn-grad btn-sm" id="sort-gains" onclick="doSortTop(\'gains\')">💰 Gains</button><button class="btn btn-gst btn-sm" id="sort-conv" onclick="doSortTop(\'conv\')">🔁 Conv.</button><button class="btn btn-gst btn-sm" id="sort-clicks" onclick="doSortTop(\'clicks\')">🖱️ Clics</button><button class="btn btn-gst btn-sm" id="sort-date" onclick="doSortTop(\'date\')">📅 Date</button></div></div>'
     +'<div class="card"><div class="tw"><table><thead><tr><th style="text-align:center">🏅 Rang</th><th>👤 Affilié</th><th>📅 Inscrit le</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">🔁 Conv.</th><th style="text-align:center">💰 Gains</th></tr></thead><tbody id="top-tbody">'+mkRows('gains')+'</tbody></table></div></div>';
@@ -1143,7 +1152,8 @@ async function renderPage(page){
 
   if(page==='aff-settings'){
     const showRanking=ME.show_ranking!==false;
-    return '<div class="settings-section"><div class="settings-section-title">👤 Informations</div><div class="info-row"><div class="info-label">Nom</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">Email</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">Date d\'arrivée</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">Code parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\'Code copié !\',\'s\')">📋</button></div></div></div>'
+    return '<div class="settings-section"><div class="settings-section-title">🖼️ Photo de profil</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">'+avatarHtml(ME.name,ME.avatar_url,80,30)+'<div><div style="font-weight:700;margin-bottom:4px">Ta photo</div><div style="font-size:12px;color:var(--muted)">Visible dans la sidebar et les classements</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'avatar-file\').click()"><input type="file" id="avatar-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewAvatar(this)"><div id="avatar-prev" style="display:none;margin-bottom:10px"><img id="avatar-prev-img" style="max-width:120px;max-height:120px;border-radius:50%;object-fit:cover"></div><div id="avatar-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer une photo</div></div></div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-grad" onclick="saveAvatar()" style="flex:1;justify-content:center">💾 Sauvegarder</button>'+(ME.avatar_url?'<button class="btn btn-red" onclick="removeAvatar()">🗑 Retirer</button>':'')+'</div></div>'
+    +'<div class="settings-section"><div class="settings-section-title">👤 Informations</div><div class="info-row"><div class="info-label">Nom</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">Email</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">Date d\'arrivée</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">Code parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\'Code copié !\',\'s\')">📋</button></div></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">🏆 Classement</div><div class="info-row"><div><div class="info-label" style="margin-bottom:4px">Apparaître dans le TOP</div><div style="font-size:12px;color:var(--muted)">Vos stats seront visibles</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(showRanking?'var(--green)':'var(--muted)')+'">'+(showRanking?'✅ Visible':'🚫 Masqué')+'</span><button class="btn '+(showRanking?'btn-red':'btn-grn')+' btn-sm" onclick="toggleRanking('+(showRanking?'false':'true')+')">'+(showRanking?'Masquer':'Afficher')+'</button></div></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔑 Mot de passe</div><div class="fi"><label>Actuel</label><input type="password" id="cp-cur" placeholder="••••••••"></div><div class="fi"><label>Nouveau</label><input type="password" id="cp-new" placeholder="••••••••"></div><div class="fi"><label>Confirmer</label><input type="password" id="cp-conf" placeholder="••••••••"></div><button class="btn btn-grad" onclick="changePass()">🔑 Modifier</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔌 Postback vers mon système</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici. Quand une conversion est approuvée, AffiHub enverra automatiquement les infos à ton système.<br><br>Variables disponibles : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL de postback</label><input type="text" id="pb-url" placeholder="https://ta-plateforme.com/postback?sub1={LINK_ID}&amount={AMOUNT}" value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">💾 Sauvegarder</button></div>'
@@ -1264,6 +1274,27 @@ async function renderPage(page){
     +'<div class="card"><div class="card-title" style="margin-bottom:16px">📜 Historique de mes tirages</div>'+(history.length===0?'<div class="empty"><div class="empty-icon">🎡</div><p>Aucun tirage pour l\'instant</p></div>':'<div class="tw"><table><thead><tr><th>📅 Date</th><th>🎁 Lot</th><th style="text-align:right">💰 Gain</th></tr></thead><tbody>'+histRows+'</tbody></table></div>')+'</div>';
   }
 
+  if(page==='aff-shop'){
+    const [methods,items,orders]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items'),api('GET','/api/shop/orders')]);
+    const tokens=ME.tokens||0;
+    const methodCards=methods.map(m=>'<div class="card" style="padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px"><div style="font-size:26px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div>'+(m.tokens>0?'<span class="badge by2" style="flex-shrink:0">+'+m.tokens+' 🪙</span>':'')+'</div>').join('');
+    const itemCards=items.map(it=>{
+      const canAfford=tokens>=it.price_tokens;
+      return '<div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">'
+      +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:140px;object-fit:cover;display:block">':'<div style="width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:38px">🎁</div>')
+      +'<div style="padding:16px;display:flex;flex-direction:column;flex:1"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;flex:1;min-height:32px">'+esc(it.description||'')+'</div>'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span class="badge by2" style="font-size:13px">🪙 '+it.price_tokens+'</span>'
+      +(canAfford?'<button class="btn btn-grad btn-sm" onclick="confirmPurchaseShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\','+it.price_tokens+')">Échanger</button>':'<span class="badge br2" style="font-size:11px">🔒 Pas assez</span>')
+      +'</div></div></div>';
+    }).join('');
+    const orderRows=orders.slice(0,15).map(o=>'<tr><td style="color:var(--muted)">'+fmt(o.created_at)+'</td><td>'+esc(o.item_title)+'</td><td style="color:var(--yellow);font-weight:700">🪙 '+o.price_tokens+'</td><td><span class="badge bg2">✅ Obtenu</span></td></tr>').join('');
+    return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Tes jetons</div><div class="bal-amount">🪙 '+tokens+'</div></div></div>'
+    +'<div class="card"><div class="card-title" style="margin-bottom:14px">🪙 Comment obtenir des jetons</div>'+(methods.length===0?'<div class="empty"><div class="empty-icon">🪙</div><p>Aucun moyen renseigné pour l\'instant</p></div>':methodCards)+'</div>'
+    +'<div style="margin-bottom:16px"><div style="font-size:18px;font-weight:800;margin-bottom:4px">🛍️ Boutique</div><div style="font-size:12px;color:var(--muted)">Échange tes jetons contre des offres — c\'est à toi immédiatement, sans validation.</div></div>'
+    +(items.length===0?'<div class="card"><div class="empty"><div class="empty-icon">🛍️</div><p>Aucune offre disponible pour le moment.</p></div></div>':'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:22px">'+itemCards+'</div>')
+    +(orders.length>0?'<div class="card"><div class="card-title" style="margin-bottom:14px">📋 Mes échanges</div><div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Coût</th><th>Statut</th></tr></thead><tbody>'+orderRows+'</tbody></table></div></div>':'');
+  }
+
   if(page==='aff-discord'){
     const servers=await api('GET','/api/discord-servers');
     const catMeta={casino:{icon:'🎰',label:'Casino',color:'#F5C842'},ia:{icon:'🤖',label:'Meuf IA',color:'#4D9EFF'},dating:{icon:'💕',label:'Dating',color:'#F0427A'},influenceuse:{icon:'👑',label:'Influenceuse',color:'#a855f7'}};
@@ -1345,7 +1376,7 @@ async function renderPage(page){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
     const isSuperAdmin=ME.is_super_admin===true;
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12)+'<div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
     return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' utilisateur(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>💎 Gains totale</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
@@ -1471,6 +1502,25 @@ async function renderPage(page){
     return renderWheelEditor();
   }
 
+  if(page==='admin-shop-settings'){
+    const [methods,items]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items')]);
+    window.tokenMethodsEdit=methods.map(m=>({...m}));
+    const methodRows=window.tokenMethodsEdit.map((m,i)=>'<div class="card" style="margin-bottom:10px;padding:14px 16px;'+(m.active===false?'opacity:.5':'')+'"><div style="display:flex;align-items:center;gap:14px"><div style="font-size:24px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div><div style="text-align:center;flex-shrink:0"><span class="badge by2">🪙 '+(m.tokens||0)+'</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn '+(m.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleTokenMethod('+i+')">'+(m.active===false?'✅':'🚫')+'</button><button class="btn btn-gst btn-sm" onclick="openEditTokenMethod('+i+')">✏️</button><button class="btn btn-red btn-sm" onclick="removeTokenMethod('+i+')">🗑</button></div></div></div>').join('');
+    const itemCards=items.map(it=>'<div class="card" style="padding:0;overflow:hidden;'+(it.active===false?'opacity:.5':'')+'">'
+      +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:120px;object-fit:cover;display:block">':'<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px">🎁</div>')
+      +'<div style="padding:16px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:32px">'+esc(it.description||'')+'</div><div style="display:flex;align-items:center;justify-content:space-between"><span class="badge by2">🪙 '+it.price_tokens+'</span><div style="display:flex;gap:6px">'
+      +'<button class="btn '+(it.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleShopItem('+it.id+','+(it.active===false?'true':'false')+')">'+(it.active===false?'✅':'🚫')+'</button>'
+      +'<button class="btn btn-gst btn-sm" onclick="openEditShopItem('+it.id+')">✏️</button>'
+      +'<button class="btn btn-red btn-sm" onclick="confirmDeleteShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\')">🗑</button>'
+      +'</div></div></div></div>').join('');
+    window.SHOP_ITEMS_CACHE=items;
+    return '<div class="settings-section"><div class="settings-section-title">🪙 Moyens d\'obtenir des jetons</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Cette liste est affichée aux affiliés dans leur page Boutique, pour leur expliquer comment gagner des jetons. C\'est informatif — les jetons sont crédités via tes autres systèmes (ventes, bonus manuels, etc.).</p>'
+      +methodRows
+      +'<button class="btn btn-gst" onclick="openAddTokenMethod()" style="width:100%;justify-content:center;margin-top:6px">+ Ajouter un moyen</button></div>'
+      +'<div class="card-header" style="margin-bottom:16px"><div class="card-title">🛍️ Offres de la boutique</div><button class="btn btn-grad btn-sm" onclick="openAddShopItem()">+ Ajouter une offre</button></div>'
+      +(items.length===0?'<div class="card"><div class="empty"><div class="empty-icon">🛍️</div><p>Aucune offre pour le moment.</p></div></div>':'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:16px">'+itemCards+'</div>');
+  }
+
   if(page==='admin-offers'){
     const offers=await api('GET','/api/offers');
     let html='<div class="card-header" style="margin-bottom:20px"><div class="card-title">🎯 Offres</div><button class="btn btn-grad btn-sm" onclick="openAddOffer()">+ Ajouter</button></div>';
@@ -1525,7 +1575,7 @@ async function renderPage(page){
   if(page==='admin-discordid'){
     const users=await api('GET','/api/users');
     const affs=users.filter(u=>u.role==='affiliate');
-    const rows=affs.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px"><div class="avatar" style="width:30px;height:30px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+u.email+'</td><td><div style="display:flex;gap:8px;align-items:center"><input type="text" id="did-'+u.id+'" value="'+(u.discord_id||'')+'" placeholder="Aucun ID renseigné" style="width:180px;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:monospace;font-size:12px"><button class="btn btn-grad btn-sm" onclick="saveAdminDiscordId(\''+u.id+'\')">💾</button>'+(u.discord_id?'<button class="btn btn-red btn-sm" onclick="removeAdminDiscordId(\''+u.id+'\')">🗑</button>':'')+'</div></td></tr>').join('');
+    const rows=affs.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12)+'<b>'+u.name+'</b></div></td><td style="color:var(--muted)">'+u.email+'</td><td><div style="display:flex;gap:8px;align-items:center"><input type="text" id="did-'+u.id+'" value="'+(u.discord_id||'')+'" placeholder="Aucun ID renseigné" style="width:180px;background:var(--bg3);border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;color:var(--text);font-family:monospace;font-size:12px"><button class="btn btn-grad btn-sm" onclick="saveAdminDiscordId(\''+u.id+'\')">💾</button>'+(u.discord_id?'<button class="btn btn-red btn-sm" onclick="removeAdminDiscordId(\''+u.id+'\')">🗑</button>':'')+'</div></td></tr>').join('');
     return '<div class="card"><div class="card-title" style="margin-bottom:8px">🆔 ID Discord des affiliés</div><div style="font-size:12px;color:var(--muted);margin-bottom:16px">Ajoute ou modifie manuellement l\'ID Discord de n\'importe quel affilié — utile s\'il n\'a pas renseigné le sien.</div>'
       +(affs.length===0?'<div class="empty"><div class="empty-icon">🆔</div><p>Aucun affilié</p></div>':'<div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>🆔 ID Discord</th></tr></thead><tbody>'+rows+'</tbody></table></div>')
       +'</div>';
@@ -1746,7 +1796,7 @@ function selectGiftAmount(amount,btn){
   if(out)out.innerHTML='Tu recevras <b style="color:var(--green)">$'+net+'</b> après 5% de frais';
 }
 function renderWheelEditor(){
-  return '<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:10px">🎡 Configurer la roue de la chance</div><p style="font-size:12px;color:var(--muted)">Définis les lots possibles et leur probabilité relative (plus le nombre est grand par rapport aux autres, plus la chance de tomber dessus est élevée — ce ne sont pas forcément des %). Entre 2 et 8 segments. La colonne "Chance" se recalcule après ajout/suppression d\'un segment ou l\'enregistrement.</p></div>'
+  return '<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:10px">🎡 Configurer la roue de la chance</div><p style="font-size:12px;color:var(--muted)">Définis les lots possibles et leur probabilité relative (plus le nombre est grand par rapport aux autres, plus la chance de tomber dessus est élevée — ce ne sont pas forcément des %). Entre 2 et 15 segments. La colonne "Chance" se recalcule après ajout/suppression d\'un segment ou l\'enregistrement.</p></div>'
   +'<div style="display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start" class="wheel-editor-grid">'
   +'<div class="card" style="text-align:center;padding:20px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Aperçu</div><div id="wheel-preview-container" style="position:relative;width:100%;max-width:200px;margin:0 auto"><svg viewBox="0 0 200 200" style="width:100%;display:block;filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))" id="wheel-preview-svg">'+buildWheelSegments(window.wheelEditSegments)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg></div></div>'
   +'<div><div id="wheel-editor-body">'+renderWheelEditorRows()+'</div></div>'
@@ -1767,7 +1817,7 @@ function renderWheelEditorRows(){
     +'</div></div>';
   }).join('');
   return rows
-  +'<button class="btn btn-gst" onclick="addWheelSegment()" style="width:100%;justify-content:center;margin-bottom:20px"'+(segs.length>=8?' disabled':'')+'>+ Ajouter un segment'+(segs.length>=8?' (max 8)':'')+'</button>'
+  +'<button class="btn btn-gst" onclick="addWheelSegment()" style="width:100%;justify-content:center;margin-bottom:20px"'+(segs.length>=15?' disabled':'')+'>+ Ajouter un segment'+(segs.length>=15?' (max 15)':'')+'</button>'
   +'<button class="btn btn-grad" onclick="saveWheelSegments()" style="width:100%;justify-content:center;padding:13px">💾 Enregistrer la configuration</button>';
 }
 function moveWheelSegment(i,dir){
@@ -1788,7 +1838,7 @@ function updateWheelField(i,field,value){
   refreshWheelPreview();
 }
 function addWheelSegment(){
-  if(window.wheelEditSegments.length>=8){toast('Maximum 8 segments','e');return;}
+  if(window.wheelEditSegments.length>=15){toast('Maximum 15 segments','e');return;}
   window.wheelEditSegments.push({label:'Nouveau lot',reward:0,weight:10});
   document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
   refreshWheelPreview();
@@ -1951,8 +2001,94 @@ async function doAddOffer(){
   try{let imgUrl=null;const f=document.getElementById('img-file-add').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
   await api('POST','/api/offers',{name,description:document.getElementById('od').value.trim(),url,commission:parseFloat(document.getElementById('oc').value)||10,category:document.getElementById('ocat').value,image_url:imgUrl});closeMo();toast('Offre créée !','s');goPage('admin-offers');}catch(e){toast(e.message,'e');}
 }
+
+// ── ADMIN : MOYENS D'OBTENIR DES JETONS ──
+async function saveTokenMethods(successMsg){
+  try{await api('PATCH','/api/admin/token-methods',{methods:window.tokenMethodsEdit});toast(successMsg||'Enregistré ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+function toggleTokenMethod(i){window.tokenMethodsEdit[i].active=window.tokenMethodsEdit[i].active===false?true:false;saveTokenMethods(window.tokenMethodsEdit[i].active?'Activé ✅':'Désactivé 🚫');}
+function removeTokenMethod(i){
+  document.getElementById('m-title').textContent='Supprimer ce moyen';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🗑️</div><div style="font-size:13px;color:var(--muted);margin-bottom:18px">Supprimer <b>'+esc(window.tokenMethodsEdit[i].title)+'</b> ?</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="window.tokenMethodsEdit.splice('+i+',1);closeMo();saveTokenMethods(\'Supprimé\')" style="flex:1">Confirmer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+function openAddTokenMethod(){
+  document.getElementById('m-title').textContent='Nouveau moyen d\'obtenir des jetons';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Emoji / Icône</label><input type="text" id="tm-icon" placeholder="🪙" value="🪙"></div><div class="fi"><label>Titre</label><input type="text" id="tm-title" placeholder="Ex: Parrainer un ami"></div><div class="fi"><label>Description</label><input type="text" id="tm-desc" placeholder="Explique comment gagner ces jetons..."></div><div class="fi"><label>Jetons gagnés</label><input type="number" id="tm-tokens" min="0" value="10"></div><button class="btn btn-grad" onclick="doAddTokenMethod()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
+  document.getElementById('mo').classList.add('open');
+}
+function doAddTokenMethod(){
+  const title=document.getElementById('tm-title').value.trim();
+  if(!title){toast('Titre requis','e');return;}
+  window.tokenMethodsEdit.push({id:'m'+Date.now(),icon:document.getElementById('tm-icon').value.trim()||'🪙',title,description:document.getElementById('tm-desc').value.trim(),tokens:parseInt(document.getElementById('tm-tokens').value)||0,active:true});
+  closeMo();saveTokenMethods('Moyen ajouté !');
+}
+function openEditTokenMethod(i){
+  const m=window.tokenMethodsEdit[i];
+  document.getElementById('m-title').textContent='Modifier ce moyen';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Emoji / Icône</label><input type="text" id="tm-icon" value="'+esc(m.icon)+'"></div><div class="fi"><label>Titre</label><input type="text" id="tm-title" value="'+esc(m.title)+'"></div><div class="fi"><label>Description</label><input type="text" id="tm-desc" value="'+esc(m.description)+'"></div><div class="fi"><label>Jetons gagnés</label><input type="number" id="tm-tokens" min="0" value="'+(m.tokens||0)+'"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditTokenMethod('+i+')" style="flex:1;justify-content:center">Sauvegarder →</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+function doEditTokenMethod(i){
+  const title=document.getElementById('tm-title').value.trim();
+  if(!title){toast('Titre requis','e');return;}
+  const m=window.tokenMethodsEdit[i];
+  m.icon=document.getElementById('tm-icon').value.trim()||'🪙';m.title=title;m.description=document.getElementById('tm-desc').value.trim();m.tokens=parseInt(document.getElementById('tm-tokens').value)||0;
+  closeMo();saveTokenMethods('Moyen modifié ✓');
+}
+
+// ── ADMIN : OFFRES DE LA BOUTIQUE À JETONS ──
+function openAddShopItem(){
+  document.getElementById('m-title').textContent='Nouvelle offre boutique';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" placeholder="Ex: Bon cadeau Amazon 10€"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" placeholder="Description de l\'offre..."></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-si-add\').click()"><input type="file" id="img-file-si-add" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'si-add\')"><div id="img-prev-si-add" style="display:none;margin-bottom:10px"><img id="img-prev-img-si-add" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-si-add"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Importer une image</div></div></div></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="50"></div><button class="btn btn-grad" onclick="doAddShopItem()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doAddShopItem(){
+  const title=document.getElementById('si-title').value.trim();
+  const price=parseInt(document.getElementById('si-price').value);
+  if(!title){toast('Titre requis','e');return;}
+  if(!price||price<=0){toast('Prix en jetons invalide','e');return;}
+  try{let imgUrl=null;const f=document.getElementById('img-file-si-add').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+  await api('POST','/api/admin/shop/items',{title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,image_url:imgUrl});closeMo();toast('Offre créée !','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+function openEditShopItem(id){
+  const it=(window.SHOP_ITEMS_CACHE||[]).find(x=>x.id===id);if(!it)return;
+  document.getElementById('m-title').textContent='Modifier l\'offre';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" value="'+esc(it.title)+'"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" value="'+esc(it.description||'')+'"></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:20px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-si-edit\').click()"><input type="file" id="img-file-si-edit" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'si-edit\')"><div id="img-prev-si-edit" style="'+(it.image_url?'':'display:none;')+'margin-bottom:10px"><img id="img-prev-img-si-edit" src="'+(it.image_url||'')+'" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-si-edit" style="'+(it.image_url?'display:none':'')+'"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Changer l\'image</div></div></div></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="'+it.price_tokens+'"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditShopItem('+id+',\''+(it.image_url||'')+'\')" style="flex:1;justify-content:center">Sauvegarder →</button></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doEditShopItem(id,existingImg){
+  const title=document.getElementById('si-title').value.trim();
+  const price=parseInt(document.getElementById('si-price').value);
+  if(!title){toast('Titre requis','e');return;}
+  if(!price||price<=0){toast('Prix en jetons invalide','e');return;}
+  try{let imgUrl=existingImg||null;const f=document.getElementById('img-file-si-edit').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+  await api('PATCH','/api/admin/shop/items/'+id,{title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,image_url:imgUrl});closeMo();toast('Offre modifiée ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+}
+async function toggleShopItem(id,active){try{await api('PATCH','/api/admin/shop/items/'+id,{active});toast(active?'Offre activée ✅':'Offre désactivée 🚫',active?'s':'i');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}}
+function confirmDeleteShopItem(id,title){
+  document.getElementById('m-title').textContent='Supprimer l\'offre';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">⚠️</div><div style="font-weight:900;font-size:18px;margin-bottom:18px">'+title+'</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-red" onclick="deleteShopItem('+id+')" style="flex:1">Confirmer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function deleteShopItem(id){try{await api('DELETE','/api/admin/shop/items/'+id);closeMo();toast('Offre supprimée','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}}
+
+// ── AFFILIÉ : ACHAT BOUTIQUE ──
+function confirmPurchaseShopItem(id,title,price){
+  document.getElementById('m-title').textContent='Confirmer l\'échange';
+  document.getElementById('m-body').innerHTML='<div style="text-align:center;padding:8px 0 20px"><div style="font-size:44px;margin-bottom:12px">🛍️</div><div style="font-size:13px;color:var(--muted);margin-bottom:6px">Échanger</div><div style="font-weight:900;font-size:18px;margin-bottom:8px">'+esc(title)+'</div><div style="margin-bottom:18px"><span class="badge by2" style="font-size:14px">🪙 '+price+' jetons</span></div><div style="font-size:12px;color:var(--muted);margin-bottom:20px">Les jetons seront débités immédiatement, l\'offre est à toi tout de suite.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doPurchaseShopItem('+id+')" style="flex:1;justify-content:center">Confirmer</button></div></div>';
+  document.getElementById('mo').classList.add('open');
+}
+async function doPurchaseShopItem(id){
+  try{
+    await api('POST','/api/shop/purchase/'+id,{});
+    closeMo();toast('Échangé ! C\'est à toi 🎉','s');
+    goPage('aff-shop');
+  }catch(e){toast(e.message,'e');}
+}
 function openAddConv(){
   Promise.all([api('GET','/api/users'),api('GET','/api/offers')]).then(([users,offers])=>{
+
     document.getElementById('m-title').textContent='Ajouter une conversion';
     const uOpts=users.map(u=>'<option value="'+u.id+'">'+u.name+'</option>').join('');
     const oOpts=offers.filter(o=>o.active!==false).map(o=>'<option value="'+o.id+'">'+o.name+' ($'+o.commission+')</option>').join('');
@@ -1989,7 +2125,7 @@ function doSortTop(by){
   const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
   const sorted=[...ranking].sort((a,b)=>by==='gains'?b.totalGains-a.totalGains:by==='conv'?b.totalConversions-a.totalConversions:by==='clicks'?b.totalClicks-a.totalClicks:new Date(a.created_at)-new Date(b.created_at));
   const tbody=document.getElementById('top-tbody');
-  if(tbody)tbody.innerHTML=sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px"><div class="avatar" style="width:28px;height:28px;font-size:12px">'+u.name[0]+'</div><b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
+  if(tbody)tbody.innerHTML=sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12)+'<b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td></tr>').join('');
 }
 async function toggleRanking(show){try{await api('PATCH','/api/me/ranking',{show});ME.show_ranking=show;localStorage.setItem('affihub_user',JSON.stringify(ME));toast(show?'Visible ✅':'Masqué 🚫',show?'s':'i');goPage('aff-settings');}catch(e){toast(e.message,'e');}}
 let AFF_CONVS_CACHE=[];
@@ -2026,6 +2162,26 @@ async function changePass(){
 }
 function previewImg(input,key){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('img-prev-'+key).style.display='block';document.getElementById('img-prev-img-'+key).src=e.target.result;document.getElementById('img-ph-'+key).style.display='none';};reader.readAsDataURL(file);}
 function previewLogo(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('logo-prev').style.display='block';document.getElementById('logo-prev-img').src=e.target.result;document.getElementById('logo-ph').style.display='none';};reader.readAsDataURL(file);}
+function previewAvatar(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('avatar-prev').style.display='block';document.getElementById('avatar-prev-img').src=e.target.result;document.getElementById('avatar-ph').style.display='none';};reader.readAsDataURL(file);}
+async function saveAvatar(){
+  const f=document.getElementById('avatar-file').files[0];if(!f){toast('Choisis une photo','e');return;}
+  try{
+    toast('Upload...','i');
+    const url=await uploadImg(f,'avatars');
+    await api('PATCH','/api/me/avatar',{avatar_url:url});
+    ME.avatar_url=url;localStorage.setItem('affihub_user',JSON.stringify(ME));
+    updateSidebarAvatar();
+    toast('Photo de profil mise à jour ✓','s');
+    goPage('aff-settings');
+  }catch(e){toast(e.message,'e');}
+}
+async function removeAvatar(){
+  try{await api('PATCH','/api/me/avatar',{avatar_url:null});ME.avatar_url=null;localStorage.setItem('affihub_user',JSON.stringify(ME));updateSidebarAvatar();toast('Photo retirée','s');goPage('aff-settings');}catch(e){toast(e.message,'e');}
+}
+function updateSidebarAvatar(){
+  const el=document.getElementById('u-avatar');if(!el)return;
+  el.outerHTML=avatarHtml(ME.name,ME.avatar_url,34,13,'').replace('class="avatar"','class="avatar" id="u-avatar"');
+}
 function previewReplyImg(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('reply-img-prev').style.display='block';document.getElementById('reply-img-prev-img').src=e.target.result;document.getElementById('reply-img-ph').style.display='none';};reader.readAsDataURL(file);}
 async function saveLogo(){
   const f=document.getElementById('logo-file').files[0];if(!f){toast('Choisissez une image','e');return;}
@@ -2403,7 +2559,7 @@ async function openPermissions(userId, userName){
   if(u?.admin_permissions&&u.admin_permissions!=='all'){
     try{currentPerms=JSON.parse(u.admin_permissions);}catch(e){currentPerms=[];}
   } else {
-    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-logs','admin-discordid','admin-settings'];
+    currentPerms=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-shop-settings','admin-logs','admin-discordid','admin-settings'];
   }
   const pages=[
     {page:'admin-dash',label:'📊 Dashboard'},
@@ -2418,6 +2574,7 @@ async function openPermissions(userId, userName){
     {page:'admin-offers',label:'🎯 Offres'},
     {page:'admin-links',label:'🔗 Liens'},
     {page:'admin-wheel',label:'🎡 Roue de la chance'},
+    {page:'admin-shop-settings',label:'🛍️ Boutique'},
     {page:'admin-logs',label:'📋 Logs d\'activité'},
     {page:'admin-discordid',label:'🆔 ID Discord'},
     {page:'admin-settings',label:'⚙️ Paramètres'},
@@ -2428,7 +2585,7 @@ async function openPermissions(userId, userName){
   document.getElementById('mo').classList.add('open');
 }
 async function savePermissions(userId){
-  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-logs','admin-discordid','admin-settings'];
+  const pages=['admin-dash','admin-aff','admin-conv','admin-wd','admin-ref','admin-tickets','admin-discord','admin-custom','aff-top','admin-offers','admin-links','admin-wheel','admin-shop-settings','admin-logs','admin-discordid','admin-settings'];
   const perms=pages.filter(p=>document.getElementById('perm-'+p)?.checked);
   try{await api('PATCH','/api/users/'+userId+'/permissions',{permissions:perms});closeMo();toast('Permissions sauvegardées ✓','s');goPage('admin-aff');}catch(e){toast(e.message,'e');}
 }
