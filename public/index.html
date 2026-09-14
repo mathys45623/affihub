@@ -214,6 +214,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
 @keyframes resultPop{0%{transform:scale(0);opacity:0}60%{transform:scale(1.15)}100%{transform:scale(1);opacity:1}}
 .confetti-piece{position:fixed;top:-20px;z-index:9999;pointer-events:none;animation:confettiFall linear forwards}
 @keyframes confettiFall{0%{transform:translateY(0) rotate(0deg);opacity:1}100%{transform:translateY(100vh) rotate(720deg);opacity:0}}
+@media(max-width:640px){.wheel-editor-grid{grid-template-columns:1fr!important}}
 </style>
 </head>
 <body>
@@ -1744,7 +1745,10 @@ function selectGiftAmount(amount,btn){
 }
 function renderWheelEditor(){
   return '<div class="card" style="margin-bottom:20px"><div class="card-title" style="margin-bottom:10px">🎡 Configurer la roue de la chance</div><p style="font-size:12px;color:var(--muted)">Définis les lots possibles et leur probabilité relative (plus le nombre est grand par rapport aux autres, plus la chance de tomber dessus est élevée — ce ne sont pas forcément des %). Entre 2 et 8 segments. La colonne "Chance" se recalcule après ajout/suppression d\'un segment ou l\'enregistrement.</p></div>'
-  +'<div id="wheel-editor-body">'+renderWheelEditorRows()+'</div>';
+  +'<div style="display:grid;grid-template-columns:260px 1fr;gap:24px;align-items:start" class="wheel-editor-grid">'
+  +'<div class="card" style="text-align:center;padding:20px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:14px">Aperçu</div><div id="wheel-preview-container" style="position:relative;width:100%;max-width:200px;margin:0 auto"><svg viewBox="0 0 200 200" style="width:100%;display:block;filter:drop-shadow(0 6px 16px rgba(0,0,0,.5))" id="wheel-preview-svg">'+buildWheelSegments(window.wheelEditSegments)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text></svg></div></div>'
+  +'<div><div id="wheel-editor-body">'+renderWheelEditorRows()+'</div></div>'
+  +'</div>';
 }
 function renderWheelEditorRows(){
   const segs=window.wheelEditSegments||[];
@@ -1763,19 +1767,26 @@ function renderWheelEditorRows(){
   +'<button class="btn btn-gst" onclick="addWheelSegment()" style="width:100%;justify-content:center;margin-bottom:20px"'+(segs.length>=8?' disabled':'')+'>+ Ajouter un segment'+(segs.length>=8?' (max 8)':'')+'</button>'
   +'<button class="btn btn-grad" onclick="saveWheelSegments()" style="width:100%;justify-content:center;padding:13px">💾 Enregistrer la configuration</button>';
 }
+function refreshWheelPreview(){
+  const svg=document.getElementById('wheel-preview-svg');
+  if(svg)svg.innerHTML=buildWheelSegments(window.wheelEditSegments)+'<circle cx="100" cy="100" r="19" fill="url(#whub)" stroke="#7a5a15" stroke-width="1.5"/><text x="100" y="107" text-anchor="middle" font-size="20">🎁</text>';
+}
 function updateWheelField(i,field,value){
   if(field==='reward'||field==='weight')value=parseFloat(value)||0;
   window.wheelEditSegments[i][field]=value;
+  refreshWheelPreview();
 }
 function addWheelSegment(){
   if(window.wheelEditSegments.length>=8){toast('Maximum 8 segments','e');return;}
   window.wheelEditSegments.push({label:'Nouveau lot',reward:0,weight:10});
   document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+  refreshWheelPreview();
 }
 function removeWheelSegment(i){
   if(window.wheelEditSegments.length<=2){toast('Il faut au moins 2 segments','e');return;}
   window.wheelEditSegments.splice(i,1);
   document.getElementById('wheel-editor-body').innerHTML=renderWheelEditorRows();
+  refreshWheelPreview();
 }
 async function saveWheelSegments(){
   const segs=window.wheelEditSegments;
