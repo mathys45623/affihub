@@ -619,7 +619,8 @@ async function startApp(){
     {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
     {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
     {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'},{icon:'🎴',label:'Collection',page:'aff-collection'}]},
-    {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+    {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
+        {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
   ];
   if(ME.role==='admin'){
     // Refresh ME to get latest permissions
@@ -664,7 +665,8 @@ async function startApp(){
         {section:'STATISTIQUES',items:[{icon:'📈',label:'Statistiques',page:'aff-stats'},{icon:'🔁',label:'Conversions',page:'aff-conv'}]},
         {section:'GAINS',items:[{icon:'💸',label:'Paiements',page:'aff-pay'},{icon:'👥',label:'Parrainage',page:'aff-ref'},{icon:'🎁',label:'Cadeaux',page:'aff-gifts'}]},
         {section:'CLASSEMENT',items:[{icon:'🏆',label:'TOP Affiliés',page:'aff-top'},{icon:'🎴',label:'Collection',page:'aff-collection'}]},
-        {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'},{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
+        {section:'SUPPORT',items:[{icon:'📖',label:'Guide',page:'aff-guide'},{icon:'💬',label:'Aide Discord',page:'aff-discord'},{icon:'👨‍💼',label:'Mon manager',page:'aff-support'},{icon:'🎫',label:'Ticket / Aide',page:'aff-tickets'}]},
+        {section:'COMPTE',items:[{icon:'⚙️',label:'Paramètres',page:'aff-settings'}]}
       ];
       buildNav(nav);buildMobileNav(nav);
       goPage('aff-dash');
