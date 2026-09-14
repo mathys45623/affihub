@@ -1541,6 +1541,7 @@ async function revokeSaleTokens(userId, tokensGranted) {
     await supabase.from('users').update({ tokens: Math.max(0, (user?.tokens || 0) - tokensGranted) }).eq('id', userId);
   } catch (e) { console.error('revokeSaleTokens error:', e.message); }
 }
+
 // Rattrapage rétroactif : attribue les jetons pour toutes les ventes déjà approuvées
 // avant l'existence de ce système (tokens_granted encore à 0/NULL).
 app.post('/api/admin/tokens/backfill', auth, adminOnly, async (req, res) => {
