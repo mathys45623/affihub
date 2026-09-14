@@ -1623,12 +1623,6 @@ app.get('/api/gifts', auth, async (req, res) => {
   res.json({ sent: sent || [], received: received || [] });
 });
 
-// Journal complet de tous les cadeaux, pour l'admin
-app.get('/api/admin/gifts', auth, adminOnly, async (req, res) => {
-  const { data } = await supabase.from('gifts').select('*, sender:sender_id(name,email), receiver:receiver_id(name,email)').order('created_at', { ascending: false });
-  res.json(data || []);
-});
-
 
 app.use((req, res) => {
   if (req.path.startsWith('/api/')) return res.status(404).json({ error: 'Route introuvable' });
