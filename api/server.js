@@ -687,6 +687,8 @@ app.get('/api/postback', async (req, res) => {
     if (user.referred_by) {
       creditReferralCommission(link.user_id, convAmount, conv.id).catch(()=>{});
     }
+    // Jetons de vente
+    grantSaleTokens(link.user_id, conv.id).catch(()=>{});
     // Postback affilié
     if (user.postback_url) {
       const postbackUrl = user.postback_url.replace('{LINK_ID}', ref).replace('{AMOUNT}', convAmount).replace('{STATUS}', 'approved');
@@ -726,6 +728,7 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
       if (user.referred_by) {
         await creditReferralCommission(user_id, parseFloat(amount), conv.id).catch(()=>{});
       }
+      await grantSaleTokens(user_id, conv.id);
     }
   }
   res.json(conv);
@@ -734,10 +737,11 @@ app.post('/api/conversions/manual', auth, adminOnly, async (req, res) => {
 app.delete('/api/conversions/:id', auth, adminOnly, async (req, res) => {
   const { data: conv } = await supabase.from('conversions').select('*').eq('id', req.params.id).single();
   if (!conv) return res.status(404).json({ error: 'Introuvable' });
-  // If approved, remove amount from user balance
+  // If approved, remove amount from user balance (+ jetons accordés pour cette vente)
   if (conv.status === 'approved') {
     const { data: user } = await supabase.from('users').select('balance').eq('id', conv.user_id).single();
     if (user) await supabase.from('users').update({ balance: Math.max(0, user.balance - conv.amount) }).eq('id', conv.user_id);
+    await revokeSaleTokens(conv.user_id, conv.tokens_granted);
   }
   await supabase.from('conversions').delete().eq('id', req.params.id);
   log(req.user.id, 'conversion-supprimée', 'Conversion #' + req.params.id + ' supprimée ($' + conv.amount + ')', req);
@@ -764,6 +768,7 @@ app.patch('/api/conversions/:id/approve', auth, adminOnly, async (req, res) => {
   if (user.referred_by) {
     await creditReferralCommission(conv.user_id, conv.amount, conv.id).catch(()=>{});
   }
+  await grantSaleTokens(conv.user_id, conv.id);
   // Send postback to affiliate's own system if configured
   if (user.postback_url) {
     const postbackUrl = user.postback_url
@@ -791,6 +796,8 @@ app.patch('/api/conversions/:id/reject', auth, adminOnly, async (req, res) => {
     const newBalance = conv.users.balance - conv.amount;
     if (newBalance < 0) clawbackShortfall = -newBalance;
     await supabase.from('users').update({ balance: Math.max(0, newBalance) }).eq('id', conv.user_id);
+    // Retire aussi les jetons accordés pour cette vente, le cas échéant
+    await revokeSaleTokens(conv.user_id, conv.tokens_granted);
   }
 
   await supabase.from('conversions').update({ status: 'rejected', reason: reason || null }).eq('id', req.params.id);
@@ -1455,9 +1462,8 @@ app.patch('/api/me/avatar', auth, async (req, res) => {
   res.json({ success: true });
 });
 
-// ── JETONS — MOYENS D'EN OBTENIR ──
+// ── JETONS — MOYENS D'EN OBTENIR (liste informative) ──
 // Stockés dans la table settings (comme les segments de la roue), sous forme de tableau JSON.
-// Chaque moyen est purement informatif : { id, icon, title, description, tokens, active }
 const DEFAULT_TOKEN_METHODS = [
   { id: 'm1', icon: '🔁', title: 'Réaliser une vente', description: 'Chaque conversion approuvée te rapporte des jetons en plus de ta commission.', tokens: 5, active: true },
   { id: 'm2', icon: '🔥', title: 'Garder ta série active', description: 'Vends chaque jour pour faire grimper ta série et gagner des jetons bonus.', tokens: 10, active: true },
@@ -1493,6 +1499,65 @@ app.patch('/api/admin/token-methods', auth, adminOnly, async (req, res) => {
   await supabase.from('settings').upsert({ key: 'token_earn_methods', value: JSON.stringify(cleaned) }, { onConflict: 'key' });
   log(req.user.id, 'jetons-moyens-modifiés', 'Moyens d\'obtenir des jetons mis à jour (' + cleaned.length + ')', req);
   res.json(cleaned);
+});
+
+// ── JETONS — CRÉDIT RÉEL AUTOMATIQUE PAR VENTE ──
+// Nombre de jetons accordés à chaque conversion approuvée (réglable par l'admin).
+// Le montant réellement accordé est mémorisé sur la conversion elle-même
+// (colonne tokens_granted) pour pouvoir le retirer proprement en cas de rejet/suppression,
+// même si l'admin change ensuite ce réglage.
+async function getTokensPerSale() {
+  try {
+    const { data } = await supabase.from('settings').select('value').eq('key', 'tokens_per_sale').single();
+    const n = parseInt(data?.value);
+    return Number.isFinite(n) && n >= 0 ? n : 5;
+  } catch (e) { return 5; }
+}
+app.patch('/api/admin/settings/tokens-per-sale', auth, adminOnly, async (req, res) => {
+  const n = parseInt(req.body.tokens_per_sale);
+  if (!Number.isFinite(n) || n < 0) return res.status(400).json({ error: 'Valeur invalide' });
+  await supabase.from('settings').upsert({ key: 'tokens_per_sale', value: String(n) }, { onConflict: 'key' });
+  log(req.user.id, 'jetons-par-vente-modifié', 'Jetons accordés par vente réglés sur ' + n, req);
+  res.json({ success: true, tokens_per_sale: n });
+});
+// Crédite les jetons d'une vente qui vient d'être approuvée (appelé depuis les différents
+// endroits où une conversion passe au statut "approved"). Best-effort : une erreur ici
+// ne doit jamais faire échouer l'approbation de la vente elle-même.
+async function grantSaleTokens(userId, conversionId) {
+  try {
+    const amount = await getTokensPerSale();
+    if (amount <= 0) return;
+    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
+    await supabase.from('users').update({ tokens: (user?.tokens || 0) + amount }).eq('id', userId);
+    await supabase.from('conversions').update({ tokens_granted: amount }).eq('id', conversionId);
+  } catch (e) { console.error('grantSaleTokens error:', e.message); }
+}
+// Retire les jetons précédemment accordés pour une conversion (rejet / suppression d'une vente
+// déjà approuvée). Utilise le montant mémorisé sur la conversion, pas le réglage actuel.
+async function revokeSaleTokens(userId, tokensGranted) {
+  try {
+    if (!tokensGranted) return;
+    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
+    await supabase.from('users').update({ tokens: Math.max(0, (user?.tokens || 0) - tokensGranted) }).eq('id', userId);
+  } catch (e) { console.error('revokeSaleTokens error:', e.message); }
+}
+// Rattrapage rétroactif : attribue les jetons pour toutes les ventes déjà approuvées
+// avant l'existence de ce système (tokens_granted encore à 0/NULL).
+app.post('/api/admin/tokens/backfill', auth, adminOnly, async (req, res) => {
+  const amount = await getTokensPerSale();
+  const { data: convs, error } = await supabase.from('conversions').select('id,user_id').eq('status', 'approved').or('tokens_granted.is.null,tokens_granted.eq.0');
+  if (error) return res.status(500).json({ error: error.message });
+  const perUser = {};
+  (convs || []).forEach(c => { perUser[c.user_id] = (perUser[c.user_id] || 0) + amount; });
+  for (const userId of Object.keys(perUser)) {
+    const { data: user } = await supabase.from('users').select('tokens').eq('id', userId).single();
+    await supabase.from('users').update({ tokens: (user?.tokens || 0) + perUser[userId] }).eq('id', userId);
+  }
+  if (amount > 0 && (convs || []).length > 0) {
+    await supabase.from('conversions').update({ tokens_granted: amount }).eq('status', 'approved').or('tokens_granted.is.null,tokens_granted.eq.0');
+  }
+  log(req.user.id, 'jetons-rattrapage', 'Rattrapage rétroactif : ' + (convs || []).length + ' vente(s) traitée(s), ' + Object.keys(perUser).length + ' affilié(s) crédité(s)', req);
+  res.json({ success: true, conversionsUpdated: (convs || []).length, usersCredited: Object.keys(perUser).length, tokensPerSale: amount });
 });
 
 // ── BOUTIQUE À JETONS ──
@@ -1742,7 +1807,8 @@ app.get('/api/settings/all', auth, async (req, res) => {
     cat_autre_enabled: obj.cat_autre_enabled !== 'false',
     cat_influenceuse_enabled: obj.cat_influenceuse_enabled === 'true',
     maintenance_mode: obj.maintenance_mode === 'true',
-    welcome_message: obj.welcome_message || ''
+    welcome_message: obj.welcome_message || '',
+    tokens_per_sale: obj.tokens_per_sale !== undefined ? (parseInt(obj.tokens_per_sale) || 0) : 5
   });
 });
 
