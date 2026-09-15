@@ -461,7 +461,7 @@ app.post('/api/login', loginRateLimit, async (req, res) => {
 
 // ── ME ──
 app.get('/api/me', auth, async (req, res) => {
-  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate,must_change_password,avatar_url,tokens').eq('id', req.user.id).single();
+  let { data, error } = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url,discord_id,referral_rate,must_change_password,avatar_url,tokens,name_color,avatar_frame,owned_cosmetics').eq('id', req.user.id).single();
   if (error) {
     console.error('/api/me erreur (colonne manquante ?):', error.message);
     const fallback = await supabase.from('users').select('id,name,email,role,balance,referral_code,created_at,show_ranking,is_super_admin,admin_permissions,postback_url').eq('id', req.user.id).single();
@@ -1073,7 +1073,7 @@ app.delete('/api/withdrawals/:id', auth, adminOnly, async (req, res) => {
 // ── USERS ──
 app.get('/api/users', auth, adminOnly, async (req, res) => {
   const { data: me } = await supabase.from('users').select('is_super_admin').eq('id', req.user.id).single();
-  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin,discord_id,avatar_url,tokens');
+  let query = supabase.from('users').select('id,name,email,role,balance,created_at,admin_note,admin_permissions,is_super_admin,discord_id,avatar_url,tokens,name_color,avatar_frame');
   if (!me?.is_super_admin) {
     query = query.eq('role', 'affiliate');
   } else {
@@ -1237,7 +1237,7 @@ app.get('/api/referrals', auth, async (req, res) => {
 
 // ── RANKING ──
 app.get('/api/ranking', auth, async (req, res) => {
-  const { data: users } = await supabase.from('users').select('id,name,created_at,avatar_url,tokens').eq('role','affiliate').eq('show_ranking',true);
+  const { data: users } = await supabase.from('users').select('id,name,created_at,avatar_url,tokens,name_color,avatar_frame').eq('role','affiliate').eq('show_ranking',true);
   const result = await Promise.all((users||[]).map(async u => {
     const [convsRes, linksRes, referralRes] = await Promise.all([
       supabase.from('conversions').select('amount,status').eq('user_id',u.id),
@@ -1728,23 +1728,46 @@ app.get('/api/shop/items', auth, async (req, res) => {
   res.json(data || []);
 });
 app.post('/api/admin/shop/items', auth, adminOnly, async (req, res) => {
-  const { title, description, image_url, price_tokens } = req.body;
+  const { title, description, image_url, price_tokens, item_type, cosmetic_type, cosmetic_value } = req.body;
   if (!title || !title.trim()) return res.status(400).json({ error: 'Titre requis' });
   const price = parseInt(price_tokens);
   if (!price || price <= 0) return res.status(400).json({ error: 'Prix en jetons invalide' });
-  const { data, error } = await supabase.from('shop_items').insert({ title: title.trim(), description: (description || '').trim(), image_url: image_url || null, price_tokens: price, active: true }).select().single();
+  const isCosmetic = item_type === 'cosmetic';
+  if (isCosmetic) {
+    if (!['name_color', 'avatar_frame'].includes(cosmetic_type)) return res.status(400).json({ error: 'Type de personnalisation invalide' });
+    if (!cosmetic_value) return res.status(400).json({ error: 'Valeur de personnalisation requise' });
+  }
+  const { data, error } = await supabase.from('shop_items').insert({
+    title: title.trim(), description: (description || '').trim(), image_url: image_url || null, price_tokens: price, active: true,
+    item_type: isCosmetic ? 'cosmetic' : 'normal',
+    cosmetic_type: isCosmetic ? cosmetic_type : null,
+    cosmetic_value: isCosmetic ? cosmetic_value : null
+  }).select().single();
   if (error) return res.status(500).json({ error: error.message });
   log(req.user.id, 'boutique-offre-créée', 'Offre boutique "' + title + '" créée (' + price + ' jetons)', req);
   res.json(data);
 });
 app.patch('/api/admin/shop/items/:id', auth, adminOnly, async (req, res) => {
-  const { title, description, image_url, price_tokens, active } = req.body;
+  const { title, description, image_url, price_tokens, active, item_type, cosmetic_type, cosmetic_value } = req.body;
   const updates = {};
   if (title !== undefined) { if (!title.trim()) return res.status(400).json({ error: 'Titre requis' }); updates.title = title.trim(); }
   if (description !== undefined) updates.description = (description || '').trim();
   if (image_url !== undefined) updates.image_url = image_url || null;
   if (price_tokens !== undefined) { const p = parseInt(price_tokens); if (!p || p <= 0) return res.status(400).json({ error: 'Prix en jetons invalide' }); updates.price_tokens = p; }
   if (active !== undefined) updates.active = !!active;
+  if (item_type !== undefined) {
+    const isCosmetic = item_type === 'cosmetic';
+    updates.item_type = isCosmetic ? 'cosmetic' : 'normal';
+    if (isCosmetic) {
+      if (!['name_color', 'avatar_frame'].includes(cosmetic_type)) return res.status(400).json({ error: 'Type de personnalisation invalide' });
+      if (!cosmetic_value) return res.status(400).json({ error: 'Valeur de personnalisation requise' });
+      updates.cosmetic_type = cosmetic_type;
+      updates.cosmetic_value = cosmetic_value;
+    } else {
+      updates.cosmetic_type = null;
+      updates.cosmetic_value = null;
+    }
+  }
   const { data, error } = await supabase.from('shop_items').update(updates).eq('id', req.params.id).select().single();
   if (error) return res.status(500).json({ error: error.message });
   log(req.user.id, 'boutique-offre-modifiée', 'Offre boutique "' + (data?.title || '?') + '" modifiée', req);
@@ -1760,15 +1783,27 @@ app.delete('/api/admin/shop/items/:id', auth, adminOnly, async (req, res) => {
 // Achat d'une offre de la boutique par un affilié : débite ses jetons et l'offre est
 // acquise immédiatement, aucune validation admin nécessaire. On garde quand même une
 // trace dans "shop_orders" (statut "fulfilled" direct) pour l'historique et les stats.
+// Pour une offre cosmétique, elle est aussi ajoutée à la collection de personnalisations
+// possédées par l'affilié (owned_cosmetics), qu'il pourra ensuite équiper depuis ses Paramètres.
 app.post('/api/shop/purchase/:id', auth, async (req, res) => {
   const { data: item } = await supabase.from('shop_items').select('*').eq('id', req.params.id).single();
   if (!item || item.active === false) return res.status(404).json({ error: 'Offre introuvable ou indisponible' });
-  const { data: user } = await supabase.from('users').select('name,tokens,discord_id').eq('id', req.user.id).single();
+  const { data: user } = await supabase.from('users').select('name,tokens,discord_id,owned_cosmetics').eq('id', req.user.id).single();
   const balance = user?.tokens || 0;
   if (balance < item.price_tokens) return res.status(400).json({ error: 'Jetons insuffisants' });
-  await supabase.from('users').update({ tokens: balance - item.price_tokens }).eq('id', req.user.id);
+  let owned = [];
+  try { owned = JSON.parse(user?.owned_cosmetics || '[]'); if (!Array.isArray(owned)) owned = []; } catch (e) { owned = []; }
+  if (item.item_type === 'cosmetic') {
+    if (owned.some(c => c.item_id === item.id)) return res.status(409).json({ error: 'Tu possèdes déjà cette personnalisation' });
+  }
+  const userUpdates = { tokens: balance - item.price_tokens };
+  if (item.item_type === 'cosmetic') {
+    owned.push({ item_id: item.id, cosmetic_type: item.cosmetic_type, cosmetic_value: item.cosmetic_value, title: item.title });
+    userUpdates.owned_cosmetics = JSON.stringify(owned);
+  }
+  await supabase.from('users').update(userUpdates).eq('id', req.user.id);
   const { data: order, error } = await supabase.from('shop_orders').insert({ user_id: req.user.id, item_id: item.id, item_title: item.title, price_tokens: item.price_tokens, status: 'fulfilled' }).select().single();
-  if (error) { await supabase.from('users').update({ tokens: balance }).eq('id', req.user.id); return res.status(500).json({ error: error.message }); }
+  if (error) { await supabase.from('users').update({ tokens: balance, owned_cosmetics: user?.owned_cosmetics || '[]' }).eq('id', req.user.id); return res.status(500).json({ error: error.message }); }
   log(req.user.id, 'boutique-achat', user.name + ' a échangé ' + item.price_tokens + ' jetons contre "' + item.title + '" (obtenu immédiatement)', req);
   await notifyDiscord2(DISCORD_WITHDRAWAL, '🛍️ Nouvel échange boutique !', 0xF5C842, [
     { name: '👤 Affilié', value: user.name, inline: true },
@@ -1776,6 +1811,24 @@ app.post('/api/shop/purchase/:id', auth, async (req, res) => {
     { name: '🪙 Jetons', value: String(item.price_tokens), inline: true }
   ]);
   res.json(order);
+});
+// Équiper/retirer une personnalisation possédée (couleur de pseudo / cadre de photo)
+app.patch('/api/me/cosmetics', auth, async (req, res) => {
+  const { name_color, avatar_frame } = req.body;
+  const { data: user } = await supabase.from('users').select('owned_cosmetics').eq('id', req.user.id).single();
+  let owned = [];
+  try { owned = JSON.parse(user?.owned_cosmetics || '[]'); if (!Array.isArray(owned)) owned = []; } catch (e) { owned = []; }
+  const updates = {};
+  if (name_color !== undefined) {
+    if (name_color === null) updates.name_color = null;
+    else { if (!owned.some(c => c.cosmetic_type === 'name_color' && c.cosmetic_value === name_color)) return res.status(403).json({ error: 'Tu ne possèdes pas cette couleur' }); updates.name_color = name_color; }
+  }
+  if (avatar_frame !== undefined) {
+    if (avatar_frame === null) updates.avatar_frame = null;
+    else { if (!owned.some(c => c.cosmetic_type === 'avatar_frame' && c.cosmetic_value === avatar_frame)) return res.status(403).json({ error: 'Tu ne possèdes pas ce cadre' }); updates.avatar_frame = avatar_frame; }
+  }
+  await supabase.from('users').update(updates).eq('id', req.user.id);
+  res.json({ success: true, ...updates });
 });
 // Historique des commandes : l'affilié voit les siennes, l'admin voit tout
 app.get('/api/shop/orders', auth, async (req, res) => {
