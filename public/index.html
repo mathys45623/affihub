@@ -453,7 +453,7 @@ tbody tr:hover td{background:rgba(245,200,66,.04)}
       <div class="sb-role"><span class="role-badge" id="role-badge">Affilié</span></div>
       <nav class="sb-nav" id="sb-nav"></nav>
       <div class="sb-foot">
-        <div class="avatar" id="u-avatar">A</div>
+        <span id="u-avatar-slot"><div class="avatar" id="u-avatar">A</div></span>
         <div style="min-width:0;flex:1"><div class="uname" id="u-name">Nom</div><div class="uemail" id="u-email">email</div></div>
         <button class="logout-btn" onclick="logout()">⏏</button>
       </div>
@@ -617,7 +617,7 @@ function updateLogo(url){
 async function startApp(){
   document.getElementById('auth-screen').style.display='none';
   document.getElementById('app').style.display='block';
-  document.getElementById('u-name').textContent=ME.name;
+  document.getElementById('u-name').innerHTML=nameHtml(ME.name,ME.name_color);
   document.getElementById('u-email').textContent=ME.email;
   document.getElementById('u-avatar').textContent=ME.name[0].toUpperCase();
   updateSidebarAvatar();
@@ -808,12 +808,31 @@ function fmt(d){return d?d.split('T')[0]:'—';}
 // dans le DOM, pour empêcher qu'un message/nom contenant du code (ex: <img onerror=...>)
 // ne s'exécute chez qui le consulte (protection XSS stocké).
 function esc(str){if(str===null||str===undefined)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-// Avatar rond : affiche la photo de profil si elle existe, sinon l'initiale du nom (comportement inchangé par défaut)
-function avatarHtml(name,avatarUrl,size,fontSize,extraStyle){
+// Cadres décoratifs achetables (personnalisation boutique) — clé → dégradé CSS
+const FRAME_PRESETS={
+  gold:{label:'✨ Doré',css:'linear-gradient(135deg,#FFD700,#B8860B)'},
+  neon:{label:'💠 Néon',css:'linear-gradient(135deg,#00F5FF,#0080FF)'},
+  fire:{label:'🔥 Feu',css:'linear-gradient(135deg,#FF4500,#FFD700)'},
+  rainbow:{label:'🌈 Arc-en-ciel',css:'conic-gradient(from 0deg,#ff0000,#ff9900,#33ff00,#00fffb,#0033ff,#ff00ff,#ff0000)'},
+  diamond:{label:'💎 Diamant',css:'linear-gradient(135deg,#B9F2FF,#E0FFFF,#89CFF0)'},
+  emerald:{label:'🟢 Émeraude',css:'linear-gradient(135deg,#00C896,#046A38)'}
+};
+// Avatar rond : affiche la photo de profil si elle existe, sinon l'initiale du nom (comportement inchangé par défaut).
+// frameKey (optionnel) ajoute un cadre décoratif dégradé autour (personnalisation boutique).
+function avatarHtml(name,avatarUrl,size,fontSize,extraStyle,frameKey){
   size=size||34;fontSize=fontSize||13;
   const base='width:'+size+'px;height:'+size+'px;border-radius:'+Math.round(size*0.29)+'px;flex-shrink:0;'+(extraStyle||'');
-  if(avatarUrl)return '<div class="avatar" style="'+base+';padding:0;overflow:hidden;background:#1a1a1a"><img src="'+avatarUrl+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent=\''+esc((name||'?')[0].toUpperCase())+'\';this.parentElement.style.background=\'var(--grad)\'"></div>';
-  return '<div class="avatar" style="'+base+';font-size:'+fontSize+'px">'+esc((name||'?')[0].toUpperCase())+'</div>';
+  let inner;
+  if(avatarUrl)inner='<div class="avatar" style="'+base+';padding:0;overflow:hidden;background:#1a1a1a"><img src="'+avatarUrl+'" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.textContent=\''+esc((name||'?')[0].toUpperCase())+'\';this.parentElement.style.background=\'var(--grad)\'"></div>';
+  else inner='<div class="avatar" style="'+base+';font-size:'+fontSize+'px">'+esc((name||'?')[0].toUpperCase())+'</div>';
+  const frame=frameKey&&FRAME_PRESETS[frameKey];
+  if(!frame)return inner;
+  const pad=Math.max(2,Math.round(size*0.07));
+  return '<div style="width:'+(size+pad*2)+'px;height:'+(size+pad*2)+'px;border-radius:'+Math.round((size+pad*2)*0.29)+'px;background:'+frame.css+';padding:'+pad+'px;flex-shrink:0;box-shadow:0 0 10px rgba(255,255,255,.15)">'+inner.replace('flex-shrink:0','')+'</div>';
+}
+// Pseudo avec couleur personnalisée (personnalisation boutique) — retombe sur le style par défaut si pas de couleur
+function nameHtml(name,color){
+  return color?'<span style="color:'+esc(color)+'">'+esc(name)+'</span>':esc(name);
 }
 
 // ── Roue de la chance ── (les segments viennent maintenant du serveur, configurables par l'admin)
@@ -1152,7 +1171,7 @@ async function renderPage(page){
     const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
     const mkRows=sort=>{
       const sorted=[...ranking].sort((a,b)=>sort==='gains'?b.totalGains-a.totalGains:sort==='conv'?b.totalConversions-a.totalConversions:sort==='clicks'?b.totalClicks-a.totalClicks:sort==='tokens'?(b.tokens||0)-(a.tokens||0):new Date(a.created_at)-new Date(b.created_at));
-      return sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12)+'<b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td><td style="color:#F5C842;font-weight:800;text-align:center">🪙 '+(u.tokens||0)+'</td></tr>').join('');
+      return sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12,'',u.avatar_frame)+'<b>'+nameHtml(u.name,u.name_color)+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td><td style="color:#F5C842;font-weight:800;text-align:center">🪙 '+(u.tokens||0)+'</td></tr>').join('');
     };
     return '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px"><div style="font-size:13px;color:var(--muted)">'+ranking.length+' affilié(s)</div><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-grad btn-sm" id="sort-gains" onclick="doSortTop(\'gains\')">💰 Gains</button><button class="btn btn-gst btn-sm" id="sort-conv" onclick="doSortTop(\'conv\')">🔁 Conv.</button><button class="btn btn-gst btn-sm" id="sort-clicks" onclick="doSortTop(\'clicks\')">🖱️ Clics</button><button class="btn btn-gst btn-sm" id="sort-tokens" onclick="doSortTop(\'tokens\')">🪙 Jetons</button><button class="btn btn-gst btn-sm" id="sort-date" onclick="doSortTop(\'date\')">📅 Date</button></div></div>'
     +'<div class="card"><div class="tw"><table><thead><tr><th style="text-align:center">🏅 Rang</th><th>👤 Affilié</th><th>📅 Inscrit le</th><th style="text-align:center">🖱️ Clics</th><th style="text-align:center">🔁 Conv.</th><th style="text-align:center">💰 Gains</th><th style="text-align:center">🪙 Jetons</th></tr></thead><tbody id="top-tbody">'+mkRows('gains')+'</tbody></table></div></div>';
@@ -1165,8 +1184,22 @@ async function renderPage(page){
 
   if(page==='aff-settings'){
     const showRanking=ME.show_ranking!==false;
-    return '<div class="settings-section"><div class="settings-section-title">🖼️ Photo de profil</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">'+avatarHtml(ME.name,ME.avatar_url,80,30)+'<div><div style="font-weight:700;margin-bottom:4px">Ta photo</div><div style="font-size:12px;color:var(--muted)">Visible dans la sidebar et les classements</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'avatar-file\').click()"><input type="file" id="avatar-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewAvatar(this)"><div id="avatar-prev" style="display:none;margin-bottom:10px"><img id="avatar-prev-img" style="max-width:120px;max-height:120px;border-radius:50%;object-fit:cover"></div><div id="avatar-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer une photo</div></div></div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-grad" onclick="saveAvatar()" style="flex:1;justify-content:center">💾 Sauvegarder</button>'+(ME.avatar_url?'<button class="btn btn-red" onclick="removeAvatar()">🗑 Retirer</button>':'')+'</div></div>'
-    +'<div class="settings-section"><div class="settings-section-title">👤 Informations</div><div class="info-row"><div class="info-label">Nom</div><div class="info-value">'+ME.name+'</div></div><div class="info-row"><div class="info-label">Email</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">Date d\'arrivée</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">Code parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\'Code copié !\',\'s\')">📋</button></div></div></div>'
+    let owned=[];try{owned=JSON.parse(ME.owned_cosmetics||'[]');if(!Array.isArray(owned))owned=[];}catch(e){owned=[];}
+    const ownedColors=owned.filter(c=>c.cosmetic_type==='name_color');
+    const ownedFrames=owned.filter(c=>c.cosmetic_type==='avatar_frame');
+    const cosmeticSection=owned.length===0?'':'<div class="settings-section" style="border-color:rgba(168,85,247,.25)"><div class="settings-section-title">🎨 Personnalisation</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px">Achetées dans la <a onclick="goPage(\'aff-shop\')" style="color:var(--yellow);cursor:pointer;text-decoration:underline">Boutique</a>. Clique pour équiper/retirer.</p>'
+      +(ownedColors.length>0?'<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🖊️ Couleur du pseudo</div><div style="display:flex;flex-wrap:wrap;gap:8px">'
+        +'<button class="btn '+(!ME.name_color?'btn-grad':'btn-gst')+' btn-sm" onclick="equipCosmetic(\'name_color\',null)">Aucune</button>'
+        +ownedColors.map(c=>'<button class="btn btn-sm" style="border:2px solid '+(ME.name_color===c.cosmetic_value?'#fff':'transparent')+';background:var(--bg3);color:'+c.cosmetic_value+';font-weight:800" onclick="equipCosmetic(\'name_color\',\''+c.cosmetic_value+'\')" title="'+esc(c.title)+'">'+esc(ME.name)+'</button>').join('')
+        +'</div></div>':'')
+      +(ownedFrames.length>0?'<div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px">🖼️ Cadre de photo</div><div style="display:flex;flex-wrap:wrap;gap:12px">'
+        +'<div style="text-align:center;cursor:pointer" onclick="equipCosmetic(\'avatar_frame\',null)"><div style="'+(!ME.avatar_frame?'outline:2px solid var(--yellow);border-radius:14px;padding:3px':'padding:3px')+'">'+avatarHtml(ME.name,ME.avatar_url,50,18)+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">Aucun</div></div>'
+        +ownedFrames.map(c=>'<div style="text-align:center;cursor:pointer" onclick="equipCosmetic(\'avatar_frame\',\''+c.cosmetic_value+'\')"><div style="'+(ME.avatar_frame===c.cosmetic_value?'outline:2px solid var(--yellow);border-radius:14px;padding:3px':'padding:3px')+'">'+avatarHtml(ME.name,ME.avatar_url,50,18,'',c.cosmetic_value)+'</div><div style="font-size:10px;color:var(--muted);margin-top:4px">'+esc(FRAME_PRESETS[c.cosmetic_value]?FRAME_PRESETS[c.cosmetic_value].label:c.title)+'</div></div>').join('')
+        +'</div></div>':'')
+      +'</div>';
+    return '<div class="settings-section"><div class="settings-section-title">🖼️ Photo de profil</div><div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">'+avatarHtml(ME.name,ME.avatar_url,80,30,'',ME.avatar_frame)+'<div><div style="font-weight:700;margin-bottom:4px">Ta photo</div><div style="font-size:12px;color:var(--muted)">Visible dans la sidebar et les classements</div></div></div><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'avatar-file\').click()"><input type="file" id="avatar-file" accept="image/*,.heic,.heif" style="display:none" onchange="previewAvatar(this)"><div id="avatar-prev" style="display:none;margin-bottom:10px"><img id="avatar-prev-img" style="max-width:120px;max-height:120px;border-radius:50%;object-fit:cover"></div><div id="avatar-ph"><div style="font-size:32px;margin-bottom:8px">📁</div><div style="font-size:13px;font-weight:600;color:#aaa">Cliquer pour importer une photo</div></div></div><div style="display:flex;gap:10px;margin-top:14px"><button class="btn btn-grad" onclick="saveAvatar()" style="flex:1;justify-content:center">💾 Sauvegarder</button>'+(ME.avatar_url?'<button class="btn btn-red" onclick="removeAvatar()">🗑 Retirer</button>':'')+'</div></div>'
+    +cosmeticSection
+    +'<div class="settings-section"><div class="settings-section-title">👤 Informations</div><div class="info-row"><div class="info-label">Nom</div><div class="info-value">'+nameHtml(ME.name,ME.name_color)+'</div></div><div class="info-row"><div class="info-label">Email</div><div class="info-value">'+ME.email+'</div></div><div class="info-row"><div class="info-label">Date d\'arrivée</div><div class="info-value">'+fmt(ME.created_at)+'</div></div><div class="info-row"><div class="info-label">Code parrainage</div><div class="info-value" style="display:flex;align-items:center;gap:8px"><code style="font-family:monospace;color:var(--yellow)">'+(ME.referral_code||'—')+'</code><button class="copy-btn" onclick="navigator.clipboard?.writeText(\''+(ME.referral_code||'')+'\');toast(\'Code copié !\',\'s\')">📋</button></div></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">🏆 Classement</div><div class="info-row"><div><div class="info-label" style="margin-bottom:4px">Apparaître dans le TOP</div><div style="font-size:12px;color:var(--muted)">Vos stats seront visibles</div></div><div style="display:flex;align-items:center;gap:10px"><span style="font-size:12px;color:'+(showRanking?'var(--green)':'var(--muted)')+'">'+(showRanking?'✅ Visible':'🚫 Masqué')+'</span><button class="btn '+(showRanking?'btn-red':'btn-grn')+' btn-sm" onclick="toggleRanking('+(showRanking?'false':'true')+')">'+(showRanking?'Masquer':'Afficher')+'</button></div></div></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔑 Mot de passe</div><div class="fi"><label>Actuel</label><input type="password" id="cp-cur" placeholder="••••••••"></div><div class="fi"><label>Nouveau</label><input type="password" id="cp-new" placeholder="••••••••"></div><div class="fi"><label>Confirmer</label><input type="password" id="cp-conf" placeholder="••••••••"></div><button class="btn btn-grad" onclick="changePass()">🔑 Modifier</button></div>'
     +'<div class="settings-section"><div class="settings-section-title">🔌 Postback vers mon système</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Si tu gères ta propre plateforme d\'affiliation, configure ton URL de postback ici. Quand une conversion est approuvée, AffiHub enverra automatiquement les infos à ton système.<br><br>Variables disponibles : <code style="color:var(--yellow)">{LINK_ID}</code> et <code style="color:var(--yellow)">{AMOUNT}</code></div><div class="fi"><label>URL de postback</label><input type="text" id="pb-url" placeholder="https://ta-plateforme.com/postback?sub1={LINK_ID}&amount={AMOUNT}" value="'+(ME.postback_url||'')+'"></div><button class="btn btn-grad" onclick="savePostback()">💾 Sauvegarder</button></div>'
@@ -1291,19 +1324,28 @@ async function renderPage(page){
   if(page==='aff-shop'){
     const [methods,items,orders]=await Promise.all([api('GET','/api/token-methods'),api('GET','/api/shop/items'),api('GET','/api/shop/orders')]);
     const tokens=ME.tokens||0;
+    let owned=[];try{owned=JSON.parse(ME.owned_cosmetics||'[]');if(!Array.isArray(owned))owned=[];}catch(e){owned=[];}
+    window._ownedCosmetics=owned;
     const methodCards=methods.map(m=>'<div class="card" style="padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px"><div style="font-size:26px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div>'+(m.tokens>0?'<span class="badge by2" style="flex-shrink:0">+'+m.tokens+' 🪙</span>':'')+'</div>').join('');
     const itemCards=items.map(it=>{
       const canAfford=tokens>=it.price_tokens;
+      const isCos=it.item_type==='cosmetic';
+      const isOwned=isCos&&owned.some(c=>c.item_id===it.id);
+      let preview;
+      if(isCos&&it.cosmetic_type==='name_color')preview='<div style="width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;color:'+esc(it.cosmetic_value)+'">'+esc(ME.name)+'</div>';
+      else if(isCos&&it.cosmetic_type==='avatar_frame')preview='<div style="width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center">'+avatarHtml(ME.name,ME.avatar_url,70,26,'',it.cosmetic_value)+'</div>';
+      else preview=it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:140px;object-fit:cover;display:block">':'<div style="width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:38px">🎁</div>';
       return '<div class="card" style="padding:0;overflow:hidden;display:flex;flex-direction:column">'
-      +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:140px;object-fit:cover;display:block">':'<div style="width:100%;height:140px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:38px">🎁</div>')
-      +'<div style="padding:16px;display:flex;flex-direction:column;flex:1"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;flex:1;min-height:32px">'+esc(it.description||'')+'</div>'
+      +preview
+      +'<div style="padding:16px;display:flex;flex-direction:column;flex:1"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+(isCos?' <span class="badge bp2" style="font-size:9px;vertical-align:middle">🎨</span>':'')+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:14px;flex:1;min-height:32px">'+esc(it.description||'')+'</div>'
       +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span class="badge by2" style="font-size:13px">🪙 '+it.price_tokens+'</span>'
-      +(canAfford?'<button class="btn btn-grad btn-sm" onclick="confirmPurchaseShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\','+it.price_tokens+')">Échanger</button>':'<span class="badge br2" style="font-size:11px">🔒 Pas assez</span>')
+      +(isOwned?'<span class="badge bg2" style="font-size:11px">✅ Possédé</span>':canAfford?'<button class="btn btn-grad btn-sm" onclick="confirmPurchaseShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\','+it.price_tokens+')">Échanger</button>':'<span class="badge br2" style="font-size:11px">🔒 Pas assez</span>')
       +'</div></div></div>';
     }).join('');
     const orderRows=orders.slice(0,15).map(o=>'<tr><td style="color:var(--muted)">'+fmt(o.created_at)+'</td><td>'+esc(o.item_title)+'</td><td style="color:var(--yellow);font-weight:700">🪙 '+o.price_tokens+'</td><td><span class="badge bg2">✅ Obtenu</span></td></tr>').join('');
     return '<div class="bal-hero"><div><div style="font-size:11px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px">Tes jetons</div><div class="bal-amount">🪙 '+tokens+'</div></div></div>'
     +'<div class="card"><div class="card-title" style="margin-bottom:14px">🪙 Comment obtenir des jetons</div>'+(methods.length===0?'<div class="empty"><div class="empty-icon">🪙</div><p>Aucun moyen renseigné pour l\'instant</p></div>':methodCards)+'</div>'
+    +(owned.length>0?'<div class="card" style="border-color:rgba(168,85,247,.25)"><div class="card-title" style="margin-bottom:6px">🎨 Mes personnalisations</div><p style="font-size:12px;color:var(--muted);margin-bottom:14px">Choisis lesquelles utiliser depuis tes <a onclick="goPage(\'aff-settings\')" style="color:var(--yellow);cursor:pointer;text-decoration:underline">Paramètres</a>.</p></div>':'')
     +'<div style="margin-bottom:16px"><div style="font-size:18px;font-weight:800;margin-bottom:4px">🛍️ Boutique</div><div style="font-size:12px;color:var(--muted)">Échange tes jetons contre des offres — c\'est à toi immédiatement, sans validation.</div></div>'
     +(items.length===0?'<div class="card"><div class="empty"><div class="empty-icon">🛍️</div><p>Aucune offre disponible pour le moment.</p></div></div>':'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-bottom:22px">'+itemCards+'</div>')
     +(orders.length>0?'<div class="card"><div class="card-title" style="margin-bottom:14px">📋 Mes échanges</div><div class="tw"><table><thead><tr><th>Date</th><th>Offre</th><th>Coût</th><th>Statut</th></tr></thead><tbody>'+orderRows+'</tbody></table></div></div>':'');
@@ -1390,7 +1432,7 @@ async function renderPage(page){
     const users=await api('GET','/api/users');
     if(users.length===0)return '<div class="card"><div class="empty"><div class="empty-icon">👥</div><p>Aucun affilié</p></div></div>';
     const isSuperAdmin=ME.is_super_admin===true;
-    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12)+'<div><b>'+u.name+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Attribuer des jetons" onclick="openGrantTokens(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🪙</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
+    const rows=users.map(u=>'<tr><td><div style="display:flex;align-items:center;gap:9px">'+avatarHtml(u.name,u.avatar_url,30,12,'',u.avatar_frame)+'<div><b>'+nameHtml(u.name,u.name_color)+'</b>'+(u.role==='admin'?'<span class="badge bp2" style="margin-left:6px;font-size:9px">Admin</span>':'')+(u.admin_note?'<div style="font-size:10px;color:var(--yellow);margin-top:2px">📝 '+u.admin_note+'</div>':'')+'</div></div></td><td style="color:var(--muted)">'+u.email+'</td><td>'+gtext('$'+(u.balance||0))+'</td><td style="color:var(--green);font-weight:700">$'+(u.totalGains||0)+'</td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td><div style="display:flex;gap:4px">'+(isSuperAdmin&&u.role==='admin'?'<button class="btn btn-gst btn-sm" onclick="openPermissions(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔐</button>':'')+'<button class="btn btn-gst btn-sm" title="Collection" onclick="openCollectionAdmin(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🎴</button><button class="btn btn-gst btn-sm" title="Attribuer des jetons" onclick="openGrantTokens(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🪙</button><button class="btn btn-gst btn-sm" title="Réinitialiser le mot de passe" onclick="confirmResetPassword(\''+u.id+'\',\''+u.name.replace(/'/g,"\\'")+'\')">🔑</button><button class="btn btn-red btn-sm" onclick="confirmDeleteAff(this)" data-id="'+u.id+'" data-name="'+u.name.replace(/"/g,'&quot;')+'" data-email="'+u.email+'">🗑</button></div></td></tr>').join('');
     return '<div class="card"><div class="card-header"><div class="card-title">Affiliés</div><span class="badge bp2">'+users.length+' utilisateur(s)</span></div><div class="tw"><table><thead><tr><th>👤 Affilié</th><th>📧 Email</th><th>💰 Solde</th><th>💎 Gains totale</th><th>📅 Inscrit</th><th>⚙️</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
   }
 
@@ -1526,13 +1568,20 @@ async function renderPage(page){
     const refMilestoneTokens=settings.referral_milestone_tokens!=null?settings.referral_milestone_tokens:10;
     const tierRows=window.withdrawalTiersEdit.map((t,i)=>'<div style="display:grid;grid-template-columns:1fr 1fr 100px auto;gap:8px;align-items:end;margin-bottom:8px"><div class="fi" style="margin-bottom:0"><label>Min ($)</label><input type="number" min="0" value="'+t.min+'" onchange="updateWdTier('+i+',\'min\',this.value)"></div><div class="fi" style="margin-bottom:0"><label>Max ($)</label><input type="number" min="0" value="'+t.max+'" onchange="updateWdTier('+i+',\'max\',this.value)"></div><div class="fi" style="margin-bottom:0"><label>🪙 Jetons</label><input type="number" min="0" value="'+t.tokens+'" onchange="updateWdTier('+i+',\'tokens\',this.value)"></div><button class="btn btn-red btn-sm" onclick="removeWdTier('+i+')" '+(window.withdrawalTiersEdit.length<=1?'disabled style="opacity:.3"':'')+'>🗑</button></div>').join('');
     const methodRows=window.tokenMethodsEdit.map((m,i)=>'<div class="card" style="margin-bottom:10px;padding:14px 16px;'+(m.active===false?'opacity:.5':'')+'"><div style="display:flex;align-items:center;gap:14px"><div style="display:flex;flex-direction:column;gap:3px;flex-shrink:0"><button class="btn btn-gst btn-sm" onclick="moveTokenMethod('+i+',-1)" title="Monter"'+(i===0?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▲</button><button class="btn btn-gst btn-sm" onclick="moveTokenMethod('+i+',1)" title="Descendre"'+(i===window.tokenMethodsEdit.length-1?' disabled style="opacity:.3;cursor:not-allowed"':'')+' style="padding:2px 8px">▼</button></div><div style="font-size:24px;flex-shrink:0">'+esc(m.icon)+'</div><div style="flex:1;min-width:0"><div style="font-weight:800;font-size:14px">'+esc(m.title)+'</div><div style="font-size:12px;color:var(--muted);margin-top:2px">'+esc(m.description)+'</div></div><div style="text-align:center;flex-shrink:0"><span class="badge by2">🪙 '+(m.tokens||0)+'</span></div><div style="display:flex;gap:6px;flex-shrink:0"><button class="btn '+(m.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleTokenMethod('+i+')">'+(m.active===false?'✅':'🚫')+'</button><button class="btn btn-gst btn-sm" onclick="openEditTokenMethod('+i+')">✏️</button><button class="btn btn-red btn-sm" onclick="removeTokenMethod('+i+')">🗑</button></div></div></div>').join('');
-    const itemCards=items.map(it=>'<div class="card" style="padding:0;overflow:hidden;'+(it.active===false?'opacity:.5':'')+'">'
-      +(it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:120px;object-fit:cover;display:block">':'<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px">🎁</div>')
-      +'<div style="padding:16px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:32px">'+esc(it.description||'')+'</div><div style="display:flex;align-items:center;justify-content:space-between"><span class="badge by2">🪙 '+it.price_tokens+'</span><div style="display:flex;gap:6px">'
+    const itemCards=items.map(it=>{
+      const isCos=it.item_type==='cosmetic';
+      let preview;
+      if(isCos&&it.cosmetic_type==='name_color')preview='<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:'+esc(it.cosmetic_value)+'">Pseudo</div>';
+      else if(isCos&&it.cosmetic_type==='avatar_frame')preview='<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center">'+avatarHtml('?',null,60,22,'',it.cosmetic_value)+'</div>';
+      else preview=it.image_url?'<img src="'+it.image_url+'" style="width:100%;height:120px;object-fit:cover;display:block">':'<div style="width:100%;height:120px;background:#1a1a1a;display:flex;align-items:center;justify-content:center;font-size:32px">🎁</div>';
+      return '<div class="card" style="padding:0;overflow:hidden;'+(it.active===false?'opacity:.5':'')+'">'
+      +preview
+      +'<div style="padding:16px"><div style="font-weight:800;font-size:14px;margin-bottom:4px">'+esc(it.title)+(isCos?' <span class="badge bp2" style="font-size:9px;vertical-align:middle">🎨 Cosmétique</span>':'')+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:32px">'+esc(it.description||'')+'</div><div style="display:flex;align-items:center;justify-content:space-between"><span class="badge by2">🪙 '+it.price_tokens+'</span><div style="display:flex;gap:6px">'
       +'<button class="btn '+(it.active===false?'btn-grn':'btn-red')+' btn-sm" onclick="toggleShopItem('+it.id+','+(it.active===false?'true':'false')+')">'+(it.active===false?'✅':'🚫')+'</button>'
       +'<button class="btn btn-gst btn-sm" onclick="openEditShopItem('+it.id+')">✏️</button>'
       +'<button class="btn btn-red btn-sm" onclick="confirmDeleteShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\')">🗑</button>'
-      +'</div></div></div></div>').join('');
+      +'</div></div></div></div>';
+    }).join('');
     window.SHOP_ITEMS_CACHE=items;
     return '<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🪙 Jetons par vente</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Nombre de jetons crédités <b>automatiquement</b> à chaque vente approuvée (en plus de la commission en $). Ça se déclenche pour toute nouvelle vente approuvée.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / vente</label><input type="number" id="tokens-per-sale-input" min="0" value="'+tokensPerSale+'"></div><button class="btn btn-grad" onclick="saveTokensPerSale()">💾 Enregistrer</button></div></div>'
       +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">💸 Jetons par retrait</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Jetons crédités <b>automatiquement</b> selon le montant retiré, dès que le retrait est marqué "payé" (pas juste demandé). Ajoute, modifie ou supprime des paliers.</p>'
@@ -2144,32 +2193,92 @@ function doEditTokenMethod(i){
 }
 
 // ── ADMIN : OFFRES DE LA BOUTIQUE À JETONS ──
+function frameSelectOptions(selected){
+  return Object.keys(FRAME_PRESETS).map(k=>'<option value="'+k+'" '+(k===selected?'selected':'')+'>'+FRAME_PRESETS[k].label+'</option>').join('');
+}
+function renderShopItemTypeFields(prefix,existing){
+  const type=document.getElementById('si-type-'+prefix).value;
+  const el=document.getElementById('si-type-fields-'+prefix);
+  if(!el)return;
+  if(type==='cosmetic'){
+    const cosType=(existing&&existing.cosmetic_type)||'name_color';
+    const cosVal=(existing&&existing.cosmetic_value)||'#F5C842';
+    el.innerHTML='<div class="fi"><label>Type de personnalisation</label><select id="si-cos-type-'+prefix+'" onchange="renderCosmeticValueField(\''+prefix+'\')"><option value="name_color" '+(cosType==='name_color'?'selected':'')+'>🖊️ Couleur du pseudo</option><option value="avatar_frame" '+(cosType==='avatar_frame'?'selected':'')+'>🖼️ Cadre autour de la photo</option></select></div><div id="si-cos-value-'+prefix+'"></div>';
+    renderCosmeticValueField(prefix,cosType,cosVal);
+  } else {
+    el.innerHTML='<div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:20px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-si-'+prefix+'\').click()"><input type="file" id="img-file-si-'+prefix+'" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'si-'+prefix+'\')"><div id="img-prev-si-'+prefix+'" style="'+(existing&&existing.image_url?'':'display:none;')+'margin-bottom:10px"><img id="img-prev-img-si-'+prefix+'" src="'+(existing&&existing.image_url||'')+'" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-si-'+prefix+'" style="'+(existing&&existing.image_url?'display:none':'')+'"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Importer une image</div></div></div></div>';
+  }
+}
+function renderCosmeticValueField(prefix,forceType,forceVal){
+  const cosType=forceType||document.getElementById('si-cos-type-'+prefix).value;
+  const el=document.getElementById('si-cos-value-'+prefix);
+  if(!el)return;
+  if(cosType==='name_color'){
+    const val=forceVal&&forceVal.startsWith('#')?forceVal:'#F5C842';
+    el.innerHTML='<div class="fi"><label>Couleur du pseudo</label><div style="display:flex;align-items:center;gap:12px"><input type="color" id="si-cos-val-'+prefix+'" value="'+val+'" style="width:60px;height:40px;padding:2px;border-radius:8px;border:1px solid #333;background:var(--bg3);cursor:pointer"><span style="font-weight:800;font-size:15px" id="si-cos-preview-'+prefix+'">Aperçu du pseudo</span></div></div>';
+    const inp=document.getElementById('si-cos-val-'+prefix);const prev=document.getElementById('si-cos-preview-'+prefix);
+    const upd=()=>{prev.style.color=inp.value;};upd();inp.oninput=upd;
+  } else {
+    const val=(forceVal&&FRAME_PRESETS[forceVal])?forceVal:'gold';
+    el.innerHTML='<div class="fi"><label>Cadre autour de la photo</label><div style="display:flex;align-items:center;gap:12px"><select id="si-cos-val-'+prefix+'" onchange="updateFramePreview(\''+prefix+'\')">'+frameSelectOptions(val)+'</select><div id="si-cos-frame-preview-'+prefix+'"></div></div></div>';
+    updateFramePreview(prefix);
+  }
+}
+function updateFramePreview(prefix){
+  const val=document.getElementById('si-cos-val-'+prefix).value;
+  const el=document.getElementById('si-cos-frame-preview-'+prefix);
+  if(el)el.innerHTML=avatarHtml('?',null,40,15,'',val);
+}
 function openAddShopItem(){
   document.getElementById('m-title').textContent='Nouvelle offre boutique';
-  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" placeholder="Ex: Bon cadeau Amazon 10€"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" placeholder="Description de l\'offre..."></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:24px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-si-add\').click()"><input type="file" id="img-file-si-add" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'si-add\')"><div id="img-prev-si-add" style="display:none;margin-bottom:10px"><img id="img-prev-img-si-add" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-si-add"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Importer une image</div></div></div></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="50"></div><button class="btn btn-grad" onclick="doAddShopItem()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" placeholder="Ex: Bon cadeau Amazon 10€"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" placeholder="Description de l\'offre..."></div><div class="fi"><label>Type d\'offre</label><select id="si-type-add" onchange="renderShopItemTypeFields(\'add\')"><option value="normal">🎁 Offre normale (photo)</option><option value="cosmetic">🎨 Personnalisation (pseudo / cadre photo)</option></select></div><div id="si-type-fields-add"></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="50"></div><button class="btn btn-grad" onclick="doAddShopItem()" style="width:100%;justify-content:center;margin-top:6px">Créer →</button>';
   document.getElementById('mo').classList.add('open');
+  renderShopItemTypeFields('add');
 }
 async function doAddShopItem(){
   const title=document.getElementById('si-title').value.trim();
   const price=parseInt(document.getElementById('si-price').value);
   if(!title){toast('Titre requis','e');return;}
   if(!price||price<=0){toast('Prix en jetons invalide','e');return;}
-  try{let imgUrl=null;const f=document.getElementById('img-file-si-add').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
-  await api('POST','/api/admin/shop/items',{title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,image_url:imgUrl});closeMo();toast('Offre créée !','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+  const itemType=document.getElementById('si-type-add').value;
+  const payload={title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,item_type:itemType};
+  try{
+    if(itemType==='cosmetic'){
+      payload.cosmetic_type=document.getElementById('si-cos-type-add').value;
+      payload.cosmetic_value=document.getElementById('si-cos-val-add').value;
+    } else {
+      let imgUrl=null;const f=document.getElementById('img-file-si-add').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+      payload.image_url=imgUrl;
+    }
+    await api('POST','/api/admin/shop/items',payload);closeMo();toast('Offre créée !','s');goPage('admin-shop-settings');
+  }catch(e){toast(e.message,'e');}
 }
 function openEditShopItem(id){
   const it=(window.SHOP_ITEMS_CACHE||[]).find(x=>x.id===id);if(!it)return;
+  const isCos=it.item_type==='cosmetic';
   document.getElementById('m-title').textContent='Modifier l\'offre';
-  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" value="'+esc(it.title)+'"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" value="'+esc(it.description||'')+'"></div><div class="fi"><label>Image</label><div style="border:2px dashed #333;border-radius:12px;padding:20px;text-align:center;cursor:pointer" onclick="document.getElementById(\'img-file-si-edit\').click()"><input type="file" id="img-file-si-edit" accept="image/*,.heic,.heif" style="display:none" onchange="previewImg(this,\'si-edit\')"><div id="img-prev-si-edit" style="'+(it.image_url?'':'display:none;')+'margin-bottom:10px"><img id="img-prev-img-si-edit" src="'+(it.image_url||'')+'" style="max-width:100%;max-height:130px;border-radius:8px;object-fit:cover"></div><div id="img-ph-si-edit" style="'+(it.image_url?'display:none':'')+'"><div style="font-size:32px;margin-bottom:8px">🖼️</div><div style="font-size:13px;color:#aaa">Changer l\'image</div></div></div></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="'+it.price_tokens+'"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditShopItem('+id+',\''+(it.image_url||'')+'\')" style="flex:1;justify-content:center">Sauvegarder →</button></div>';
+  document.getElementById('m-body').innerHTML='<div class="fi"><label>Titre</label><input type="text" id="si-title" value="'+esc(it.title)+'"></div><div class="fi"><label>Description</label><input type="text" id="si-desc" value="'+esc(it.description||'')+'"></div><div class="fi"><label>Type d\'offre</label><select id="si-type-edit" onchange="renderShopItemTypeFields(\'edit\')"><option value="normal" '+(!isCos?'selected':'')+'>🎁 Offre normale (photo)</option><option value="cosmetic" '+(isCos?'selected':'')+'>🎨 Personnalisation (pseudo / cadre photo)</option></select></div><div id="si-type-fields-edit"></div><div class="fi"><label>Prix (en jetons)</label><input type="number" id="si-price" min="1" value="'+it.price_tokens+'"></div><div style="display:flex;gap:10px;margin-top:6px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="doEditShopItem('+id+',\''+(it.image_url||'')+'\')" style="flex:1;justify-content:center">Sauvegarder →</button></div>';
   document.getElementById('mo').classList.add('open');
+  renderShopItemTypeFields('edit',it);
 }
 async function doEditShopItem(id,existingImg){
   const title=document.getElementById('si-title').value.trim();
   const price=parseInt(document.getElementById('si-price').value);
   if(!title){toast('Titre requis','e');return;}
   if(!price||price<=0){toast('Prix en jetons invalide','e');return;}
-  try{let imgUrl=existingImg||null;const f=document.getElementById('img-file-si-edit').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
-  await api('PATCH','/api/admin/shop/items/'+id,{title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,image_url:imgUrl});closeMo();toast('Offre modifiée ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
+  const itemType=document.getElementById('si-type-edit').value;
+  const payload={title,description:document.getElementById('si-desc').value.trim(),price_tokens:price,item_type:itemType};
+  try{
+    if(itemType==='cosmetic'){
+      payload.cosmetic_type=document.getElementById('si-cos-type-edit').value;
+      payload.cosmetic_value=document.getElementById('si-cos-val-edit').value;
+      payload.image_url=null;
+    } else {
+      let imgUrl=existingImg||null;const f=document.getElementById('img-file-si-edit').files[0];if(f){toast('Upload...','i');imgUrl=await uploadImg(f,'offers');}
+      payload.image_url=imgUrl;
+    }
+    await api('PATCH','/api/admin/shop/items/'+id,payload);closeMo();toast('Offre modifiée ✓','s');goPage('admin-shop-settings');
+  }catch(e){toast(e.message,'e');}
 }
 async function toggleShopItem(id,active){try{await api('PATCH','/api/admin/shop/items/'+id,{active});toast(active?'Offre activée ✅':'Offre désactivée 🚫',active?'s':'i');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}}
 function confirmDeleteShopItem(id,title){
@@ -2190,6 +2299,7 @@ async function doPurchaseShopItem(id){
   if(btn){if(btn.disabled)return;btn.disabled=true;btn.style.opacity='.6';btn.style.cursor='not-allowed';btn.textContent='⏳ Échange...';}
   try{
     await api('POST','/api/shop/purchase/'+id,{});
+    const fresh=await api('GET','/api/me');ME=fresh;localStorage.setItem('affihub_user',JSON.stringify(ME));
     closeMo();toast('Échangé ! C\'est à toi 🎉','s');
     goPage('aff-shop');
   }catch(e){
@@ -2236,7 +2346,7 @@ function doSortTop(by){
   const getMedal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':i===3?'4️⃣':i===4?'5️⃣':i===5?'6️⃣':i===6?'7️⃣':i===7?'8️⃣':i===8?'9️⃣':i===9?'🔟':'<span style="background:rgba(255,255,255,.08);border:1px solid #333;border-radius:8px;padding:3px 8px;font-size:12px;font-weight:800;color:#666">'+(i+1)+'</span>';
   const sorted=[...ranking].sort((a,b)=>by==='gains'?b.totalGains-a.totalGains:by==='conv'?b.totalConversions-a.totalConversions:by==='clicks'?b.totalClicks-a.totalClicks:by==='tokens'?(b.tokens||0)-(a.tokens||0):new Date(a.created_at)-new Date(b.created_at));
   const tbody=document.getElementById('top-tbody');
-  if(tbody)tbody.innerHTML=sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12)+'<b>'+u.name+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td><td style="color:#F5C842;font-weight:800;text-align:center">🪙 '+(u.tokens||0)+'</td></tr>').join('');
+  if(tbody)tbody.innerHTML=sorted.map((u,i)=>'<tr><td style="text-align:center;font-size:18px">'+getMedal(i)+'</td><td><div style="display:flex;align-items:center;gap:8px">'+avatarHtml(u.name,u.avatar_url,28,12,'',u.avatar_frame)+'<b>'+nameHtml(u.name,u.name_color)+'</b>'+((u.referralCount||0)>=5?'<span class="badge by2" title="'+u.referralCount+' filleuls" style="margin-left:6px;font-size:9px">🏆 Super Parrain</span>':'')+'</div></td><td style="color:var(--muted)">'+fmt(u.created_at)+'</td><td style="color:#4D9EFF;font-weight:800;text-align:center">'+(u.totalClicks||0)+'</td><td style="color:var(--yellow);font-weight:800;text-align:center">'+u.totalConversions+'</td><td style="color:var(--green);font-weight:800;text-align:center">$'+u.totalGains+'</td><td style="color:#F5C842;font-weight:800;text-align:center">🪙 '+(u.tokens||0)+'</td></tr>').join('');
 }
 async function toggleRanking(show){try{await api('PATCH','/api/me/ranking',{show});ME.show_ranking=show;localStorage.setItem('affihub_user',JSON.stringify(ME));toast(show?'Visible ✅':'Masqué 🚫',show?'s':'i');goPage('aff-settings');}catch(e){toast(e.message,'e');}}
 let AFF_CONVS_CACHE=[];
@@ -2289,9 +2399,20 @@ async function saveAvatar(){
 async function removeAvatar(){
   try{await api('PATCH','/api/me/avatar',{avatar_url:null});ME.avatar_url=null;localStorage.setItem('affihub_user',JSON.stringify(ME));updateSidebarAvatar();toast('Photo retirée','s');goPage('aff-settings');}catch(e){toast(e.message,'e');}
 }
+async function equipCosmetic(type,value){
+  try{
+    const payload={};payload[type]=value;
+    await api('PATCH','/api/me/cosmetics',payload);
+    ME[type]=value;localStorage.setItem('affihub_user',JSON.stringify(ME));
+    if(type==='avatar_frame')updateSidebarAvatar();
+    if(type==='name_color')document.getElementById('u-name').innerHTML=nameHtml(ME.name,ME.name_color);
+    toast(value?'Équipé ✓':'Retiré','s');
+    goPage('aff-settings');
+  }catch(e){toast(e.message,'e');}
+}
 function updateSidebarAvatar(){
-  const el=document.getElementById('u-avatar');if(!el)return;
-  el.outerHTML=avatarHtml(ME.name,ME.avatar_url,34,13,'').replace('class="avatar"','class="avatar" id="u-avatar"');
+  const slot=document.getElementById('u-avatar-slot');if(!slot)return;
+  slot.innerHTML=avatarHtml(ME.name,ME.avatar_url,34,13,'',ME.avatar_frame);
 }
 function previewReplyImg(input){const file=input.files[0];if(!file)return;const reader=new FileReader();reader.onload=e=>{document.getElementById('reply-img-prev').style.display='block';document.getElementById('reply-img-prev-img').src=e.target.result;document.getElementById('reply-img-ph').style.display='none';};reader.readAsDataURL(file);}
 async function saveLogo(){
