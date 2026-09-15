@@ -1806,11 +1806,11 @@ app.post('/api/shop/purchase/:id', auth, async (req, res) => {
     userUpdates.owned_cosmetics = JSON.stringify(owned);
   }
   await supabase.from('users').update(userUpdates).eq('id', req.user.id);
-  const { data: order, error } = await supabase.from('shop_orders').insert({ user_id: req.user.id, item_id: item.id, item_title: item.title, price_tokens: item.price_tokens, status: 'fulfilled' }).select().single();
-  if (error) { await supabase.from('users').update({ tokens: balance, owned_cosmetics: user?.owned_cosmetics || '[]' }).eq('id', req.user.id); return res.status(500).json({ error: error.message }); }
-  log(req.user.id, 'boutique-achat', user.name + ' a échangé ' + item.price_tokens + ' jetons contre "' + item.title + '" (obtenu immédiatement)', req);
   const isCosmetic = item.item_type === 'cosmetic';
-  await sendDiscordChannelMsg(DISCORD_SHOP_CHANNEL, isCosmetic ? '🎨 Nouvel échange (personnalisation) !' : '🛍️ Nouvel échange boutique !', isCosmetic ? 0xa855f7 : 0xF5C842, [
+  const { data: order, error } = await supabase.from('shop_orders').insert({ user_id: req.user.id, item_id: item.id, item_title: item.title, item_type: item.item_type || 'normal', price_tokens: item.price_tokens, status: isCosmetic ? 'fulfilled' : 'pending' }).select().single();
+  if (error) { await supabase.from('users').update({ tokens: balance, owned_cosmetics: user?.owned_cosmetics || '[]' }).eq('id', req.user.id); return res.status(500).json({ error: error.message }); }
+  log(req.user.id, 'boutique-achat', user.name + ' a échangé ' + item.price_tokens + ' jetons contre "' + item.title + '"' + (isCosmetic ? ' (obtenu immédiatement)' : ' (en attente de livraison)'), req);
+  await sendDiscordChannelMsg(DISCORD_SHOP_CHANNEL, isCosmetic ? '🎨 Nouvel échange (personnalisation) !' : '🛍️ Nouvel échange boutique — à livrer !', isCosmetic ? 0xa855f7 : 0xF5C842, [
     { name: '👤 Affilié', value: user.name, inline: true },
     { name: '🎁 Offre', value: item.title, inline: true },
     { name: '🪙 Jetons', value: String(item.price_tokens), inline: true }
@@ -1842,6 +1842,22 @@ app.get('/api/shop/orders', auth, async (req, res) => {
   const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data || []);
+});
+// Valide/livre une commande d'offre "normale" en attente (l'admin lui a remis la récompense manuellement)
+app.patch('/api/admin/shop/orders/:id/deliver', auth, adminOnly, async (req, res) => {
+  const { data: order } = await supabase.from('shop_orders').select('*, users(name,discord_id)').eq('id', req.params.id).single();
+  if (!order) return res.status(404).json({ error: 'Commande introuvable' });
+  if (order.status !== 'pending') return res.status(409).json({ error: 'Cette commande n\'est pas en attente (statut actuel : ' + order.status + ')' });
+  await supabase.from('shop_orders').update({ status: 'fulfilled' }).eq('id', req.params.id);
+  log(req.user.id, 'boutique-commande-livrée', 'Commande #' + order.id + ' (' + order.item_title + ') marquée comme livrée pour ' + (order.users?.name || '?'), req);
+  await supabase.from('notifications').insert({ user_id: order.user_id, type: 'shop_order_fulfilled', message: '🛍️ Ta commande "' + order.item_title + '" a été livrée !', read: false });
+  if (order.users?.discord_id) {
+    await sendDiscordDM(order.users.discord_id, '🛍️ Commande livrée !', 0x00D68F, [
+      { name: '🎁 Offre', value: order.item_title, inline: true },
+      { name: '🪙 Jetons', value: String(order.price_tokens), inline: true }
+    ]);
+  }
+  res.json({ success: true });
 });
 
 // ── TICKETS ──
