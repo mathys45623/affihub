@@ -2167,15 +2167,29 @@ function openGrantTokens(presetUserId,presetUserName){
   Promise.all([api('GET','/api/users')]).then(([users])=>{
     const uOpts=users.map(u=>'<option value="'+u.id+'" '+(presetUserId&&String(u.id)===String(presetUserId)?'selected':'')+'>'+esc(u.name)+'</option>').join('');
     document.getElementById('m-title').textContent='🪙 Attribuer des jetons';
-    document.getElementById('m-body').innerHTML='<div class="fi"><label>Affilié</label><select id="gt-user">'+(presetUserId?'':'<option value="">-- Choisir --</option>')+uOpts+'</select></div><div class="fi"><label>Montant (négatif pour retirer)</label><input type="number" id="gt-amount" placeholder="Ex: 20 ou -10" value="10"></div><div class="fi"><label>Raison (optionnel, visible par l\'affilié)</label><input type="text" id="gt-reason" placeholder="Ex: Parrainage de..."></div><button class="btn btn-grad" id="gt-confirm-btn" onclick="doGrantTokens()" style="width:100%;justify-content:center;margin-top:6px">Confirmer →</button>';
+    document.getElementById('m-body').innerHTML='<div class="fi"><label>Affilié</label><select id="gt-user">'+(presetUserId?'':'<option value="">-- Choisir --</option>')+uOpts+'</select></div>'
+      +'<div class="fi"><label>Action</label><div style="display:flex;gap:8px" id="gt-mode-wrap"><button type="button" class="btn btn-grad btn-sm" id="gt-mode-add" style="flex:1;justify-content:center" onclick="setGrantTokenMode(\'add\')">➕ Ajouter</button><button type="button" class="btn btn-gst btn-sm" id="gt-mode-remove" style="flex:1;justify-content:center" onclick="setGrantTokenMode(\'remove\')">➖ Retirer</button></div></div>'
+      +'<div class="fi"><label>Montant de jetons</label><input type="number" id="gt-amount" min="1" placeholder="Ex: 20" value="10"></div>'
+      +'<div class="fi"><label>Raison (optionnel, visible par l\'affilié)</label><input type="text" id="gt-reason" placeholder="Ex: Parrainage de..."></div>'
+      +'<button class="btn btn-grad" id="gt-confirm-btn" onclick="doGrantTokens()" style="width:100%;justify-content:center;margin-top:6px">Confirmer →</button>';
+    window._grantTokenMode='add';
     document.getElementById('mo').classList.add('open');
   }).catch(e=>toast(e.message,'e'));
 }
+function setGrantTokenMode(mode){
+  window._grantTokenMode=mode;
+  const addBtn=document.getElementById('gt-mode-add'),remBtn=document.getElementById('gt-mode-remove');
+  if(addBtn)addBtn.className='btn btn-'+(mode==='add'?'grad':'gst')+' btn-sm';
+  if(remBtn)remBtn.className='btn btn-'+(mode==='remove'?'red':'gst')+' btn-sm';
+  if(remBtn&&mode==='remove')remBtn.style.cssText='flex:1;justify-content:center';
+}
 async function doGrantTokens(){
   const user_id=document.getElementById('gt-user').value;
-  const amount=parseInt(document.getElementById('gt-amount').value);
+  const rawAmount=parseInt(document.getElementById('gt-amount').value);
   if(!user_id){toast('Choisis un affilié','e');return;}
-  if(!amount){toast('Montant invalide','e');return;}
+  if(!rawAmount||rawAmount<=0){toast('Montant invalide','e');return;}
+  const mode=window._grantTokenMode||'add';
+  const amount=mode==='remove'?-Math.abs(rawAmount):Math.abs(rawAmount);
   const btn=document.getElementById('gt-confirm-btn');
   if(btn){if(btn.disabled)return;btn.disabled=true;btn.style.opacity='.6';btn.style.cursor='not-allowed';btn.textContent='⏳ Envoi...';}
   try{
