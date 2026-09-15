@@ -1534,9 +1534,7 @@ async function renderPage(page){
       +'<button class="btn btn-red btn-sm" onclick="confirmDeleteShopItem('+it.id+',\''+esc(it.title).replace(/'/g,"\\'")+'\')">🗑</button>'
       +'</div></div></div></div>').join('');
     window.SHOP_ITEMS_CACHE=items;
-    return '<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🪙 Jetons par vente</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Nombre de jetons crédités <b>automatiquement</b> à chaque vente approuvée (en plus de la commission en $). Ça se déclenche pour toute nouvelle vente approuvée.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / vente</label><input type="number" id="tokens-per-sale-input" min="0" value="'+tokensPerSale+'"></div><button class="btn btn-grad" onclick="saveTokensPerSale()">💾 Enregistrer</button></div>'
-      +'<div class="hdiv"></div>'
-      +'<div style="font-size:13px;font-weight:800;margin-bottom:8px">⏪ Rattrapage rétroactif</div><p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">Les affiliés qui ont déjà des ventes approuvées <b>avant la mise en place du système de jetons</b> n\'en ont pas reçu automatiquement. Clique ici pour créditer, en une fois, les jetons manquants sur toutes ces ventes passées (au tarif actuel ci-dessus). Cette action est sûre à relancer : les ventes déjà traitées ne seront jamais recréditées deux fois.</p><button class="btn btn-gst" onclick="confirmTokensBackfill()" style="width:100%;justify-content:center">⏪ Attribuer les jetons manquants sur les ventes passées</button></div>'
+    return '<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">🪙 Jetons par vente</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Nombre de jetons crédités <b>automatiquement</b> à chaque vente approuvée (en plus de la commission en $). Ça se déclenche pour toute nouvelle vente approuvée.</p><div style="display:flex;gap:10px;align-items:flex-end"><div class="fi" style="margin-bottom:0;flex:1;max-width:160px"><label>Jetons / vente</label><input type="number" id="tokens-per-sale-input" min="0" value="'+tokensPerSale+'"></div><button class="btn btn-grad" onclick="saveTokensPerSale()">💾 Enregistrer</button></div></div>'
       +'<div class="settings-section" style="border-color:rgba(245,200,66,.3)"><div class="settings-section-title">💸 Jetons par retrait</div><p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6">Jetons crédités <b>automatiquement</b> selon le montant retiré, dès que le retrait est marqué "payé" (pas juste demandé). Ajoute, modifie ou supprime des paliers.</p>'
       +'<div id="wd-tiers-body">'+tierRows+'</div>'
       +'<div style="display:flex;gap:10px;margin-top:8px"><button class="btn btn-gst" onclick="addWdTier()" style="flex:1;justify-content:center">+ Ajouter un palier</button><button class="btn btn-grad" onclick="saveWdTiers()" style="flex:1;justify-content:center">💾 Enregistrer les paliers</button></div></div>'
@@ -2073,19 +2071,6 @@ async function saveReferralMilestone(){
   if(!Number.isFinite(count)||count<=0){toast('Nombre de filleuls invalide','e');return;}
   if(!Number.isFinite(tokens)||tokens<0){toast('Jetons invalides','e');return;}
   try{await api('PATCH','/api/admin/settings/referral-milestone',{count,tokens});toast('Bonus de parrainage mis à jour ✓','s');goPage('admin-shop-settings');}catch(e){toast(e.message,'e');}
-}
-function confirmTokensBackfill(){
-  document.getElementById('m-title').textContent='⏪ Rattrapage rétroactif';
-  document.getElementById('m-body').innerHTML='<div style="padding:8px 0 4px"><div style="font-size:13px;color:var(--muted);margin-bottom:18px;line-height:1.6">Ça va créditer les jetons manquants à tous les affiliés ayant des ventes approuvées qui n\'ont encore reçu aucun jeton (au tarif actuellement configuré). Les ventes déjà traitées ne seront pas recréditées.</div><div style="display:flex;gap:10px"><button class="btn btn-gst" onclick="closeMo()" style="flex:1">Annuler</button><button class="btn btn-grad" onclick="runTokensBackfill()" style="flex:1;justify-content:center">Lancer le rattrapage</button></div></div>';
-  document.getElementById('mo').classList.add('open');
-}
-async function runTokensBackfill(){
-  try{
-    const r=await api('POST','/api/admin/tokens/backfill',{});
-    closeMo();
-    if(r.usersCredited>0)toast('✅ '+r.usersCredited+' affilié(s) crédité(s) sur '+r.conversionsUpdated+' vente(s)','s');
-    else toast('Rien à rattraper, tout est déjà à jour ✓','i');
-  }catch(e){toast(e.message,'e');}
 }
 function openGrantTokens(presetUserId,presetUserName){
   Promise.all([api('GET','/api/users')]).then(([users])=>{
