@@ -37,6 +37,10 @@ const DISCORD_WITHDRAWAL = process.env.DISCORD_WEBHOOK_WITHDRAWAL || 'https://di
 const DISCORD_PAYMENT = process.env.DISCORD_WEBHOOK_PAYMENT || 'https://discord.com/api/webhooks/1526535272437780600/RLIxROgmO64UPycLUJgbDN31kCuDIt7VpJmTgSSouYHolByFqZNeAB59k7ZjOm0u2qHa';
 const DISCORD_TICKET = process.env.DISCORD_WEBHOOK_TICKET || 'https://discord.com/api/webhooks/1526535384685871146/q2VAq8dCK6Yd9K8fw6Q8U08JoD_-af2Ph8YZdrXeYyNlcdAZKpVHcXXi5GDKPpYw0dmN';
 const DISCORD_REFERRAL = process.env.DISCORD_WEBHOOK_REFERRAL || 'https://discord.com/api/webhooks/1526536467168493658/SJ-Et9ONIpTC_YmCd7Ow_VZbOrO5FIGHB8MNaV9FcxolheQFmtf2pdou4za8UA8r73OD';
+// Salon Discord dédié aux échanges de la boutique à jetons (posté via le bot, pas un webhook,
+// pour pouvoir choisir de ping ou non selon le type d'offre échangée).
+const DISCORD_SHOP_CHANNEL = process.env.DISCORD_SHOP_CHANNEL_ID || '1549396697560391760';
+const ADMIN_DISCORD_ID = process.env.ADMIN_DISCORD_ID || '1504481208266915861';
 
 // ── Rôle auto attribué à l'inscription ──
 const DISCORD_GUILD_ID = '1520172933815730227';
@@ -1805,11 +1809,12 @@ app.post('/api/shop/purchase/:id', auth, async (req, res) => {
   const { data: order, error } = await supabase.from('shop_orders').insert({ user_id: req.user.id, item_id: item.id, item_title: item.title, price_tokens: item.price_tokens, status: 'fulfilled' }).select().single();
   if (error) { await supabase.from('users').update({ tokens: balance, owned_cosmetics: user?.owned_cosmetics || '[]' }).eq('id', req.user.id); return res.status(500).json({ error: error.message }); }
   log(req.user.id, 'boutique-achat', user.name + ' a échangé ' + item.price_tokens + ' jetons contre "' + item.title + '" (obtenu immédiatement)', req);
-  await notifyDiscord2(DISCORD_WITHDRAWAL, '🛍️ Nouvel échange boutique !', 0xF5C842, [
+  const isCosmetic = item.item_type === 'cosmetic';
+  await sendDiscordChannelMsg(DISCORD_SHOP_CHANNEL, isCosmetic ? '🎨 Nouvel échange (personnalisation) !' : '🛍️ Nouvel échange boutique !', isCosmetic ? 0xa855f7 : 0xF5C842, [
     { name: '👤 Affilié', value: user.name, inline: true },
     { name: '🎁 Offre', value: item.title, inline: true },
     { name: '🪙 Jetons', value: String(item.price_tokens), inline: true }
-  ]);
+  ], isCosmetic ? undefined : '<@' + ADMIN_DISCORD_ID + '>');
   res.json(order);
 });
 // Équiper/retirer une personnalisation possédée (couleur de pseudo / cadre de photo)
